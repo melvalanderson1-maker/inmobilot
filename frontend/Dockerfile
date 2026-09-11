@@ -1,14 +1,21 @@
-# Etapa 1: build de Angular
+# ---- Etapa 1: build de Angular ----
 FROM node:20-alpine AS build
+
 WORKDIR /app
+
 COPY package*.json ./
-RUN npm ci
+RUN npm install
+
 COPY . .
 RUN npm run build
 
-# Etapa 2: servir con nginx
+# ---- Etapa 2: servir con Nginx ----
 FROM nginx:alpine
-COPY --from=build /app/dist/inmobilot-frontend/browser /usr/share/nginx/html
+
+COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/entrypoint.sh"]

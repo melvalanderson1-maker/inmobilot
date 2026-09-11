@@ -90,15 +90,42 @@ class ProyectoOut(ORMBase):
     activo: bool
 
 
+class EtapaCreate(BaseModel):
+    id_proyecto: int
+    nombre: str
+    partida_registral: str
+    sunarp_url: Optional[str] = None
+    orden: Optional[int] = 0
+
+
+class EtapaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    partida_registral: Optional[str] = None
+    sunarp_url: Optional[str] = None
+    orden: Optional[int] = None
+
+
+class EtapaOut(ORMBase):
+    id: int
+    id_proyecto: int
+    nombre: str
+    partida_registral: str
+    sunarp_url: Optional[str] = None
+    orden: int
+
+
 class ManzanaCreate(BaseModel):
     id_proyecto: int
+    id_etapa: int
     nombre: str
 
 
 class ManzanaOut(ORMBase):
     id: int
     id_proyecto: int
+    id_etapa: int
     nombre: str
+    etapa: Optional[EtapaOut] = None
 
 
 # --------------------------------------------------------------- LOTES ----

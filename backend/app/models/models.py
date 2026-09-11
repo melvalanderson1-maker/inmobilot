@@ -207,8 +207,29 @@ class Proyecto(Base):
     __table_args__ = (UniqueConstraint("id_empresa", "slug", name="uq_proyecto_empresa_slug"),)
 
     empresa = relationship("Empresa", back_populates="proyectos")
+    etapas = relationship("Etapa", back_populates="proyecto")
     manzanas = relationship("Manzana", back_populates="proyecto")
     usuarios = relationship("Usuario", secondary="usuario_proyecto", back_populates="proyectos")
+
+
+
+class Etapa(Base):
+    __tablename__ = "etapas"
+
+    id = Column(Integer, primary_key=True)
+    id_proyecto = Column(Integer, ForeignKey("proyectos.id", ondelete="CASCADE"), nullable=False)
+    nombre = Column(String(100), nullable=False)
+    partida_registral = Column(String(50), nullable=False)
+    sunarp_url = Column(String(300))
+    orden = Column(Integer, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("id_proyecto", "partida_registral", name="uq_etapa_proyecto_partida"),
+    )
+
+    proyecto = relationship("Proyecto", back_populates="etapas")
+    manzanas = relationship("Manzana", back_populates="etapa")
 
 
 class UsuarioProyecto(Base):
@@ -223,13 +244,16 @@ class Manzana(Base):
 
     id = Column(Integer, primary_key=True)
     id_proyecto = Column(Integer, ForeignKey("proyectos.id", ondelete="CASCADE"), nullable=False)
+    id_etapa = Column(Integer, ForeignKey("etapas.id", ondelete="CASCADE"), nullable=False)
     nombre = Column(String(20), nullable=False)
 
-    __table_args__ = (UniqueConstraint("id_proyecto", "nombre", name="uq_manzana_proyecto_nombre"),)
+    __table_args__ = (
+        UniqueConstraint("id_etapa", "nombre", name="uq_manzana_etapa_nombre"),
+    )
 
     proyecto = relationship("Proyecto", back_populates="manzanas")
+    etapa = relationship("Etapa", back_populates="manzanas")
     lotes = relationship("Lote", back_populates="manzana")
-
 
 # =========================================================================
 # 4. LOTES

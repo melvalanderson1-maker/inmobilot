@@ -92,14 +92,41 @@ export interface ProyectoCreate {
   moneda?: string;
 }
 
-export interface Manzana {
+export interface Etapa {
   id: number;
   id_proyecto: number;
   nombre: string;
+  partida_registral: string;
+  sunarp_url?: string;
+  orden: number;
+}
+
+export interface EtapaCreate {
+  id_proyecto: number;
+  nombre: string;
+  partida_registral: string;
+  sunarp_url?: string;
+  orden?: number;
+}
+
+export interface EtapaUpdate {
+  nombre?: string;
+  partida_registral?: string;
+  sunarp_url?: string;
+  orden?: number;
+}
+
+export interface Manzana {
+  id: number;
+  id_proyecto: number;
+  id_etapa: number;
+  nombre: string;
+  etapa?: Etapa;
 }
 
 export interface ManzanaCreate {
   id_proyecto: number;
+  id_etapa: number;
   nombre: string;
 }
 

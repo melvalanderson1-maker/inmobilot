@@ -528,24 +528,43 @@
         </svg>
       </button>
 
-      <div class="gv-maqueta-imagen gv-lightbox-imagen" (click)="$event.stopPropagation()">
-        <img src="http://localhost:8000/static/mapas/maqueta.png" alt="Maqueta del proyecto Oro Verde" />
-        @for (lote of lotesConCoordenadas(); track lote.id) {
-          <button
-            type="button"
-            class="gv-maqueta-punto"
-            [class.libre]="lote.estado === 'libre'"
-            [class.separado]="lote.estado === 'separado'"
-            [class.vendido]="lote.estado === 'vendido'"
-            [class.bloqueado]="lote.estado === 'bloqueado'"
-            [style.left.%]="posicionLote(lote).x"
-            [style.top.%]="posicionLote(lote).y"
-            (click)="irALote(lote)"
-            [attr.aria-label]="'Ver lote ' + lote.codigo"
-          >
-            <span>{{ lote.codigo }}</span>
-          </button>
-        }
+      <div
+        class="gv-lightbox-imagen"
+        [class.arrastrando]="arrastrandoMapa()"
+        (click)="$event.stopPropagation()"
+        (wheel)="onWheelMapa($event)"
+        (mousedown)="iniciarArrastreMapa($event)"
+        (mousemove)="moverMapa($event)"
+        (mouseup)="soltarMapa()"
+        (mouseleave)="soltarMapa()"
+      >
+        <div
+          class="gv-maqueta-imagen gv-lightbox-imagen-zoom"
+          [style.transform]="'scale(' + zoomMapa() + ') translate(' + panMapa().x + 'px,' + panMapa().y + 'px)'"
+        >
+          <img src="http://localhost:8000/static/mapas/maqueta.png" alt="Maqueta del proyecto Oro Verde" />
+          @for (lote of lotesConCoordenadas(); track lote.id) {
+            <button
+              type="button"
+              class="gv-maqueta-punto"
+              [class.libre]="lote.estado === 'libre'"
+              [class.separado]="lote.estado === 'separado'"
+              [class.vendido]="lote.estado === 'vendido'"
+              [class.bloqueado]="lote.estado === 'bloqueado'"
+              [style.left.%]="posicionLote(lote).x"
+              [style.top.%]="posicionLote(lote).y"
+              (click)="irALote(lote)"
+              [attr.aria-label]="'Ver lote ' + lote.codigo"
+            >
+              <span>{{ lote.codigo }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="gv-lightbox-controles">
+          <button type="button" class="gv-lightbox-zoom-btn" (click)="zoomOut()">−</button>
+          <button type="button" class="gv-lightbox-zoom-btn" (click)="zoomIn()">+</button>
+        </div>
       </div>
 
     </div>

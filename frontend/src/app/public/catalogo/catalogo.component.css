@@ -3,9 +3,9 @@
 ========================================================== */
 :host {
   --gv-verde-950: #fcfcfc;
-  --gv-verde-900: #0b3d33;
-  --gv-verde-700: #0f8f73;
-  --gv-verde-500: #14b892;
+  --gv-verde-900: var(--color-secundario, #0b3d33);
+  --gv-verde-700: var(--color-primario, #0f8f73);
+  --gv-verde-500: var(--color-primario, #14b892);
   --gv-verde-100: #e6f5f0;
   --gv-verde-50: #f4faf8;
 
@@ -1399,15 +1399,56 @@
 }
 
 .gv-lightbox-imagen {
-  max-width: 1000px;
+  position: relative;
+  max-width: 1100px;
   width: 100%;
   max-height: 88vh;
+  overflow: hidden;
+  border-radius: 12px;
+  cursor: grab;
   animation: gv-lightbox-entrada 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.gv-lightbox-imagen img {
-  max-height: 88vh;
-  object-fit: contain;
+.gv-lightbox-imagen.arrastrando {
+  cursor: grabbing;
+}
+
+.gv-lightbox-imagen-zoom {
+  transform-origin: 0 0;
+  transition: transform 0.15s ease-out;
+}
+
+.gv-lightbox-imagen-zoom img {
+  display: block;
+  width: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.gv-lightbox-controles {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+
+.gv-lightbox-zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--gv-verde-900);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(11, 61, 51, 0.25);
+}
+
+.gv-lightbox-zoom-btn:hover {
+  background: #fff;
 }
 
 @keyframes gv-lightbox-entrada {
@@ -1457,8 +1498,8 @@
 .gv-maqueta-punto {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 2px solid #fff;
   background: var(--gv-texto-suave);

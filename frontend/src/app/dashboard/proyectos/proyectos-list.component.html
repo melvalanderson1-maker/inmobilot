@@ -2,7 +2,7 @@
   <div class="page-header">
     <div>
       <h1>Proyectos</h1>
-      <p class="subtitle">Administra tus proyectos inmobiliarios y sus manzanas</p>
+      <p class="subtitle">Administra tus proyectos inmobiliarios, sus etapas y manzanas</p>
     </div>
     <button class="btn-primary" (click)="abrirNuevoProyecto()">
       <span>+</span> Nuevo proyecto
@@ -38,35 +38,92 @@
 
           @if (expandido() === p.id) {
             <div class="manzanas-panel">
-              <h4>Manzanas</h4>
 
-              @if (cargandoManzanas() === p.id) {
-                <p class="texto-tenue">Cargando manzanas...</p>
-              } @else {
-                <div class="manzanas-chips">
-                  @for (mz of manzanasPorProyecto()[p.id] ?? []; track mz.id) {
-                    <span class="manzana-chip">{{ mz.nombre }}</span>
-                  }
-                  @if ((manzanasPorProyecto()[p.id] ?? []).length === 0) {
-                    <p class="texto-tenue">Este proyecto todavía no tiene manzanas.</p>
-                  }
+              <!-- ============ ETAPAS ============ -->
+              <div class="seccion-etapas">
+                <div class="seccion-header">
+                  <h4>Etapas</h4>
+                  <button class="btn-secundario-sm" (click)="abrirNuevaEtapa(p.id)">+ Nueva etapa</button>
                 </div>
-              }
 
-              <div class="agregar-manzana">
-                <input
-                  type="text"
-                  placeholder="Nombre de manzana (ej. A, B, C1)"
-                  [(ngModel)]="nombreManzanaNueva[p.id]"
-                  (keyup.enter)="crearManzana(p.id)"
-                />
-                <button
-                  class="btn-secundario-sm"
-                  (click)="crearManzana(p.id)"
-                  [disabled]="guardandoManzana() === p.id"
-                >
-                  {{ guardandoManzana() === p.id ? 'Agregando...' : '+ Agregar' }}
-                </button>
+                @if (cargandoEtapas() === p.id) {
+                  <p class="texto-tenue">Cargando etapas...</p>
+                } @else {
+                  @if ((etapasPorProyecto()[p.id] ?? []).length === 0) {
+                    <p class="texto-tenue">Este proyecto todavía no tiene etapas. Crea una para poder agregar manzanas.</p>
+                  } @else {
+                    <table class="tabla-etapas">
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>Partida registral</th>
+                          <th>SUNARP</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (et of etapasPorProyecto()[p.id] ?? []; track et.id) {
+                          <tr>
+                            <td>{{ et.nombre }}</td>
+                            <td>{{ et.partida_registral }}</td>
+                            <td>
+                              @if (et.sunarp_url) {
+                                <a [href]="et.sunarp_url" target="_blank" rel="noopener">Ver</a>
+                              } @else {
+                                <span class="texto-tenue">—</span>
+                              }
+                            </td>
+                            <td>
+                              <button class="btn-icono" (click)="abrirEditarEtapa(et, p.id)" title="Editar etapa">✏️</button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+                }
+              </div>
+
+              <!-- ============ MANZANAS ============ -->
+              <div class="seccion-manzanas">
+                <h4>Manzanas</h4>
+
+                @if (cargandoManzanas() === p.id) {
+                  <p class="texto-tenue">Cargando manzanas...</p>
+                } @else {
+                  <div class="manzanas-chips">
+                    @for (mz of manzanasPorProyecto()[p.id] ?? []; track mz.id) {
+                      <span class="manzana-chip">
+                        {{ mz.nombre }} — Partida {{ mz.etapa?.partida_registral ?? '—' }}
+                      </span>
+                    }
+                    @if ((manzanasPorProyecto()[p.id] ?? []).length === 0) {
+                      <p class="texto-tenue">Este proyecto todavía no tiene manzanas.</p>
+                    }
+                  </div>
+                }
+
+                <div class="agregar-manzana">
+                  <select [(ngModel)]="etapaSeleccionadaManzana[p.id]">
+                    <option [ngValue]="null" disabled selected>Etapa</option>
+                    @for (et of etapasPorProyecto()[p.id] ?? []; track et.id) {
+                      <option [ngValue]="et.id">{{ et.nombre }}</option>
+                    }
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="Nombre de manzana (ej. A, B, C1)"
+                    [(ngModel)]="nombreManzanaNueva[p.id]"
+                    (keyup.enter)="crearManzana(p.id)"
+                  />
+                  <button
+                    class="btn-secundario-sm"
+                    (click)="crearManzana(p.id)"
+                    [disabled]="guardandoManzana() === p.id"
+                  >
+                    {{ guardandoManzana() === p.id ? 'Agregando...' : '+ Agregar' }}
+                  </button>
+                </div>
               </div>
             </div>
           }
@@ -75,6 +132,7 @@
     </div>
   }
 
+  <!-- ============ MODAL: nuevo proyecto ============ -->
   @if (modalAbierto()) {
     <div class="modal-overlay" (click)="cerrarModal()">
       <div class="modal" (click)="$event.stopPropagation()">
@@ -131,6 +189,51 @@
           <button class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
           <button class="btn-primary" (click)="guardarProyecto()" [disabled]="guardando()">
             {{ guardando() ? 'Guardando...' : 'Guardar proyecto' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ============ MODAL: nueva / editar etapa ============ -->
+  @if (modalEtapaAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModalEtapa()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ etapaEditando() ? 'Editar ' + etapaEditando()!.nombre : 'Nueva etapa' }}</h2>
+          <button class="btn-cerrar" (click)="cerrarModalEtapa()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (errorEtapa()) {
+            <div class="mensaje-error">{{ errorEtapa() }}</div>
+          }
+
+          <div class="campo">
+            <label>Nombre de la etapa</label>
+            <input [(ngModel)]="formEtapa.nombre" type="text" placeholder="Etapa 1" />
+          </div>
+
+          <div class="campo">
+            <label>Partida registral (SUNARP)</label>
+            <input [(ngModel)]="formEtapa.partida_registral" type="text" placeholder="11052233" />
+          </div>
+
+          <div class="campo">
+            <label>URL de SUNARP</label>
+            <input [(ngModel)]="formEtapa.sunarp_url" type="text" placeholder="https://sunarp.gob.pe/..." />
+          </div>
+
+          <div class="campo">
+            <label>Orden</label>
+            <input [(ngModel)]="formEtapa.orden" type="number" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secundario" (click)="cerrarModalEtapa()">Cancelar</button>
+          <button class="btn-primary" (click)="guardarEtapa()" [disabled]="guardandoEtapa()">
+            {{ guardandoEtapa() ? 'Guardando...' : 'Guardar etapa' }}
           </button>
         </div>
       </div>

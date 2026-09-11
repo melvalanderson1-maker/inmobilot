@@ -5,10 +5,14 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 
 import { routes } from './app.routes';
 import { jwtInterceptor } from './core/interceptors/jwt.interceptor';
+import { ConfigService } from './core/services/config.service';
 import { TenantService } from './core/services/tenant.service';
 
-export function inicializarTenant(tenantService: TenantService) {
-  return () => tenantService.cargar();
+export function inicializarApp(configService: ConfigService, tenantService: TenantService) {
+  return async () => {
+    await configService.cargar();
+    await tenantService.cargar();
+  };
 }
 
 export const appConfig: ApplicationConfig = {
@@ -18,8 +22,8 @@ export const appConfig: ApplicationConfig = {
     provideAnimations(),
     {
       provide: APP_INITIALIZER,
-      useFactory: inicializarTenant,
-      deps: [TenantService],
+      useFactory: inicializarApp,
+      deps: [ConfigService, TenantService],
       multi: true,
     },
   ],

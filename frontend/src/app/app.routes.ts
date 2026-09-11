@@ -4,7 +4,11 @@ import { authGuard } from './core/guards/auth.guard';
 import { moduloGuard } from './core/guards/modulo.guard';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'catalogo/gruselva/oro-verde', pathMatch: 'full' },
+  {
+    path: '',
+    loadComponent: () =>
+      import('./public/catalogo/catalogo.component').then((c) => c.CatalogoComponent),
+  },
 
   {
     path: 'catalogo/:empresaSlug/:proyectoSlug',

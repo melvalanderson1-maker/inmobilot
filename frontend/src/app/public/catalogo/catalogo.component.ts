@@ -68,6 +68,46 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
   cerrarMapa(): void {
     this.mapaAbierto.set(false);
+    this.zoomMapa.set(1);
+    this.panMapa.set({ x: 0, y: 0 });
+  }
+
+  // Zoom / arrastre del mapa de la maqueta
+  zoomMapa = signal(1);
+  panMapa = signal<{ x: number; y: number }>({ x: 0, y: 0 });
+  arrastrandoMapa = signal(false);
+  private ultimoPuntero = { x: 0, y: 0 };
+
+  zoomIn(): void {
+    this.zoomMapa.update((z) => Math.min(z + 0.4, 4));
+  }
+
+  zoomOut(): void {
+    this.zoomMapa.update((z) => Math.max(z - 0.4, 1));
+  }
+
+  onWheelMapa(evento: WheelEvent): void {
+    evento.preventDefault();
+    const delta = evento.deltaY > 0 ? -0.2 : 0.2;
+    this.zoomMapa.update((z) => Math.min(Math.max(z + delta, 1), 4));
+  }
+
+  iniciarArrastreMapa(evento: MouseEvent): void {
+    if (this.zoomMapa() <= 1) return;
+    this.arrastrandoMapa.set(true);
+    this.ultimoPuntero = { x: evento.clientX, y: evento.clientY };
+  }
+
+  moverMapa(evento: MouseEvent): void {
+    if (!this.arrastrandoMapa()) return;
+    const dx = (evento.clientX - this.ultimoPuntero.x) / this.zoomMapa();
+    const dy = (evento.clientY - this.ultimoPuntero.y) / this.zoomMapa();
+    this.ultimoPuntero = { x: evento.clientX, y: evento.clientY };
+    this.panMapa.update((p) => ({ x: p.x + dx, y: p.y + dy }));
+  }
+
+  soltarMapa(): void {
+    this.arrastrandoMapa.set(false);
   }
 
   // AJUSTA: posición (%) de cada lote sobre la imagen de la maqueta.
@@ -162,8 +202,9 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     }, 350);
   }
   private empresaSlug = '';
-  private proyectoSlug = 'oro-verde';
+  private proyectoSlug = '';
   private idProyecto: number | null = null;
+
 
   constructor(
     private api: ApiService,
@@ -184,7 +225,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.empresaSlug = this.route.snapshot.paramMap.get('empresaSlug') ?? this.tenant.config()?.slug ?? '';
-    this.proyectoSlug = this.route.snapshot.paramMap.get('proyectoSlug') ?? this.proyectoSlug;
+    this.proyectoSlug = this.route.snapshot.paramMap.get('proyectoSlug') ?? '';
     this.cargarProyectoYLotes();
     this.iniciarCarruselAutomatico();
   }
@@ -210,7 +251,10 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     this.cargando.set(true);
     this.api.get<Proyecto[]>(`/public/proyectos/${this.empresaSlug}`).subscribe({
       next: (proyectos) => {
-        const proyecto = proyectos.find((p) => p.slug === this.proyectoSlug);
+        const proyecto = this.proyectoSlug
+          ? proyectos.find((p) => p.slug === this.proyectoSlug)
+          : proyectos[0];
+        this.proyectoSlug = proyecto?.slug ?? this.proyectoSlug;
         this.idProyecto = proyecto?.id ?? null;
         this.proyecto.set(proyecto ?? null);
         this.cargarLotes();

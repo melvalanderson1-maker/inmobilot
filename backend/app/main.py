@@ -6,7 +6,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.sockets import socket_app
-from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico
+
+
+from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup
 app = FastAPI(title=settings.APP_NAME)
 
 app.add_middleware(
@@ -27,6 +29,7 @@ app.include_router(notificaciones.router)
 app.include_router(usuarios.router)
 app.include_router(uploads.router)
 app.include_router(config_publico.router)
+app.include_router(setup.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 

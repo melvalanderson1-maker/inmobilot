@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     LICENCIA_ENDPOINT: str = "https://admin.tudominio.com/api/tenants/estado"
     LICENCIA_VERIFICAR: bool = False  # false en desarrollo local
 
+    BOOTSTRAP_SECRET: str = "CAMBIAR_ESTO_EN_PRODUCCION"
+
     class Config:
         env_file = ".env"
 

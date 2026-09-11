@@ -150,7 +150,7 @@ export class ProyectosListComponent implements OnInit {
           this.modalEtapaAbierto.set(false);
           this.cargarEtapas(this.idProyectoParaEtapa!);
         },
-        error: (err) => {
+        error: (err: any) => {
           this.guardandoEtapa.set(false);
           this.errorEtapa.set(err?.error?.detail ?? 'Error al actualizar la etapa');
         },

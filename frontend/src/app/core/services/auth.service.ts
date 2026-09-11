@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
+import { ConfigService } from './config.service';
 import { TokenResponse, UsuarioMe } from '../models';
 
 const TOKEN_KEY = 'inmobilot_token';
@@ -22,7 +22,7 @@ export class AuthService {
     () => new Set(this.usuarioSignal()?.modulos.map((m) => m.clave) ?? [])
   );
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router, private cfg: ConfigService) {}
 
   private readStoredUser(): UsuarioMe | null {
     const raw = localStorage.getItem(USER_KEY);
@@ -31,7 +31,7 @@ export class AuthService {
 
   login(correo: string, password: string): Observable<TokenResponse> {
     return this.http
-      .post<TokenResponse>(`${environment.apiUrl}/auth/login-json`, { correo, password })
+      .post<TokenResponse>(`${this.cfg.apiUrl()}/auth/login-json`, { correo, password })
       .pipe(
         tap((res) => {
           localStorage.setItem(TOKEN_KEY, res.access_token);

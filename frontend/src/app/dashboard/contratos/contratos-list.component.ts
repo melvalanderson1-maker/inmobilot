@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/services/api.service';
 import { ContratoService } from '../../core/services/contrato.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -238,7 +237,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   }
 
   urlCompleta(relativa?: string): string | null {
-    return relativa ? environment.apiUrl + relativa : null;
+    return relativa ? this.api.apiUrl + relativa : null;
   }
 
   esImagen(url: string): boolean {

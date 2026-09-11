@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -198,9 +197,9 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   urlImagenLote(relativa: string): string {
-    return environment.apiUrl + relativa;
+    return this.api.apiUrl + relativa;
   }
-
+  
   abrirImagen(relativa: string): void {
     this.imagenUrlActual.set(this.urlImagenLote(relativa));
     this.modalImagenAbierto.set(true);

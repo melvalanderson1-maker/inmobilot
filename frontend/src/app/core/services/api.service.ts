@@ -12,6 +12,10 @@ export class ApiService {
     return this.config.apiUrl();
   }
 
+  get apiUrl(): string {
+    return this.config.apiUrl();
+  }
+  
   get<T>(path: string, params?: Record<string, unknown>): Observable<T> {
     let httpParams = new HttpParams();
     if (params) {

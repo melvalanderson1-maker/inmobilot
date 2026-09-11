@@ -1,0 +1,500 @@
+<div class="contratos-page">
+  <div class="page-header">
+    <div>
+      <h1>Contratos</h1>
+      <p class="subtitle">Gestiona ventas, cronogramas y pagos</p>
+    </div>
+    <button class="btn-primary" (click)="abrirNuevoContrato()">
+      <span>+</span> Nuevo contrato
+    </button>
+  </div>
+
+  <div class="selector-proyecto">
+    <label>Proyecto</label>
+    <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+      @for (p of proyectos(); track p.id) {
+        <option [ngValue]="p.id">{{ p.nombre }}</option>
+      }
+    </select>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando contratos...</div>
+  } @else if (contratos().length === 0) {
+    <div class="estado-vacio">
+      <p>Aún no hay contratos en este proyecto.</p>
+      <button class="btn-primary" (click)="abrirNuevoContrato()">Crear el primero</button>
+    </div>
+  } @else {
+    <div class="tabla-card">
+      <table class="tabla-contratos">
+        <thead>
+          <tr>
+            <th>Contrato</th>
+            <th>Lote</th>
+            <th>Cliente</th>
+            <th>Monto</th>
+            <th>Forma</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of contratos(); track c.id) {
+            <tr class="fila-contrato" (click)="abrirDrawer(c)">
+              <td>
+                <span class="numero">{{ c.numero_contrato }}</span>
+                <span class="fecha">{{ c.fecha_contrato }}</span>
+              </td>
+              <td>{{ c.lote?.codigo ?? '—' }}</td>
+              <td>
+                <span class="valor">{{ clienteTitular(c)?.nombres }} {{ clienteTitular(c)?.apellidos }}</span>
+                <span class="documento">{{ clienteTitular(c)?.numero_documento }}</span>
+              </td>
+              <td class="monto">S/ {{ c.precio_total }}</td>
+              <td><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
+              <td><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Drawer de detalle del contrato -->
+  @if (contratoDrawer()) {
+    <div class="drawer-overlay" [class.visible]="drawerAbierto()" (click)="cerrarDrawer()"></div>
+
+    <div class="drawer" [class.visible]="drawerAbierto()">
+      <div class="drawer-header">
+        <div>
+          <h2>{{ contratoDrawer()!.numero_contrato }}</h2>
+          <div class="drawer-subtitulo">
+            <span class="chip chip-forma">{{ contratoDrawer()!.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span>
+            <span class="chip" [ngClass]="'chip-' + contratoDrawer()!.estado">{{ contratoDrawer()!.estado }}</span>
+          </div>
+        </div>
+        <button class="btn-cerrar" (click)="cerrarDrawer()">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        <div class="ficha-rapida">
+          <div class="ficha-item">
+            <span class="etiqueta-mini">Lote</span>
+            <span class="valor">{{ contratoDrawer()!.lote?.codigo ?? '—' }}</span>
+          </div>
+          <div class="ficha-item">
+            <span class="etiqueta-mini">Cliente titular</span>
+            <span class="valor">{{ clienteTitular(contratoDrawer()!)?.nombres }} {{ clienteTitular(contratoDrawer()!)?.apellidos }}</span>
+            <span class="documento">{{ clienteTitular(contratoDrawer()!)?.numero_documento }}</span>
+          </div>
+          <div class="ficha-item">
+            <span class="etiqueta-mini">Precio total</span>
+            <span class="valor">S/ {{ contratoDrawer()!.precio_total }}</span>
+          </div>
+          <div class="ficha-item">
+            <span class="etiqueta-mini">Inicial abonado</span>
+            <span class="valor">S/ {{ contratoDrawer()!.inicial_abonado }}</span>
+          </div>
+        </div>
+
+        @if (contratoDrawer()!.forma_pago === 'contado') {
+          <p class="texto-tenue">Contrato al contado — no genera cronograma de cuotas.</p>
+        } @else if (cargandoCronograma() === contratoDrawer()!.id) {
+          <p class="texto-tenue">Cargando cronograma...</p>
+        } @else {
+          <!-- Resumen general -->
+          <div class="resumen-grid">
+            <div class="resumen-item">
+              <span class="resumen-label">Total pagado</span>
+              <span class="resumen-valor valor-positivo">S/ {{ resumen(contratoDrawer()!).totalPagado.toFixed(2) }}</span>
+            </div>
+            <div class="resumen-item">
+              <span class="resumen-label">Saldo pendiente</span>
+              <span class="resumen-valor">S/ {{ resumen(contratoDrawer()!).saldoPendiente.toFixed(2) }}</span>
+            </div>
+            <div class="resumen-item">
+              <span class="resumen-label">Cuotas pagadas</span>
+              <span class="resumen-valor">{{ resumen(contratoDrawer()!).cuotasPagadas }}</span>
+            </div>
+            <div class="resumen-item">
+              <span class="resumen-label">Cuotas pendientes</span>
+              <span class="resumen-valor">{{ resumen(contratoDrawer()!).cuotasPendientes }}</span>
+            </div>
+            @if (resumen(contratoDrawer()!).cuotasVencidas > 0) {
+              <div class="resumen-item">
+                <span class="resumen-label">Cuotas vencidas</span>
+                <span class="resumen-valor valor-negativo">{{ resumen(contratoDrawer()!).cuotasVencidas }}</span>
+              </div>
+            }
+            <div class="resumen-item">
+              <span class="resumen-label">Interés total</span>
+              <span class="resumen-valor">S/ {{ resumen(contratoDrawer()!).interesTotal.toFixed(2) }}</span>
+            </div>
+            @if (resumen(contratoDrawer()!).proximaFecha) {
+              <div class="resumen-item">
+                <span class="resumen-label">Próximo pago</span>
+                <span class="resumen-valor">{{ resumen(contratoDrawer()!).proximaFecha }}</span>
+              </div>
+            }
+          </div>
+
+          <div class="cronograma-header">
+            <h4>Cronograma de cuotas</h4>
+            @if (contratoDrawer()!.frecuencia_cuota === 'anual') {
+              <button class="btn-toggle-detalle" (click)="toggleDetalleMensual(contratoDrawer()!.id)">
+                {{ detalleMensual()[contratoDrawer()!.id] ? 'Ver solo cuotas de pago' : 'Ver detalle mensual' }}
+              </button>
+            }
+          </div>
+
+          <div class="tabla-scroll">
+            <table class="tabla-cronograma">
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Fecha</th>
+                  <th>Capital</th>
+                  <th>Amortiz.</th>
+                  <th>Interés</th>
+                  @if (contratoDrawer()!.frecuencia_cuota === 'anual' && detalleMensual()[contratoDrawer()!.id]) {
+                    <th>Int. acum.</th>
+                  }
+                  <th>Cuota</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (cuota of cuotasVisibles(contratoDrawer()!); track cuota.id) {
+                  <tr [class.fila-sin-pago]="!cuota.requiere_pago">
+                    <td>{{ cuota.numero_cuota }}</td>
+                    <td>{{ cuota.fecha_pago_programada }}</td>
+                    <td>S/ {{ cuota.capital }}</td>
+                    <td>{{ cuota.requiere_pago ? 'S/ ' + cuota.amortizacion : '—' }}</td>
+                    <td>S/ {{ cuota.interes_mensual }}</td>
+                    @if (contratoDrawer()!.frecuencia_cuota === 'anual' && detalleMensual()[contratoDrawer()!.id]) {
+                      <td>S/ {{ cuota.interes_acumulado }}</td>
+                    }
+                    <td>{{ cuota.requiere_pago ? 'S/ ' + cuota.monto_cuota : '—' }}</td>
+                    <td>
+                      @if (cuota.requiere_pago) {
+                        <span class="chip" [ngClass]="'chip-' + cuota.estado">{{ cuota.estado }}</span>
+                      } @else {
+                        <span class="etiqueta-solo-interes">interés</span>
+                      }
+                    </td>
+                    <td>
+                      @if (cuota.requiere_pago && cuota.estado !== 'pagada') {
+                        <button class="btn-secundario-sm" (click)="abrirRegistrarPago(contratoDrawer()!.id, cuota)">
+                          Pagar
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <h4 class="titulo-historial">Historial de pagos</h4>
+          @if ((pagosPorContrato()[contratoDrawer()!.id] ?? []).length === 0) {
+            <p class="texto-tenue">Todavía no se ha registrado ningún pago.</p>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla-historial">
+                <thead>
+                  <tr>
+                    <th>Cuota</th>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>N° op.</th>
+                    <th>Comp.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (pago of pagosPorContrato()[contratoDrawer()!.id]; track pago.id) {
+                    <tr>
+                      <td>{{ pago.id_cuota ?? '—' }}</td>
+                      <td>{{ pago.fecha_pago }}</td>
+                      <td>S/ {{ pago.monto }}</td>
+                      <td class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>
+                      <td>{{ pago.numero_operacion ?? '—' }}</td>
+                      <td>
+                        @if (pago.comprobante_url) {
+                          <button class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)">📎</button>
+                        } @else {
+                          <span class="sin-comprobante">—</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Modal: nuevo contrato -->
+  @if (modalAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModal()">
+      <div class="modal modal-grande" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Nuevo contrato</h2>
+          <button class="btn-cerrar" (click)="cerrarModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (error()) {
+            <div class="mensaje-error">{{ error() }}</div>
+          }
+
+          <div class="campo">
+            <label>Lote (solo lotes libres)</label>
+            <select [(ngModel)]="idLote" (ngModelChange)="onLoteSeleccionado()">
+              <option [ngValue]="null">Selecciona un lote</option>
+              @for (l of lotesLibres(); track l.id) {
+                <option [ngValue]="l.id">{{ l.codigo }} — {{ l.area_m2 }} m²</option>
+              }
+            </select>
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>N° de contrato</label>
+              <input [(ngModel)]="numeroContrato" type="text" placeholder="C-2026-001" />
+            </div>
+            <div class="campo">
+              <label>Fecha de contrato</label>
+              <input [(ngModel)]="fechaContrato" type="date" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Forma de pago</label>
+            <select [(ngModel)]="formaPago" (ngModelChange)="onFormaPagoChange()">
+              <option value="contado">Contado</option>
+              <option value="credito">Crédito</option>
+            </select>
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Precio total (S/)</label>
+              <input [(ngModel)]="precioTotal" type="number" />
+            </div>
+            <div class="campo">
+              <label>Inicial abonado (S/)</label>
+              <input [(ngModel)]="inicialAbonado" type="number" />
+            </div>
+          </div>
+
+          @if (formaPago === 'credito') {
+            <div class="campo">
+              <label>Frecuencia de pago</label>
+              <select [(ngModel)]="frecuenciaCuota">
+                <option value="mensual">Mensual</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+
+            <div class="campo-doble">
+              <div class="campo">
+                <label>Fecha de abono inicial</label>
+                <input [(ngModel)]="fechaAbono" type="date" />
+              </div>
+              <div class="campo">
+                <label>N° de {{ frecuenciaCuota === 'anual' ? 'pagos anuales' : 'cuotas' }}</label>
+                <input [(ngModel)]="numeroCuotas" type="number" />
+              </div>
+            </div>
+
+            <div class="campo saldo-info">
+              <label>Saldo a financiar (calculado)</label>
+              <div class="valor-calculado">S/ {{ saldoFinanciado.toFixed(2) }}</div>
+            </div>
+
+            <div class="campo campo-checkbox">
+              <label>
+                <input [(ngModel)]="tieneInteres" type="checkbox" />
+                Este crédito tiene interés
+              </label>
+            </div>
+
+            @if (tieneInteres && numeroCuotas) {
+              @if (plazoTotalMeses <= 24) {
+                <div class="aviso-info">
+                  Plazo total: {{ plazoTotalMeses }} meses. Por política, contratos de 24 meses o menos
+                  <strong>no generan interés</strong> — se aplicará sin interés automáticamente.
+                </div>
+              } @else {
+                <div class="campo-doble">
+                  <div class="campo">
+                    <label>TEM (% mensual)</label>
+                    <input [(ngModel)]="tem" type="number" step="0.01" placeholder="Ej. 1.5" />
+                  </div>
+                  <div class="campo">
+                    <label>Inicio de interés</label>
+                    <input [(ngModel)]="fechaInicioInteres" type="date" />
+                  </div>
+                </div>
+              }
+            }
+          }
+
+          <div class="campo">
+            <label>Tipo de contrato (opcional)</label>
+            <input [(ngModel)]="tipoContrato" type="text" placeholder="Ej. Compra venta" />
+          </div>
+
+          <div class="campo">
+            <label>Observaciones</label>
+            <textarea [(ngModel)]="observaciones" rows="2"></textarea>
+          </div>
+
+          <h4 class="subseccion">Cliente titular</h4>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Tipo de documento</label>
+              <select [(ngModel)]="tipoDocumento">
+                <option value="DNI">DNI</option>
+                <option value="RUC">RUC</option>
+                <option value="CE">Carné de extranjería</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>N° de documento</label>
+              <input [(ngModel)]="numeroDocumento" type="text" />
+            </div>
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Nombres</label>
+              <input [(ngModel)]="nombresCliente" type="text" />
+            </div>
+            <div class="campo">
+              <label>Apellidos</label>
+              <input [(ngModel)]="apellidosCliente" type="text" />
+            </div>
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Correo (opcional)</label>
+              <input [(ngModel)]="correoCliente" type="email" />
+            </div>
+            <div class="campo">
+              <label>Teléfono (opcional)</label>
+              <input [(ngModel)]="telefonoCliente" type="text" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Dirección (opcional)</label>
+            <input [(ngModel)]="direccionCliente" type="text" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
+          <button class="btn-primary" (click)="guardarContrato()" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar contrato' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: registrar pago -->
+  @if (modalPagoAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModalPago()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Registrar pago — cuota {{ cuotaSeleccionada?.numero_cuota }}</h2>
+          <button class="btn-cerrar" (click)="cerrarModalPago()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (errorPago()) {
+            <div class="mensaje-error">{{ errorPago() }}</div>
+          }
+
+          <div class="campo">
+            <label>Monto (S/)</label>
+            <input [(ngModel)]="montoPago" type="number" />
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Fecha de pago</label>
+              <input [(ngModel)]="fechaPago" type="date" />
+            </div>
+            <div class="campo">
+              <label>Método de pago</label>
+              <select [(ngModel)]="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="deposito">Depósito</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>N° de operación (opcional)</label>
+            <input [(ngModel)]="numeroOperacion" type="text" />
+          </div>
+
+          <div class="campo">
+            <label>Comprobante de pago (JPG, PNG o PDF) *</label>
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
+            @if (archivoComprobante) {
+              <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span>
+            }
+          </div>
+
+          <div class="campo">
+            <label>Observación (opcional)</label>
+            <textarea [(ngModel)]="observacionPago" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secundario" (click)="cerrarModalPago()">Cancelar</button>
+          <button class="btn-primary" (click)="guardarPago()" [disabled]="guardandoPago()">
+            {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal: visor de comprobante -->
+  @if (modalComprobanteAbierto()) {
+    <div class="modal-overlay" (click)="cerrarComprobante()">
+      <div class="modal modal-visor" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Comprobante de pago</h2>
+          <button class="btn-cerrar" (click)="cerrarComprobante()">✕</button>
+        </div>
+        <div class="modal-body modal-body-visor">
+          @if (comprobanteUrlActual() && esImagen(comprobanteUrlActual()!)) {
+            <img [src]="comprobanteUrlActual()" alt="Comprobante de pago" class="imagen-comprobante" />
+          } @else if (comprobanteUrlActual()) {
+            <iframe [src]="comprobanteUrlActual()" class="pdf-comprobante"></iframe>
+          }
+        </div>
+        <div class="modal-footer">
+          <a [href]="comprobanteUrlActual()" target="_blank" class="btn-secundario">Abrir en otra pestaña</a>
+          <button class="btn-primary" (click)="cerrarComprobante()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

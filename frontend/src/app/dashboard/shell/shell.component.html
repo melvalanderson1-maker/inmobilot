@@ -1,0 +1,50 @@
+<app-toast-container></app-toast-container>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo">Inmobilot</div>
+
+    <nav>
+      @for (modulo of modulos; track modulo.id) {
+        <a [routerLink]="'/dashboard' + modulo.ruta" routerLinkActive="activo">{{ modulo.nombre }}</a>
+      }
+    </nav>
+
+    <div class="usuario">
+      <div class="nombre">{{ auth.usuario()?.nombre }}</div>
+      <div class="rol">{{ auth.usuario()?.rol?.nombre }}</div>
+      <button (click)="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <div class="contenido">
+    <header class="topbar">
+      <div class="spacer"></div>
+      <button class="campana" (click)="toggleNotificaciones()">
+        Notificaciones
+        @if (noLeidas > 0) {
+          <span class="contador">{{ noLeidas }}</span>
+        }
+      </button>
+
+      @if (panelNotifAbierto()) {
+        <div class="panel-notif">
+          @if (notificaciones().length === 0) {
+            <p class="vacio">Sin notificaciones</p>
+          }
+          @for (n of notificaciones(); track n.id) {
+            <div class="item-notif" [class.no-leido]="!n.leido" (click)="marcarLeido(n)">
+              <strong>{{ n.titulo }}</strong>
+              @if (n.mensaje) {
+                <p>{{ n.mensaje }}</p>
+              }
+            </div>
+          }
+        </div>
+      }
+    </header>
+
+    <main>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

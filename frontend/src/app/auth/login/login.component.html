@@ -1,0 +1,24 @@
+<div class="login-page">
+  <form class="login-card" (ngSubmit)="submit()">
+    <h1>Inmobilot</h1>
+    <p class="subtitle">Ingresa a tu cuenta</p>
+
+    <label>
+      Correo
+      <input type="email" name="correo" [(ngModel)]="correo" placeholder="admin@gruselva.com" />
+    </label>
+
+    <label>
+      Contraseña
+      <input type="password" name="password" [(ngModel)]="password" placeholder="••••••••" />
+    </label>
+
+    @if (error()) {
+      <p class="error">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="cargando()">
+      {{ cargando() ? 'Ingresando...' : 'Ingresar' }}
+    </button>
+  </form>
+</div>

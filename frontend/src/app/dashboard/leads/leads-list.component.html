@@ -1,0 +1,83 @@
+<div class="page">
+  <div class="toolbar">
+    <h2>Leads</h2>
+
+    <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cargarLeads()">
+      @for (p of proyectos(); track p.id) {
+        <option [value]="p.id">{{ p.nombre }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="filtroEstado" (ngModelChange)="cargarLeads()">
+      <option value="">Todos los estados</option>
+      <option value="nuevo">Nuevo</option>
+      <option value="contactado">Contactado</option>
+      <option value="en_seguimiento">En seguimiento</option>
+      <option value="convertido">Convertido</option>
+      <option value="descartado">Descartado</option>
+    </select>
+  </div>
+
+  @if (cargando()) {
+    <p class="info">Cargando...</p>
+  } @else if (leads().length === 0) {
+    <p class="info">No hay leads con ese filtro.</p>
+  } @else {
+    <div class="lista">
+      @for (lead of leads(); track lead.id) {
+        <div class="fila" (click)="abrirLead(lead)">
+          <div class="col nombre">
+            <strong>{{ lead.nombre || 'Sin nombre' }}</strong>
+            <span class="telefono">{{ lead.telefono }}</span>
+          </div>
+          <div class="col">{{ lead.origen }}</div>
+          <div class="col">
+            <span class="badge badge-{{ lead.estado }}">{{ lead.estado }}</span>
+          </div>
+          <div class="col fecha">{{ lead.created_at | date: 'short' }}</div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (leadSeleccionado(); as lead) {
+    <div class="modal-backdrop" (click)="cerrarLead()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <h3>{{ lead.nombre || 'Sin nombre' }}</h3>
+        <p class="detalle">{{ lead.telefono }} · {{ lead.correo || 'sin correo' }}</p>
+        @if (lead.mensaje) {
+          <p class="mensaje">"{{ lead.mensaje }}"</p>
+        }
+
+        <div class="estados">
+          @for (estado of ['nuevo', 'contactado', 'en_seguimiento', 'convertido', 'descartado']; track estado) {
+            <button
+              class="chip"
+              [class.activo]="lead.estado === estado"
+              (click)="cambiarEstadoLead($any(estado))"
+            >
+              {{ estado }}
+            </button>
+          }
+        </div>
+
+        <h4>Seguimiento</h4>
+        <div class="nota-form">
+          <textarea [(ngModel)]="nuevaNota" placeholder="Escribe una nota de seguimiento..."></textarea>
+          <button class="primario" (click)="agregarNota()">Agregar</button>
+        </div>
+
+        <div class="seguimientos">
+          @for (s of seguimientos(); track s.id) {
+            <div class="nota">
+              <p>{{ s.nota }}</p>
+              <span>{{ s.created_at | date: 'short' }}</span>
+            </div>
+          }
+        </div>
+
+        <button class="secundario cerrar" (click)="cerrarLead()">Cerrar</button>
+      </div>
+    </div>
+  }
+</div>

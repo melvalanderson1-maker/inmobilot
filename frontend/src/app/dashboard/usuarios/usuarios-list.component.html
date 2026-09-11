@@ -1,0 +1,135 @@
+<div class="usuarios-page">
+  <div class="page-header">
+    <div>
+      <h1>Usuarios</h1>
+      <p class="subtitle">Gestiona el equipo que tiene acceso al sistema</p>
+    </div>
+    <button class="btn-primary" (click)="abrirNuevo()">
+      <span>+</span> Nuevo usuario
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando usuarios...</div>
+  } @else if (usuarios().length === 0) {
+    <div class="estado-vacio">
+      <p>Aún no hay usuarios registrados.</p>
+      <button class="btn-primary" (click)="abrirNuevo()">Crear el primero</button>
+    </div>
+  } @else {
+    <div class="tabla-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Proyectos</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of usuarios(); track u.id) {
+            <tr [class.inactivo]="!u.activo">
+              <td>
+                <div class="usuario-cell">
+                  <div class="avatar">{{ iniciales(u.nombre) }}</div>
+                  <span>{{ u.nombre }}</span>
+                </div>
+              </td>
+              <td>{{ u.correo }}</td>
+              <td><span class="chip chip-rol">{{ u.rol.nombre }}</span></td>
+              <td>{{ u.proyectos.length }} proyecto(s)</td>
+              <td>
+                <span class="chip" [class.chip-activo]="u.activo" [class.chip-inactivo]="!u.activo">
+                  {{ u.activo ? 'Activo' : 'Inactivo' }}
+                </span>
+              </td>
+              <td class="acciones">
+                <button class="btn-icono" (click)="abrirEditar(u)" title="Editar">✏️</button>
+                @if (u.activo) {
+                  <button class="btn-icono btn-peligro" (click)="desactivar(u)" title="Desactivar">🚫</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @if (modalAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>{{ editando() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+          <button class="btn-cerrar" (click)="cerrarModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (error()) {
+            <div class="mensaje-error">{{ error() }}</div>
+          }
+
+          <div class="campo">
+            <label>Nombre completo</label>
+            <input [(ngModel)]="nombre" type="text" placeholder="Ej. Juan Pérez" />
+          </div>
+
+          <div class="campo">
+            <label>Correo electrónico</label>
+            <input [(ngModel)]="correo" type="email" placeholder="correo@empresa.com" />
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>{{ editando() ? 'Nueva contraseña' : 'Contraseña' }}</label>
+              <input [(ngModel)]="password" type="password" [placeholder]="editando() ? 'Dejar en blanco para no cambiar' : 'Mínimo 8 caracteres'" />
+            </div>
+            <div class="campo">
+              <label>Teléfono</label>
+              <input [(ngModel)]="telefono" type="text" placeholder="999 999 999" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Rol</label>
+            <select [(ngModel)]="idRol">
+              <option [ngValue]="null">Selecciona un rol</option>
+              @for (r of roles(); track r.id) {
+                <option [ngValue]="r.id">{{ r.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="campo">
+            <label>Proyectos asignados</label>
+            <div class="proyectos-grid">
+              @for (p of proyectosDisponibles(); track p.id) {
+                <label class="proyecto-item" [class.seleccionado]="estaSeleccionado(p.id)">
+                  <input
+                    type="checkbox"
+                    [checked]="estaSeleccionado(p.id)"
+                    (change)="toggleProyecto(p.id)"
+                  />
+                  {{ p.nombre }}
+                </label>
+              }
+              @if (proyectosDisponibles().length === 0) {
+                <p class="sin-proyectos">No hay proyectos disponibles todavía.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
+          <button class="btn-primary" (click)="guardar()" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

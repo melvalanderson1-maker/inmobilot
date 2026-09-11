@@ -1,0 +1,139 @@
+<div class="proyectos-page">
+  <div class="page-header">
+    <div>
+      <h1>Proyectos</h1>
+      <p class="subtitle">Administra tus proyectos inmobiliarios y sus manzanas</p>
+    </div>
+    <button class="btn-primary" (click)="abrirNuevoProyecto()">
+      <span>+</span> Nuevo proyecto
+    </button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando proyectos...</div>
+  } @else if (proyectos().length === 0) {
+    <div class="estado-vacio">
+      <p>Aún no hay proyectos registrados.</p>
+      <button class="btn-primary" (click)="abrirNuevoProyecto()">Crear el primero</button>
+    </div>
+  } @else {
+    <div class="lista-proyectos">
+      @for (p of proyectos(); track p.id) {
+        <div class="proyecto-card" [class.expandido]="expandido() === p.id">
+          <div class="proyecto-header" (click)="toggleExpandir(p)">
+            <div class="proyecto-info">
+              <h3>{{ p.nombre }}</h3>
+              <span class="slug">{{ p.slug }}</span>
+            </div>
+            <div class="proyecto-meta">
+              @if (p.departamento) {
+                <span class="ubicacion">{{ p.departamento }}@if (p.provincia) {, {{ p.provincia }}}</span>
+              }
+              <span class="chip" [class.chip-activo]="p.activo" [class.chip-inactivo]="!p.activo">
+                {{ p.activo ? 'Activo' : 'Inactivo' }}
+              </span>
+              <span class="flecha">{{ expandido() === p.id ? '▲' : '▼' }}</span>
+            </div>
+          </div>
+
+          @if (expandido() === p.id) {
+            <div class="manzanas-panel">
+              <h4>Manzanas</h4>
+
+              @if (cargandoManzanas() === p.id) {
+                <p class="texto-tenue">Cargando manzanas...</p>
+              } @else {
+                <div class="manzanas-chips">
+                  @for (mz of manzanasPorProyecto()[p.id] ?? []; track mz.id) {
+                    <span class="manzana-chip">{{ mz.nombre }}</span>
+                  }
+                  @if ((manzanasPorProyecto()[p.id] ?? []).length === 0) {
+                    <p class="texto-tenue">Este proyecto todavía no tiene manzanas.</p>
+                  }
+                </div>
+              }
+
+              <div class="agregar-manzana">
+                <input
+                  type="text"
+                  placeholder="Nombre de manzana (ej. A, B, C1)"
+                  [(ngModel)]="nombreManzanaNueva[p.id]"
+                  (keyup.enter)="crearManzana(p.id)"
+                />
+                <button
+                  class="btn-secundario-sm"
+                  (click)="crearManzana(p.id)"
+                  [disabled]="guardandoManzana() === p.id"
+                >
+                  {{ guardandoManzana() === p.id ? 'Agregando...' : '+ Agregar' }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (modalAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Nuevo proyecto</h2>
+          <button class="btn-cerrar" (click)="cerrarModal()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (error()) {
+            <div class="mensaje-error">{{ error() }}</div>
+          }
+
+          <div class="campo">
+            <label>Nombre del proyecto</label>
+            <input [(ngModel)]="nombre" (ngModelChange)="onNombreChange()" type="text" placeholder="Ej. Las Palmeras" />
+          </div>
+
+          <div class="campo">
+            <label>Slug (URL amigable)</label>
+            <input [(ngModel)]="slug" (ngModelChange)="onSlugChange()" type="text" placeholder="las-palmeras" />
+          </div>
+
+          <div class="campo-triple">
+            <div class="campo">
+              <label>Departamento</label>
+              <input [(ngModel)]="departamento" type="text" placeholder="Junín" />
+            </div>
+            <div class="campo">
+              <label>Provincia</label>
+              <input [(ngModel)]="provincia" type="text" placeholder="Huancayo" />
+            </div>
+            <div class="campo">
+              <label>Distrito</label>
+              <input [(ngModel)]="distrito" type="text" placeholder="El Tambo" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Descripción</label>
+            <textarea [(ngModel)]="descripcion" rows="3" placeholder="Breve descripción del proyecto"></textarea>
+          </div>
+
+          <div class="campo">
+            <label>Moneda</label>
+            <select [(ngModel)]="moneda">
+              <option value="PEN">Soles (PEN)</option>
+              <option value="USD">Dólares (USD)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
+          <button class="btn-primary" (click)="guardarProyecto()" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar proyecto' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

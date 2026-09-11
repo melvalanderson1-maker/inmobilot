@@ -1,0 +1,146 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.sidebar {
+  width: 220px;
+  background: #0f172a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem;
+  box-sizing: border-box;
+}
+
+.logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+nav a {
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+nav a.activo,
+nav a:hover {
+  background: #1e293b;
+  color: #fff;
+}
+
+.usuario {
+  border-top: 1px solid #1e293b;
+  padding-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.usuario .nombre {
+  font-weight: 600;
+}
+
+.usuario .rol {
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+}
+
+.usuario button {
+  width: 100%;
+  padding: 0.4rem;
+  background: transparent;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.campana {
+  background: #f1f5f9;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  position: relative;
+}
+
+.contador {
+  background: #dc2626;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.4rem;
+}
+
+.panel-notif {
+  position: absolute;
+  top: 100%;
+  right: 1.5rem;
+  width: 300px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 20;
+}
+
+.item-notif {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.item-notif.no-leido {
+  background: #f0fdf4;
+}
+
+.item-notif p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+}
+
+.vacio {
+  padding: 1rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+main {
+  flex: 1;
+  padding: 1.5rem;
+}

@@ -1,0 +1,554 @@
+<div class="gv-page">
+
+  <!-- =========================================================
+       HEADER
+  ========================================================== -->
+  <header class="gv-header" [class.gv-header--flotante]="headerFlotante()">
+    <div class="gv-header-inner">
+
+      <div class="gv-brand">
+        <span class="gv-brand-mark">
+          <img
+            [src]="headerFlotante() ? 'http://localhost:8000/static/logos/gruselva2.png' : 'http://localhost:8000/static/logos/gruselva.png'"
+            alt="Gruselva"
+          />
+        </span>
+      </div>
+      <nav class="gv-nav">
+        <a href="#lotes" class="activo">Lotes</a>
+        <a href="#beneficios">Beneficios</a>
+        <a href="#nosotros">Nosotros</a>
+        <a href="#contacto">Contacto</a>
+      </nav>
+
+      <a class="gv-whatsapp" href="https://wa.me/51987654321" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2Zm0 18.2a8.1 8.1 0 0 1-4.2-1.1l-.3-.2-3.1.8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.2-.7.8-.8.9-.2.2-.3.2-.5.1a6.7 6.7 0 0 1-2-1.2 7.4 7.4 0 0 1-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.4c.1-.1.2-.2.2-.4a.5.5 0 0 0 0-.4c0-.1-.6-1.5-.8-2-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2c0 1.3.9 2.6 1 2.8.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.2-.2-.4-.3Z"/>
+        </svg>
+        <span>971 168 000</span>
+      </a>
+
+    </div>
+  </header>
+
+
+  <!-- =========================================================
+       HERO
+  ========================================================== -->
+  <section class="hero">
+    <div class="hero-inner">
+
+      <h1 class="hero-title">Elige el Lote de tus sueños</h1>
+      <p class="hero-sub">
+        Opciones estratégicas para construir, invertir y vivir en
+        {{ nombreProyecto() }}, {{ ubicacionProyecto() }}.
+      </p>
+
+      <div class="hero-chips">
+        @for (opcion of estadosDisponibles; track opcion.valor) {
+          <button
+            type="button"
+            class="chip"
+            [class.activo]="estadoActivo(opcion.valor)"
+            (click)="cambiarFiltroEstado(opcion.valor)"
+          >
+            {{ opcion.etiqueta }}
+          </button>
+        }
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- =========================================================
+       CATÁLOGO DE LOTES
+  ========================================================== -->
+  <section class="seccion-lotes" id="lotes">
+
+    <!-- FILTRO AVANZADO -->
+    <div class="gv-filtros">
+
+
+
+      <div class="gv-filtros-grupo">
+        <span class="gv-filtros-titulo">Rango de precio (S/)</span>
+        <div class="gv-filtros-precio">
+          <input
+            type="number"
+            placeholder="Mínimo"
+            [value]="precioMin()"
+            (change)="actualizarPrecioMin($any($event.target).value)"
+          />
+          <span class="gv-filtros-guion">—</span>
+          <input
+            type="number"
+            placeholder="Máximo"
+            [value]="precioMax()"
+            (change)="actualizarPrecioMax($any($event.target).value)"
+          />
+        </div>
+      </div>
+
+      <div class="gv-filtros-grupo">
+        <span class="gv-filtros-titulo">Ordenar por</span>
+        <select class="gv-filtros-select" (change)="cambiarOrden($any($event.target).value)">
+          <option value="relevancia" [selected]="ordenPrecio() === 'relevancia'">Relevancia</option>
+          <option value="menor" [selected]="ordenPrecio() === 'menor'">Precio: menor a mayor</option>
+          <option value="mayor" [selected]="ordenPrecio() === 'mayor'">Precio: mayor a menor</option>
+        </select>
+      </div>
+
+      <button type="button" class="gv-filtros-limpiar" (click)="limpiarFiltros()">
+        Limpiar filtros
+      </button>
+
+    </div>
+
+    @if (!cargando()) {
+      <div class="lotes-contador">
+        Mostrando <strong>{{ lotesFiltrados().length }}</strong> de
+        <strong>{{ lotes().length }}</strong> lotes encontrados
+      </div>
+    }
+
+    <!-- ESTADO CARGANDO -->
+    @if (cargando()) {
+
+      <div class="lotes-grid">
+        @for (item of skeletonItems; track $index) {
+          <article class="lote-card skeleton-card">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-content">
+              <div class="skeleton-line largo"></div>
+              <div class="skeleton-line medio"></div>
+              <div class="skeleton-line corto"></div>
+            </div>
+          </article>
+        }
+      </div>
+
+    }
+
+    <!-- SIN LOTES -->
+    @else if (lotesFiltrados().length === 0) {
+
+      <div class="sin-lotes">
+        <div class="sin-lotes-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3 21h18"/>
+            <path d="M5 21V7l7-4 7 4v14"/>
+            <path d="M9 21v-6h6v6"/>
+          </svg>
+        </div>
+        <h3>No hay lotes para este filtro</h3>
+        <p>Prueba con otra categoría o vuelve a revisar próximamente.</p>
+      </div>
+
+    }
+
+    <!-- LOTES -->
+    @else {
+
+      <div class="lotes-grid">
+
+        @for (lote of lotesFiltrados(); track lote.id; let i = $index) {
+
+          <article
+            class="lote-card"
+            [id]="'lote-' + lote.id"
+            [class.lote-no-disponible]="lote.estado !== 'libre'"
+            [class.lote-resaltado]="loteResaltado() === lote.id"
+            [style.animation-delay.ms]="i * 60"
+          >
+
+            <!-- IMAGEN / CARRUSEL -->
+            <div class="lote-imagen">
+
+              @if (imagenActual(lote)) {
+                <img [src]="imagenActual(lote)" [alt]="'Lote ' + lote.codigo" loading="lazy" />
+
+                @if (imagenesUrls(lote).length > 1) {
+                  <button class="carrusel-flecha carrusel-flecha-izq" (click)="anteriorImagen(lote, $event)" aria-label="Imagen anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                  </button>
+                  <button class="carrusel-flecha carrusel-flecha-der" (click)="siguienteImagen(lote, $event)" aria-label="Imagen siguiente">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </button>
+
+                  <div class="carrusel-puntos">
+                    @for (url of imagenesUrls(lote); track $index) {
+                      <button
+                        class="carrusel-punto"
+                        [class.activo]="indiceActual(lote) === $index"
+                        (click)="irAImagen(lote, $index, $event)"
+                        [attr.aria-label]="'Ir a imagen ' + ($index + 1)"
+                      ></button>
+                    }
+                  </div>
+                }
+              } @else {
+                <div class="lote-imagen-vacia">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/>
+                    <path d="m4 17 5-5 3 3 3-4 5 6"/>
+                    <circle cx="8" cy="9" r="1.4"/>
+                  </svg>
+                </div>
+              }
+
+              <span
+                class="estado-badge"
+                [class.libre]="lote.estado === 'libre'"
+                [class.separado]="lote.estado === 'separado'"
+                [class.vendido]="lote.estado === 'vendido'"
+                [class.bloqueado]="lote.estado === 'bloqueado'"
+              >
+                {{ lote.estado }}
+              </span>
+
+            </div>
+
+            <!-- INFO -->
+            <div class="lote-body">
+
+              <span class="lote-proyecto">{{ nombreProyecto() }}</span>
+
+              <h3 class="lote-titulo">
+                Lote {{ lote.codigo }}
+                <span>{{ lote.ubicacion_lote || ubicacionProyecto() }}</span>
+              </h3>
+
+              <div class="lote-features">
+                <div class="lote-feature">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M3 10 12 3l9 7"/>
+                    <path d="M5 9v11h14V9"/>
+                  </svg>
+                  <span>Lote</span>
+                </div>
+                <div class="lote-feature">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M4 20 20 4"/>
+                    <path d="M4 15v5h5"/>
+                    <path d="M15 4h5v5"/>
+                  </svg>
+                  <span>Desde {{ lote.area_m2 }} m²</span>
+                </div>
+              </div>
+
+              <div class="lote-bottom">
+                <div class="lote-precio">
+                  <span>Desde</span>
+                  @if (lote.precio_total_base) {
+                    <strong>S/ {{ lote.precio_total_base | number:'1.0-0' }}</strong>
+                  } @else {
+                    <strong class="consultar">A consultar</strong>
+                  }
+                </div>
+              </div>
+
+              <button
+                class="btn-lote"
+                [disabled]="lote.estado !== 'libre'"
+                (click)="verLote(lote)"
+              >
+                {{ lote.estado === 'libre' ? 'Me interesa' : 'No disponible' }}
+              </button>
+
+            </div>
+
+          </article>
+
+        }
+
+      </div>
+
+    }
+
+  </section>
+
+
+  <!-- =========================================================
+       BENEFICIOS
+  ========================================================== -->
+  <section class="beneficios" id="beneficios">
+
+    <div class="beneficios-header">
+      <h2>Una ubicación pensada para tu futuro</h2>
+      <p>Vive rodeado de naturaleza y con una ubicación estratégica en la Selva Central.</p>
+    </div>
+
+    <div class="beneficios-grid">
+
+      <article class="beneficio">
+        <div class="beneficio-icono">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M3 16h18"/>
+            <path d="M5 16l1-6h12l1 6"/>
+            <path d="M7 10l2-5h6l2 5"/>
+            <circle cx="7" cy="18" r="1"/>
+            <circle cx="17" cy="18" r="1"/>
+          </svg>
+        </div>
+        <div class="beneficio-texto">
+          <h3>A 2 minutos del aeropuerto</h3>
+          <p>Conectividad estratégica para facilitar tus desplazamientos.</p>
+        </div>
+      </article>
+
+      <article class="beneficio">
+        <div class="beneficio-icono">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 21C7 17 4 13 4 9a8 8 0 0 1 16 0c0 4-3 8-8 12Z"/>
+            <path d="M8 9c2-2 6-2 8 0"/>
+            <path d="M9 13c2-1 4-1 6 0"/>
+          </svg>
+        </div>
+        <div class="beneficio-texto">
+          <h3>Cerca de lugares turísticos</h3>
+          <p>Disfruta la naturaleza y los principales atractivos de la Selva Central.</p>
+        </div>
+      </article>
+
+      <article class="beneficio">
+        <div class="beneficio-icono">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 20h16"/>
+            <path d="M6 20V9l6-5 6 5v11"/>
+            <path d="M9 20v-5h6v5"/>
+            <path d="M9 10h6"/>
+          </svg>
+        </div>
+        <div class="beneficio-texto">
+          <h3>Urbanización y título de propiedad</h3>
+          <p>Un proyecto pensado para brindarte seguridad y tranquilidad.</p>
+        </div>
+      </article>
+
+    </div>
+
+  </section>
+
+
+  <!-- =========================================================
+       CTA FINAL
+  ========================================================== -->
+  <section class="cta-final" id="contacto">
+    <div class="cta-content">
+      <h2>El lugar donde comienza tu próximo proyecto.</h2>
+      <p>Conoce nuestros lotes disponibles en Mazamari y encuentra el espacio que estabas buscando.</p>
+      <a href="#lotes" class="btn-cta">Ver lotes disponibles</a>
+    </div>
+  </section>
+
+
+
+  <!-- =========================================================
+      FOOTER
+  ========================================================== -->
+  <footer class="gv-footer" id="nosotros">
+
+    <div class="gv-footer-inner">
+
+      <div class="gv-footer-brand">
+
+        <div class="gv-brand">
+
+          <span class="gv-brand-mark gv-brand-mark-light">
+            <img
+              src="http://localhost:8000/static/logos/gruselva2.png"
+              alt="Gruselva"
+            />
+          </span>
+        </div>
+
+        <p>
+          Desarrollamos proyectos de lotización en la Selva Central,
+          pensados para que construyas tu futuro con seguridad.
+        </p>
+
+      </div>
+
+
+      <div class="gv-footer-col">
+
+        <h4>Proyecto</h4>
+
+        <a href="#lotes">Lotes disponibles</a>
+        <a href="#beneficios">Beneficios</a>
+        <a href="#contacto">Contacto</a>
+
+      </div>
+
+
+      <div class="gv-footer-col">
+
+        <h4>Contacto</h4>
+
+        <span>{{ ubicacionProyecto() }}</span>
+        <span>WhatsApp: 971 168 000</span>
+        <span>ventas&#64;gruselva.com</span>
+
+      </div>
+
+    </div>
+
+
+    <div class="gv-footer-bottom">
+
+      <span>
+        &copy; 2026 Gruselva. Todos los derechos reservados.
+      </span>
+
+    </div>
+
+  </footer>
+
+  <!-- =========================================================
+       MODAL
+  ========================================================== -->
+  @if (modalAbierto()) {
+
+    <div class="modal-backdrop" (click)="cerrarModal()">
+
+      <aside class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+
+        <button class="modal-close" type="button" aria-label="Cerrar" (click)="cerrarModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 6l12 12"/>
+            <path d="M18 6 6 18"/>
+          </svg>
+        </button>
+
+        @if (!leadEnviado()) {
+
+          <div class="modal-header">
+            <span>{{ nombreProyecto() }} · {{ ubicacionProyecto() }}</span>
+            <h2>Lote {{ loteSeleccionado()?.codigo }}</h2>
+            <p>Déjanos tus datos y uno de nuestros asesores se pondrá en contacto contigo.</p>
+          </div>
+
+          <div class="campo">
+            <label for="nombre">Nombre completo</label>
+            <input id="nombre" type="text" [(ngModel)]="nombre" name="nombre" placeholder="Ej. María Torres" />
+          </div>
+
+          <div class="campo">
+            <label for="telefono">Teléfono / WhatsApp</label>
+            <input id="telefono" type="tel" [(ngModel)]="telefono" name="telefono" placeholder="987 654 321" />
+          </div>
+
+          <div class="campo">
+            <label for="correo">Correo electrónico</label>
+            <input id="correo" type="email" [(ngModel)]="correo" name="correo" placeholder="tucorreo@ejemplo.com" />
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-modal-secondary" type="button" (click)="cerrarModal()">Cancelar</button>
+            <button
+              class="btn-modal-primary"
+              type="button"
+              (click)="enviarLead()"
+              [disabled]="enviandoLead() || !nombre || !telefono"
+            >
+              {{ enviandoLead() ? 'Enviando...' : 'Solicitar información' }}
+            </button>
+          </div>
+
+        } @else {
+
+          <div class="modal-success">
+            <div class="success-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="m8 12 3 3 5-6"/>
+              </svg>
+            </div>
+            <span>Solicitud recibida</span>
+            <h2>Gracias por tu interés</h2>
+            <p>Hemos registrado tu solicitud para el lote {{ loteSeleccionado()?.codigo }}. Un asesor se pondrá en contacto contigo.</p>
+            <button class="btn-modal-primary" type="button" (click)="cerrarModal()">Cerrar</button>
+          </div>
+
+        }
+
+      </aside>
+
+    </div>
+
+  }
+
+
+    <!-- =========================================================
+       MASCOTA
+  ========================================================== -->
+  @if (mascotaVisible()) {
+    <div class="gv-mascota">
+      <button class="gv-mascota-cerrar" type="button" aria-label="Cerrar" (click)="cerrarMascota()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <path d="M6 6l12 12"/>
+          <path d="M18 6 6 18"/>
+        </svg>
+      </button>
+      <img
+        src="http://localhost:8000/static/mascota/loro.png"
+        alt="Loro de la Selva Central"
+      />
+    </div>
+  }
+
+
+    <!-- =========================================================
+       BOTÓN FLOTANTE VER MAPA
+  ========================================================== -->
+  @if (lotesConCoordenadas().length > 0) {
+    <button type="button" class="gv-boton-mapa" (click)="abrirMapa()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 20 4 18V6l5 2m0 12 6-2m-6 2V8m6 10 5 2V8l-5-2m0 14V6m0 2-6-2"/>
+      </svg>
+      <span>Ver mapa</span>
+    </button>
+  }
+
+  <!-- =========================================================
+       DRAWER LATERAL - MAQUETA INTERACTIVA
+  ========================================================== -->
+  @if (mapaAbierto()) {
+    <div class="gv-lightbox-backdrop" (click)="cerrarMapa()">
+
+      <button class="gv-lightbox-cerrar" type="button" aria-label="Cerrar mapa" (click)="cerrarMapa()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 6l12 12"/>
+          <path d="M18 6 6 18"/>
+        </svg>
+      </button>
+
+      <div class="gv-maqueta-imagen gv-lightbox-imagen" (click)="$event.stopPropagation()">
+        <img src="http://localhost:8000/static/mapas/maqueta.png" alt="Maqueta del proyecto Oro Verde" />
+        @for (lote of lotesConCoordenadas(); track lote.id) {
+          <button
+            type="button"
+            class="gv-maqueta-punto"
+            [class.libre]="lote.estado === 'libre'"
+            [class.separado]="lote.estado === 'separado'"
+            [class.vendido]="lote.estado === 'vendido'"
+            [class.bloqueado]="lote.estado === 'bloqueado'"
+            [style.left.%]="posicionLote(lote).x"
+            [style.top.%]="posicionLote(lote).y"
+            (click)="irALote(lote)"
+            [attr.aria-label]="'Ver lote ' + lote.codigo"
+          >
+            <span>{{ lote.codigo }}</span>
+          </button>
+        }
+      </div>
+
+    </div>
+  }
+
+</div>

@@ -20,7 +20,8 @@ class CrearAdminInicial(BaseModel):
 @router.post("/admin-inicial")
 def crear_admin_inicial(payload: CrearAdminInicial, db: Session = Depends(get_db)):
     """
-    Endpoint de un solo uso: crea el primer usuario admin de esta instancia.
+    Endpoint de un solo uso: crea (si hace falta) la empresa y el rol admin
+    de esta instancia, y luego crea el primer usuario admin.
     Protegido por una clave secreta compartida (BOOTSTRAP_SECRET), no por login,
     porque se llama ANTES de que exista ningún usuario en el sistema.
     Se bloquea solo si ya existe al menos un usuario.
@@ -32,14 +33,31 @@ def crear_admin_inicial(payload: CrearAdminInicial, db: Session = Depends(get_db
     if ya_existe_usuario:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esta instancia ya tiene usuarios, bootstrap ya no está disponible")
 
+    # 1. Crear la empresa base si no existe todavía
     empresa = db.query(m.Empresa).filter(m.Empresa.slug == settings.EMPRESA_SLUG).first()
     if not empresa:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No existe la empresa base — corre el seed primero")
+        empresa = m.Empresa(
+            razon_social=settings.EMPRESA_NOMBRE,
+            nombre_comercial=settings.EMPRESA_NOMBRE,
+            slug=settings.EMPRESA_SLUG,
+            activo=True,
+        )
+        db.add(empresa)
+        db.flush()  # para obtener empresa.id sin hacer commit todavía
 
+    # 2. Crear el rol admin global si no existe todavía
     rol_admin = db.query(m.Rol).filter(m.Rol.id_empresa.is_(None), m.Rol.clave == "admin").first()
     if not rol_admin:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No existe el rol 'admin' — corre el seed primero")
+        rol_admin = m.Rol(
+            id_empresa=None,
+            clave="admin",
+            nombre="Administrador",
+            descripcion="Rol con acceso total al sistema",
+        )
+        db.add(rol_admin)
+        db.flush()
 
+    # 3. Crear el usuario admin
     admin = m.Usuario(
         nombre=payload.nombre,
         correo=payload.correo,

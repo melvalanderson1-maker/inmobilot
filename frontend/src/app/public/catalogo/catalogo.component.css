@@ -788,7 +788,7 @@
 ========================================================== */
 .gv-footer {
   background: var(--gv-verde-500);
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--texto-sobre-primario, rgba(255, 255, 255, 0.92));
   padding: 48px 24px 0;
 }
 .gv-footer-inner {
@@ -805,7 +805,7 @@
   margin: 14px 0 0;
   font-size: 0.88rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--texto-sobre-primario, rgba(255, 255, 255, 0.88));
   max-width: 320px;
 }
 
@@ -823,7 +823,7 @@
 
 .gv-footer-col h4 {
   margin: 0 0 4px;
-  color: var(--gv-verde-900);
+  color: var(--texto-sobre-primario, var(--gv-verde-900));
   font-size: 0.85rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -834,7 +834,7 @@
 .gv-footer-col a,
 .gv-footer-col span {
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--texto-sobre-primario, rgba(255, 255, 255, 0.9));
   font-weight: 500;
   transition: color 0.2s ease;
 }
@@ -849,7 +849,7 @@
   padding: 20px 0;
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--gv-verde-900);
+  color: var(--texto-sobre-primario, var(--gv-verde-900));
   text-align: center;
 }
 /* ==========================================================

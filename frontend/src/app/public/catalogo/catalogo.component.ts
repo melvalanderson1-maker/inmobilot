@@ -362,7 +362,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
   }
 
   ubicacionProyecto(): string {
-    return this.proyecto()?.ubicacion ?? 'Mazamari, Selva Central';
+    return this.proyecto()?.ubicacion ?? '';
   }
 
   private componerUrlMarca(relativa: string): string {

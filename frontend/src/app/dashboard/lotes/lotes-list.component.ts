@@ -318,15 +318,24 @@ export class LotesListComponent implements OnInit, OnDestroy {
                 this.cargarLotes();
               }
             },
+            error: (err) => {
+              console.error('Error al vincular imagen al lote:', err);
+              this.error.set(err?.error?.detail ?? 'La imagen se subió pero no se pudo vincular al lote');
+              completados++;
+              if (completados === this.archivosNuevos.length) {
+                this.subiendoImagenes.set(false);
+                this.guardando.set(false);
+              }
+            },
           });
         },
-        error: () => {
+        error: (err) => {
+          console.error('Error al subir imagen:', err);
+          this.error.set(err?.error?.detail ?? 'No se pudo subir la imagen');
           completados++;
           if (completados === this.archivosNuevos.length) {
             this.subiendoImagenes.set(false);
             this.guardando.set(false);
-            this.cerrarFormulario();
-            this.cargarLotes();
           }
         },
       });

@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
+from app.core.config import settings
 from app.deps import get_current_user
 from app.models import models as m
 
@@ -15,8 +16,10 @@ TAMANO_MAXIMO_MB = 8
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR_COMPROBANTES = os.path.join(BASE_DIR, "static", "comprobantes")
 DIR_LOTES = os.path.join(BASE_DIR, "static", "lotes")
+DIR_MARCA = os.path.join(BASE_DIR, "static", "marca")
 os.makedirs(DIR_COMPROBANTES, exist_ok=True)
 os.makedirs(DIR_LOTES, exist_ok=True)
+os.makedirs(DIR_MARCA, exist_ok=True)
 
 
 async def _guardar_archivo(archivo: UploadFile, extensiones_permitidas: set[str], carpeta: str, subcarpeta: str) -> str:
@@ -33,7 +36,10 @@ async def _guardar_archivo(archivo: UploadFile, extensiones_permitidas: set[str]
     with open(ruta_completa, "wb") as f:
         f.write(contenido)
 
-    return f"/static/{subcarpeta}/{nombre_unico}"
+    ruta_relativa = f"/static/{subcarpeta}/{nombre_unico}"
+    if settings.PUBLIC_URL_BASE:
+        return f"{settings.PUBLIC_URL_BASE}{ruta_relativa}"
+    return ruta_relativa
 
 
 @router.post("/comprobante")
@@ -51,4 +57,16 @@ async def subir_imagen_lote(
     usuario: m.Usuario = Depends(get_current_user),
 ):
     url = await _guardar_archivo(archivo, EXTENSIONES_IMAGEN, DIR_LOTES, "lotes")
+    return {"url": url}
+
+
+@router.post("/imagen-marca")
+async def subir_imagen_marca(
+    archivo: UploadFile = File(...),
+    usuario: m.Usuario = Depends(get_current_user),
+):
+    """Logo, mascota o imagen de hero de esta instancia (una por tenant).
+    Requiere sesión de admin del propio tenant — el panel superadmin la
+    obtiene logueándose con las credenciales generadas al provisionar."""
+    url = await _guardar_archivo(archivo, EXTENSIONES_IMAGEN, DIR_MARCA, "marca")
     return {"url": url}

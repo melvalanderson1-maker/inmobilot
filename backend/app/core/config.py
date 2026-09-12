@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     EMPRESA_SLUG: str = "demo"
     EMPRESA_DOMINIO: str = "localhost:4200"
     EMPRESA_LOGO_URL: str = "/static/branding/logo.png"
+    EMPRESA_MASCOTA_URL: str = ""
+    EMPRESA_HERO_URL: str = ""
     EMPRESA_COLOR_PRIMARIO: str = "#1d4ed8"
     EMPRESA_COLOR_SECUNDARIO: str = "#0f172a"
     EMPRESA_WHATSAPP: str = ""
@@ -32,6 +34,14 @@ class Settings(BaseSettings):
     LICENCIA_VERIFICAR: bool = False  # false en desarrollo local
 
     BOOTSTRAP_SECRET: str = "CAMBIAR_ESTO_EN_PRODUCCION"
+
+    # Dominio público desde el que se sirven los archivos subidos (imágenes,
+    # comprobantes). El superadmin lo inyecta con el dominio real del backend
+    # al provisionar. Si mañana migras a S3/Cloudinary, este valor deja de
+    # usarse aquí y en su lugar _guardar_archivo() devuelve la URL del bucket
+    # — nada más en el sistema necesita cambiar, porque ya todo guarda y
+    # muestra URLs completas, no fragmentos reconstruidos.
+    PUBLIC_URL_BASE: str = ""
 
     class Config:
         env_file = ".env"

@@ -16,6 +16,8 @@ def obtener_config_tenant():
         "nombre": settings.EMPRESA_NOMBRE,
         "slug": settings.EMPRESA_SLUG,
         "logo_url": settings.EMPRESA_LOGO_URL,
+        "mascota_url": settings.EMPRESA_MASCOTA_URL,
+        "hero_url": settings.EMPRESA_HERO_URL,
         "color_primario": settings.EMPRESA_COLOR_PRIMARIO,
         "color_secundario": settings.EMPRESA_COLOR_SECUNDARIO,
         "whatsapp": settings.EMPRESA_WHATSAPP,

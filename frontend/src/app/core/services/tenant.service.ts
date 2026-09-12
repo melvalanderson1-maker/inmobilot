@@ -1,17 +1,21 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from './config.service';
+import { calcularColorTexto } from '../utils/contraste';
 
 export interface TenantConfig {
   nombre: string;
   slug: string;
   logo_url: string;
+  mascota_url: string;
+  hero_url: string;
   color_primario: string;
   color_secundario: string;
   whatsapp: string;
   ubicacion: string;
   correo_contacto: string;
 }
+
 
 @Injectable({ providedIn: 'root' })
 export class TenantService {
@@ -46,6 +50,17 @@ export class TenantService {
     document.documentElement.style.setProperty(
       '--color-secundario',
       cfg.color_secundario
+    );
+
+    // Texto siempre legible encima de cada color, sin importar
+    // qué tonos elija cada inmobiliaria.
+    document.documentElement.style.setProperty(
+      '--texto-sobre-primario',
+      calcularColorTexto(cfg.color_primario)
+    );
+    document.documentElement.style.setProperty(
+      '--texto-sobre-secundario',
+      calcularColorTexto(cfg.color_secundario)
     );
 
     document.title = cfg.nombre;

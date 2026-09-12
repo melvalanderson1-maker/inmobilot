@@ -237,9 +237,11 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   }
 
   urlCompleta(relativa?: string): string | null {
-    return relativa ? this.api.apiUrl + relativa : null;
+    if (!relativa) return null;
+    if (relativa.startsWith('http://') || relativa.startsWith('https://')) return relativa;
+    return this.api.apiUrl + relativa;
   }
-
+  
   esImagen(url: string): boolean {
     return /\.(jpg|jpeg|png)$/i.test(url);
   }

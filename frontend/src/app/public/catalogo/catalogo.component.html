@@ -8,10 +8,9 @@
 
       <div class="gv-brand">
         <span class="gv-brand-mark">
-          <img
-            [src]="headerFlotante() ? 'http://localhost:8000/static/logos/gruselva2.png' : 'http://localhost:8000/static/logos/gruselva.png'"
-            alt="Gruselva"
-          />
+          @if (urlLogo()) {
+            <img [src]="urlLogo()" [alt]="nombreProyecto()" />
+          }
         </span>
       </div>
       <nav class="gv-nav">
@@ -35,7 +34,8 @@
   <!-- =========================================================
        HERO
   ========================================================== -->
-  <section class="hero">
+  <section class="hero" [style.backgroundImage]="urlHero() ? 'url(' + urlHero() + ')' : null">
+    <div class="hero-overlay"></div>
     <div class="hero-inner">
 
       <h1 class="hero-title">Elige el Lote de tus sueños</h1>
@@ -360,10 +360,9 @@
         <div class="gv-brand">
 
           <span class="gv-brand-mark gv-brand-mark-light">
-            <img
-              src="http://localhost:8000/static/logos/gruselva2.png"
-              alt="Gruselva"
-            />
+            @if (urlLogo()) {
+              <img [src]="urlLogo()" [alt]="nombreProyecto()" />
+            }
           </span>
         </div>
 
@@ -487,7 +486,7 @@
     <!-- =========================================================
        MASCOTA
   ========================================================== -->
-  @if (mascotaVisible()) {
+  @if (mascotaVisible() && urlMascota()) {
     <div class="gv-mascota">
       <button class="gv-mascota-cerrar" type="button" aria-label="Cerrar" (click)="cerrarMascota()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
@@ -495,10 +494,7 @@
           <path d="M18 6 6 18"/>
         </svg>
       </button>
-      <img
-        src="http://localhost:8000/static/mascota/loro.png"
-        alt="Loro de la Selva Central"
-      />
+      <img [src]="urlMascota()" [alt]="nombreProyecto() + ' — mascota'" />
     </div>
   }
 

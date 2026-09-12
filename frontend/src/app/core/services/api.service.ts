@@ -15,7 +15,7 @@ export class ApiService {
   get apiUrl(): string {
     return this.config.apiUrl();
   }
-  
+
   get<T>(path: string, params?: Record<string, unknown>): Observable<T> {
     let httpParams = new HttpParams();
     if (params) {
@@ -35,8 +35,6 @@ export class ApiService {
   put<T>(path: string, body: unknown): Observable<T> {
     return this.http.put<T>(`${this.base()}${path}`, body);
   }
-
-
 
   patch<T>(path: string, body: unknown): Observable<T> {
     return this.http.patch<T>(`${this.base()}${path}`, body);

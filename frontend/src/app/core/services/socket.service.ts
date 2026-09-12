@@ -2,7 +2,7 @@ import { Injectable, OnDestroy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 
-import { environment } from '../../../environments/environment';
+import { ConfigService } from './config.service';
 import { AuthService } from './auth.service';
 
 export interface EventoSocket<T = unknown> {
@@ -17,13 +17,13 @@ export class SocketService implements OnDestroy {
 
   readonly onEvento = this.eventos$.asObservable();
 
-  constructor(private auth: AuthService) {}
+  constructor(private auth: AuthService, private cfg: ConfigService) {}
 
   conectar(): void {
     const token = this.auth.token();
     if (!token || this.socket?.connected) return;
 
-    this.socket = io(environment.socketUrl, {
+    this.socket = io(this.cfg.apiUrl(), {
       path: '/socket.io',
       auth: { token },
       transports: ['websocket'],
@@ -35,7 +35,7 @@ export class SocketService implements OnDestroy {
   conectarPublico(idProyecto: number): void {
     if (this.socket?.connected) return;
 
-    this.socket = io(environment.socketUrl, {
+    this.socket = io(this.cfg.apiUrl(), {
       path: '/socket.io',
       transports: ['websocket'],
     });

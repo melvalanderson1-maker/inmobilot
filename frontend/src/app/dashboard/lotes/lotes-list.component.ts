@@ -197,6 +197,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   urlImagenLote(relativa: string): string {
+    if (relativa.startsWith('http://') || relativa.startsWith('https://')) return relativa;
     return this.api.apiUrl + relativa;
   }
   

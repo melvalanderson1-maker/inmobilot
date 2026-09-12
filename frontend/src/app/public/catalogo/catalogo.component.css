@@ -1160,12 +1160,18 @@
 .hero {
   position: relative;
   overflow: hidden;
-  background-image:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.75) 100%),
-    url('http://localhost:8000/static/hero/oro-verde.jpg');
+  background-color: var(--gv-verde-900);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, rgba(15, 23, 42, 0.75) 100%);
+  pointer-events: none;
 }
 
 .hero-title,

@@ -364,6 +364,26 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     return this.proyecto()?.ubicacion ?? 'Mazamari, Selva Central';
   }
 
+  private componerUrlMarca(relativa: string): string {
+    if (relativa.startsWith('http://') || relativa.startsWith('https://')) return relativa;
+    return `${this.api.apiUrl}${relativa}`;
+  }
+
+  urlLogo(): string | null {
+    const url = this.tenant.config()?.logo_url;
+    return url ? this.componerUrlMarca(url) : null;
+  }
+
+  urlMascota(): string | null {
+    const url = this.tenant.config()?.mascota_url;
+    return url ? this.componerUrlMarca(url) : null;
+  }
+
+  urlHero(): string | null {
+    const url = this.tenant.config()?.hero_url;
+    return url ? this.componerUrlMarca(url) : null;
+  }
+
   lotesDisponibles(): number {
     return this.lotes().filter((l) => l.estado === 'libre').length;
   }

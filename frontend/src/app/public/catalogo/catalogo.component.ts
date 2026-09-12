@@ -369,6 +369,13 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     return `${this.api.apiUrl}${relativa}`;
   }
 
+  whatsappUrl(): string | null {
+    const numero = this.tenant.config()?.whatsapp;
+    if (!numero) return null;
+    const limpio = numero.replace(/[^0-9]/g, '');
+    return `https://wa.me/${limpio}`;
+  }
+
   urlLogo(): string | null {
     const url = this.tenant.config()?.logo_url;
     return url ? this.componerUrlMarca(url) : null;

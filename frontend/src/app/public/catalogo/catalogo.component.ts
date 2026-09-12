@@ -204,6 +204,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
   private empresaSlug = '';
   private proyectoSlug = '';
   private idProyecto: number | null = null;
+  readonly anioActual = new Date().getFullYear();
 
 
   constructor(

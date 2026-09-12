@@ -369,7 +369,7 @@
         </div>
 
         <p>
-          Desarrollamos proyectos de lotización en la Selva Central,
+          {{ tenant.config()?.nombre }} — desarrollamos proyectos de lotización
           pensados para que construyas tu futuro con seguridad.
         </p>
 
@@ -407,7 +407,7 @@
     <div class="gv-footer-bottom">
 
       <span>
-        &copy; 2026 Gruselva. Todos los derechos reservados.
+        &copy; {{ anioActual }} {{ tenant.config()?.nombre }}. Todos los derechos reservados.
       </span>
 
     </div>

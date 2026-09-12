@@ -225,7 +225,7 @@
 .gv-whatsapp span,
 .gv-whatsapp strong,
 .gv-whatsapp * {
-  color: #fff !important;
+  color: var(--texto-sobre-primario, #fff) !important;
 }
 
 .gv-whatsapp {
@@ -457,7 +457,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: #fff;
+  color: var(--texto-sobre-primario, #fff);
   background: var(--gv-texto-suave);
 }
 
@@ -561,7 +561,7 @@
   width: 100%;
   border: none;
   background: linear-gradient(135deg, var(--gv-verde-700) 0%, var(--gv-verde-500) 100%);
-  color: #fff;
+  color: var(--texto-sobre-primario, #fff);
   padding: 12px 16px;
   border-radius: 999px;
   font-weight: 700;

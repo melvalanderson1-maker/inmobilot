@@ -17,8 +17,13 @@ export class LoginComponent {
   password = '';
   cargando = signal(false);
   error = signal<string | null>(null);
+  mostrarPassword = signal(false);
 
   constructor(private auth: AuthService, private router: Router) {}
+
+  toggleMostrarPassword(): void {
+    this.mostrarPassword.update((v) => !v);
+  }
 
   submit(): void {
     if (!this.correo || !this.password) {

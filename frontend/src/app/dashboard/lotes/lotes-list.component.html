@@ -46,7 +46,7 @@
       <input
         type="text"
         class="filtro-busqueda"
-        placeholder="Buscar por código o ubicación..."
+        placeholder="Buscar por código, ubicación o partida registral..."
         [ngModel]="filtroBusqueda()"
         (ngModelChange)="filtroBusqueda.set($event)"
       />
@@ -91,6 +91,7 @@
             <th rowspan="2"></th>
             <th rowspan="2">Código</th>
             <th rowspan="2">Ubicación</th>
+            <th rowspan="2">Partida</th>
             <th rowspan="2">Perímetro</th>
             <th rowspan="2">Área</th>
             <th colspan="2" class="grupo-base">Inversión base</th>
@@ -137,6 +138,7 @@
                 }
               </td>
               <td>{{ lote.ubicacion_lote || '—' }}</td>
+              <td>{{ lote.partida_registral || '—' }}</td>
               <td>{{ lote.perimetro ? (lote.perimetro + ' m') : '—' }}</td>
               <td>{{ lote.area_m2 }} m²</td>
               <td class="grupo-base">{{ lote.precio_m2_base ? ('S/' + lote.precio_m2_base) : '—' }}</td>
@@ -184,7 +186,7 @@
           @if (!loteEditando()) {
             <div class="campo">
               <label>Manzana</label>
-              <select [(ngModel)]="form.id_manzana">
+              <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
                 <option [ngValue]="null" disabled>Selecciona una manzana</option>
                 @for (m of manzanas(); track m.id) {
                   <option [ngValue]="m.id">{{ m.nombre }}</option>
@@ -258,6 +260,10 @@
           <div class="campo">
             <label>Partida registral (SUNARP)</label>
             <input type="text" [(ngModel)]="form.partida_registral" />
+            <small style="font-size:11px;color:#8993a2;">
+              Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana.
+              Reemplázala por la partida propia del lote cuando SUNARP la independice.
+            </small>
           </div>
 
           <h4 class="subseccion">Imágenes del lote</h4>

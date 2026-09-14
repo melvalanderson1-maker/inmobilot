@@ -60,7 +60,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
     return this.lotes().filter((l) => {
       if (estado !== 'todos' && l.estado !== estado) return false;
       if (busqueda) {
-        const texto = `${l.codigo} ${l.ubicacion_lote ?? ''}`.toLowerCase();
+        const texto = `${l.codigo} ${l.ubicacion_lote ?? ''} ${l.partida_registral ?? ''}`.toLowerCase();
         if (!texto.includes(busqueda)) return false;
       }
       const precio = l.precio_total_contado ?? l.precio_total_base ?? 0;
@@ -153,6 +153,19 @@ export class LotesListComponent implements OnInit, OnDestroy {
     this.api
       .get<Manzana[]>(`/proyectos/${this.idProyectoSeleccionado}/manzanas`)
       .subscribe((res) => this.manzanas.set(res));
+  }
+
+  onManzanaSeleccionada(): void {
+    // Mientras el lote no tenga su propia partida individual (proceso de
+    // independización en SUNARP), legalmente usa la partida matriz de su
+    // etapa. Lo sugerimos como valor por defecto — el usuario lo puede
+    // sobrescribir apenas el lote consiga su partida propia.
+    if (this.loteEditando()) return; // no pisar datos reales al editar
+    const manzana = this.manzanas().find((m) => m.id === this.form.id_manzana);
+    const partidaEtapa = manzana?.etapa?.partida_registral;
+    if (partidaEtapa && !this.form.partida_registral) {
+      this.form.partida_registral = partidaEtapa;
+    }
   }
 
   cargarLotes(): void {

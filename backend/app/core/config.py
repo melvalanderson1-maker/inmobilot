@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     EMPRESA_LOGO_URL: str = "/static/branding/logo.png"
     EMPRESA_MASCOTA_URL: str = ""
     EMPRESA_HERO_URL: str = ""
+    EMPRESA_MAPA_URL: str = ""
     EMPRESA_COLOR_PRIMARIO: str = "#1d4ed8"
     EMPRESA_COLOR_SECUNDARIO: str = "#0f172a"
     EMPRESA_WHATSAPP: str = ""

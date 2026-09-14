@@ -280,6 +280,8 @@ class Lote(Base):
     partida_registral = Column(String(50))
     sunarp_url = Column(String(300))
     orden = Column(Integer)
+    mapa_x = Column(Numeric(5, 2))  # posición % horizontal sobre la maqueta
+    mapa_y = Column(Numeric(5, 2))  # posición % vertical sobre la maqueta
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

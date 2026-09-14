@@ -163,6 +163,8 @@ class LoteCreate(BaseModel):
 
 class LoteUpdate(BaseModel):
     ubicacion_lote: Optional[str] = None
+    mapa_x: Optional[Decimal] = None
+    mapa_y: Optional[Decimal] = None
     perimetro: Optional[Decimal] = None
     area_m2: Optional[Decimal] = None
     precio_m2_base: Optional[Decimal] = None
@@ -189,6 +191,8 @@ class LoteOut(ORMBase):
     id_manzana: int
     codigo: str
     ubicacion_lote: Optional[str] = None
+    mapa_x: Optional[Decimal] = None
+    mapa_y: Optional[Decimal] = None
     perimetro: Optional[Decimal] = None
     area_m2: Decimal
     precio_m2_base: Optional[Decimal] = None
@@ -210,6 +214,8 @@ class LotePublicoOut(ORMBase):
     id: int
     codigo: str
     ubicacion_lote: Optional[str] = None
+    mapa_x: Optional[Decimal] = None
+    mapa_y: Optional[Decimal] = None
     area_m2: Decimal
     precio_total_base: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None

@@ -211,7 +211,7 @@
 }
 
 .gv-nav a:hover {
-  color: var(--gv-verde-700);
+  color: var(--primario-legible, var(--gv-verde-700));
 }
 
 .gv-nav a.activo {
@@ -308,7 +308,7 @@
 .chip.activo {
   background: var(--gv-verde-700);
   border-color: var(--gv-verde-700);
-  color: #fff;
+  color: var(--texto-sobre-primario, #fff);
 }
 
 /* ---- Pajaritos volando (decorativo, solo CSS) ---- */
@@ -521,7 +521,7 @@
 .lote-feature svg {
   width: 17px;
   height: 17px;
-  color: var(--gv-verde-700);
+  color: var(--secundario-legible, var(--gv-verde-700));
   flex-shrink: 0;
 }
 
@@ -1176,7 +1176,7 @@
 
 .hero-title,
 .hero-sub {
-  color: white;
+  color: var(--texto-sobre-secundario, white);
 }
 
 
@@ -1322,7 +1322,7 @@
 .gv-filtros-limpiar {
   border: none;
   background: transparent;
-  color: var(--gv-verde-700);
+  color: var(--primario-legible, var(--gv-verde-700));
   padding: 7px 4px;
   font-weight: 700;
   font-size: 0.85rem;
@@ -1333,7 +1333,7 @@
 
 .gv-filtros-limpiar:hover {
   border-color: var(--gv-verde-500);
-  color: var(--gv-verde-700);
+  color: var(--primario-legible, var(--gv-verde-700));
 }
 
 @media (max-width: 720px) {

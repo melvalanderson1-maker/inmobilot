@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from './config.service';
-import { calcularColorTexto } from '../utils/contraste';
+import { calcularColorTexto, asegurarLegibleSobreBlanco } from '../utils/contraste';
 
 export interface TenantConfig {
   nombre: string;
@@ -61,6 +61,18 @@ export class TenantService {
     document.documentElement.style.setProperty(
       '--texto-sobre-secundario',
       calcularColorTexto(cfg.color_secundario)
+    );
+
+    // Para icono/texto que usan el color de marca SOBRE fondo blanco
+    // (no como fondo) — si el color elegido es muy claro, se oscurece
+    // manteniendo el tono, para que nunca desaparezca.
+    document.documentElement.style.setProperty(
+      '--primario-legible',
+      asegurarLegibleSobreBlanco(cfg.color_primario)
+    );
+    document.documentElement.style.setProperty(
+      '--secundario-legible',
+      asegurarLegibleSobreBlanco(cfg.color_secundario)
     );
 
     document.title = cfg.nombre;

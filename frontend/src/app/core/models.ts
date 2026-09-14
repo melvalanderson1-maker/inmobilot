@@ -57,6 +57,8 @@ export interface Lote {
   sunarp_url?: string;
   activo: boolean;
   imagenes: LoteImagen[];
+  mapa_x?: number;
+  mapa_y?: number;
 }
 
 export interface LotePublico {

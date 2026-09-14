@@ -1525,11 +1525,10 @@
   box-shadow: 0 6px 14px rgba(11, 61, 51, 0.45);
 }
 
-.gv-maqueta-punto.libre { background: var(--gv-verde-700); }
+.gv-maqueta-punto.libre { background: #14b892; }
 .gv-maqueta-punto.separado { background: var(--gv-naranja); }
 .gv-maqueta-punto.vendido { background: var(--gv-rojo); }
 .gv-maqueta-punto.bloqueado { background: #8b8b8b; }
-
 /* ==========================================================
    RESALTADO AL LLEGAR DESDE LA MAQUETA
 ========================================================== */

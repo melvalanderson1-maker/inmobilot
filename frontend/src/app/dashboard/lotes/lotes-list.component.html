@@ -150,9 +150,19 @@
               <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
               <td class="acciones">
-                <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">✏️</button>
+                <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </button>
                 @if (urlMaqueta()) {
-                  <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">📍</button>
+                  <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                  </button>
                 }
                 <select
                   class="select-estado"
@@ -178,7 +188,12 @@
       <div class="modal modal-grande" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>{{ loteEditando() ? 'Editar lote ' + loteEditando()!.codigo : 'Nuevo lote' }}</h2>
-          <button class="btn-cerrar" (click)="cerrarFormulario()">✕</button>
+            <button class="btn-cerrar" (click)="cerrarFormulario()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
+              </svg>
+            </button>
         </div>
 
         <div class="modal-body">
@@ -279,7 +294,12 @@
                   @if (img.es_portada) {
                     <span class="etiqueta-portada">Portada</span>
                   }
-                  <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar">✕</button>
+                  <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                      <path d="M6 6l12 12" />
+                      <path d="M18 6 6 18" />
+                    </svg>
+                  </button>
                 </div>
               }
             </div>
@@ -300,7 +320,12 @@
               @for (url of previsualizaciones; track $index) {
                 <div class="imagen-item">
                   <img [src]="url" alt="Nueva imagen" />
-                  <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar">✕</button>
+                  <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                    <path d="M6 6l12 12" />
+                    <path d="M18 6 6 18" />
+                  </svg>
+                </button>
                 </div>
               }
             </div>
@@ -323,7 +348,12 @@
       <div class="modal modal-visor" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Imagen del lote</h2>
-          <button class="btn-cerrar" (click)="cerrarImagen()">✕</button>
+          <button class="btn-cerrar" (click)="cerrarImagen()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
+              </svg>
+            </button>
         </div>
         <div class="modal-body modal-body-visor">
           @if (imagenUrlActual()) {
@@ -344,7 +374,12 @@
       <div class="modal modal-grande" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Ubicar lote {{ loteUbicando()?.codigo }} en el mapa</h2>
-          <button class="btn-cerrar" (click)="cerrarUbicarMapa()">✕</button>
+          <button class="btn-cerrar" (click)="cerrarUbicarMapa()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M6 6l12 12" />
+                <path d="M18 6 6 18" />
+              </svg>
+            </button>
         </div>
         <div class="modal-body">
           <p style="font-size:13px;color:#697386;margin-bottom:12px;">

@@ -20,6 +20,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   panelNotifAbierto = signal(false);
   colapsado = signal(false);
   mostrarModalLogout = signal(false);
+  menuMovilAbierto = signal(false);
 
   constructor(
     public auth: AuthService,
@@ -69,6 +70,15 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void {
     this.colapsado.update((v) => !v);
+  }
+
+  toggleMenuMovil(): void {
+    this.colapsado.set(false);
+    this.menuMovilAbierto.update((v) => !v);
+  }
+
+  cerrarMenuMovil(): void {
+    this.menuMovilAbierto.set(false);
   }
 
   marcarLeido(n: Notificacion): void {

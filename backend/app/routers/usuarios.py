@@ -110,6 +110,23 @@ def desactivar_usuario(
     db.commit()
 
 
+@router.patch("/{id_usuario}/activar", response_model=s.UsuarioOut)
+def activar_usuario(
+    id_usuario: int,
+    usuario: m.Usuario = Depends(require_roles("admin", "gerencia")),
+    db: Session = Depends(get_db),
+):
+    obj = db.query(m.Usuario).filter(m.Usuario.id == id_usuario, m.Usuario.id_empresa == usuario.id_empresa).first()
+    if not obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    obj.activo = True
+    db.commit()
+    db.refresh(obj)
+
+    return s.UsuarioOut.desde_usuario(obj)
+
+
 @router.get("/roles/lista", response_model=list[s.RolOut])
 def listar_roles(
     usuario: m.Usuario = Depends(get_current_user),

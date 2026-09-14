@@ -66,6 +66,12 @@
                       <line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line>
                     </svg>
                   </button>
+                } @else {
+                  <button class="btn-icono btn-exito" (click)="activar(u)" title="Reactivar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                      <path d="M20 6 9 17l-5-5"></path>
+                    </svg>
+                  </button>
                 }
               </td>
             </tr>
@@ -115,6 +121,13 @@
                   <line x1="4.9" y1="4.9" x2="19.1" y2="19.1"></line>
                 </svg>
                 Desactivar
+              </button>
+            } @else {
+              <button class="btn-exito-outline btn-card-accion" (click)="activar(u)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+                Reactivar
               </button>
             }
           </div>

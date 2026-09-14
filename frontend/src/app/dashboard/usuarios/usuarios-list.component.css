@@ -86,6 +86,23 @@
 
 .btn-peligro-outline:hover { background: #fef2f2; }
 
+.btn-exito-outline {
+  background: #fff;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  padding: 0.6rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.btn-exito-outline:hover { background: #ecfdf5; }
+
 /* ===== Estados ===== */
 
 .estado-carga,
@@ -226,6 +243,11 @@ tr.inactivo td {
 .btn-peligro:hover {
   background: #fef2f2;
   color: #dc2626;
+}
+
+.btn-exito:hover {
+  background: #ecfdf5;
+  color: #059669;
 }
 
 /* ===== Modal ===== */

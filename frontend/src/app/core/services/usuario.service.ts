@@ -26,6 +26,10 @@ export class UsuarioService {
     return this.api.delete<void>(`/usuarios/${id}`);
   }
 
+  activar(id: number) {
+    return this.api.patch<Usuario>(`/usuarios/${id}/activar`, {});
+  }
+
   listarRoles() {
     return this.api.get<Rol[]>('/usuarios/roles/lista');
   }

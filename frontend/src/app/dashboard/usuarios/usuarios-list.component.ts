@@ -159,6 +159,11 @@ export class UsuariosListComponent implements OnInit {
     this.usuarioService.desactivar(usuario.id).subscribe(() => this.cargarUsuarios());
   }
 
+  activar(usuario: Usuario): void {
+    if (!confirm(`¿Reactivar a ${usuario.nombre}?`)) return;
+    this.usuarioService.activar(usuario.id).subscribe(() => this.cargarUsuarios());
+  }
+
   iniciales(nombre: string): string {
     return nombre
       .split(' ')

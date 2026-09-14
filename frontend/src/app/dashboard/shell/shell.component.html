@@ -20,6 +20,7 @@
     <nav>
       @for (modulo of modulos; track modulo.id) {
         
+        <a
           [routerLink]="'/dashboard' + modulo.ruta"
           routerLinkActive="activo"
           class="nav-link"

@@ -544,7 +544,9 @@
           class="gv-maqueta-imagen gv-lightbox-imagen-zoom"
           [style.transform]="'scale(' + zoomMapa() + ') translate(' + panMapa().x + 'px,' + panMapa().y + 'px)'"
         >
-          <img src="http://localhost:8000/static/mapas/maqueta.png" alt="Maqueta del proyecto Oro Verde" />
+          @if (urlMaqueta()) {
+            <img [src]="urlMaqueta()" [alt]="'Maqueta de ' + nombreProyecto()" />
+          }
           @for (lote of lotesConCoordenadas(); track lote.id) {
             <button
               type="button"

@@ -6,6 +6,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { LoteService } from '../../core/services/lote.service';
+import { TenantService } from '../../core/services/tenant.service';
 import { EstadoLote, Lote, Manzana, Proyecto } from '../../core/models';
 
 @Component({
@@ -98,8 +99,51 @@ export class LotesListComponent implements OnInit, OnDestroy {
     private api: ApiService,
     public auth: AuthService,
     private socket: SocketService,
-    private loteService: LoteService
+    private loteService: LoteService,
+    public tenant: TenantService
   ) {}
+
+  // ---- Ubicar en el mapa (clic directo sobre la imagen) ----
+  modalMapaAbierto = signal(false);
+  loteUbicando = signal<Lote | null>(null);
+  guardandoUbicacion = signal(false);
+
+  urlMaqueta(): string | null {
+    const url = this.tenant.config()?.mapa_url;
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return this.api.apiUrl + url;
+  }
+
+  abrirUbicarMapa(lote: Lote): void {
+    this.loteUbicando.set(lote);
+    this.modalMapaAbierto.set(true);
+  }
+
+  cerrarUbicarMapa(): void {
+    this.modalMapaAbierto.set(false);
+    this.loteUbicando.set(null);
+  }
+
+  onClickMaqueta(event: MouseEvent): void {
+    const lote = this.loteUbicando();
+    if (!lote) return;
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    this.guardandoUbicacion.set(true);
+    this.loteService.actualizar(lote.id, { mapa_x: Math.round(x * 100) / 100, mapa_y: Math.round(y * 100) / 100 } as any)
+      .subscribe({
+        next: () => {
+          this.guardandoUbicacion.set(false);
+          this.cargarLotes();
+          this.cerrarUbicarMapa();
+        },
+        error: () => this.guardandoUbicacion.set(false),
+      });
+  }
 
   ngOnInit(): void {
     this.api.get<Proyecto[]>('/proyectos').subscribe((proyectos) => {

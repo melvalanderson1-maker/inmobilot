@@ -151,6 +151,9 @@
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
               <td class="acciones">
                 <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">✏️</button>
+                @if (urlMaqueta()) {
+                  <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">📍</button>
+                }
                 <select
                   class="select-estado"
                   (change)="cambiarEstado(lote, $any($event.target).value)"
@@ -329,6 +332,42 @@
         </div>
         <div class="modal-footer">
           <button class="btn-primary" (click)="cerrarImagen()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  }
+
+
+
+    @if (modalMapaAbierto()) {
+    <div class="modal-overlay" (click)="cerrarUbicarMapa()">
+      <div class="modal modal-grande" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Ubicar lote {{ loteUbicando()?.codigo }} en el mapa</h2>
+          <button class="btn-cerrar" (click)="cerrarUbicarMapa()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:#697386;margin-bottom:12px;">
+            Haz clic sobre el punto exacto del lote en la imagen.
+          </p>
+          @if (urlMaqueta()) {
+            <div style="position:relative;cursor:crosshair;" (click)="onClickMaqueta($event)">
+              <img [src]="urlMaqueta()" style="width:100%;display:block;border-radius:8px;" />
+              @if (loteUbicando()?.mapa_x != null) {
+                <div
+                  style="position:absolute;width:18px;height:18px;border-radius:50%;background:#c94f4f;border:2px solid #fff;transform:translate(-50%,-50%);pointer-events:none;"
+                  [style.left.%]="loteUbicando()?.mapa_x"
+                  [style.top.%]="loteUbicando()?.mapa_y"
+                ></div>
+              }
+            </div>
+          }
+          @if (guardandoUbicacion()) {
+            <p style="margin-top:10px;font-size:13px;">Guardando posición...</p>
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary" (click)="cerrarUbicarMapa()">Listo</button>
         </div>
       </div>
     </div>

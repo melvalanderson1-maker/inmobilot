@@ -9,13 +9,13 @@ export interface TenantConfig {
   logo_url: string;
   mascota_url: string;
   hero_url: string;
+  mapa_url: string;
   color_primario: string;
   color_secundario: string;
   whatsapp: string;
   ubicacion: string;
   correo_contacto: string;
 }
-
 
 @Injectable({ providedIn: 'root' })
 export class TenantService {

@@ -110,19 +110,10 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     this.arrastrandoMapa.set(false);
   }
 
-  // AJUSTA: posición (%) de cada lote sobre la imagen de la maqueta.
-  // Clave = código del lote (lote.codigo). Mide sobre tu imagen real
-  // (0% = borde izquierdo/superior, 100% = borde derecho/inferior).
-  coordenadasMaqueta: Record<string, { x: number; y: number }> = {
-    B16: { x: 66.7, y: 78 },
-    B17: { x: 67, y: 72.7 },
-    B18: { x: 65.6, y: 59.2 },
-    B19: { x: 67, y: 52.2 },
-    B20: { x: 70.2, y: 48.4 },
-    B21: { x: 73.6, y: 43.2 },
-    B22: { x: 80.4, y: 38.4 },
-    B23: { x: 76.9, y: 31.6 },
-  };
+  urlMaqueta(): string | null {
+    const url = this.tenant.config()?.mapa_url;
+    return url ? this.componerUrlMarca(url) : null;
+  }
   // Carrusel: índice de imagen actual por lote
   indiceImagenPorLote = signal<Record<number, number>>({});
   private intervaloCarrusel: ReturnType<typeof setInterval> | null = null;
@@ -157,11 +148,12 @@ export class CatalogoComponent implements OnInit, OnDestroy {
   });
 
   lotesConCoordenadas = computed(() =>
-    this.lotes().filter((l) => this.coordenadasMaqueta[l.codigo])
+    this.lotes().filter((l) => (l as any).mapa_x != null && (l as any).mapa_y != null)
   );
 
   posicionLote(lote: LotePublico): { x: number; y: number } {
-    return this.coordenadasMaqueta[lote.codigo] ?? { x: 50, y: 50 };
+    const l = lote as any;
+    return { x: Number(l.mapa_x) ?? 50, y: Number(l.mapa_y) ?? 50 };
   }
 
   cambiarFiltroEstado(valor: FiltroEstado): void {

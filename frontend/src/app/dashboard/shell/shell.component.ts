@@ -18,6 +18,8 @@ import { ToastContainerComponent } from '../../shared/toast/toast-container.comp
 export class ShellComponent implements OnInit, OnDestroy {
   notificaciones = signal<Notificacion[]>([]);
   panelNotifAbierto = signal(false);
+  colapsado = signal(false);
+  mostrarModalLogout = signal(false);
 
   constructor(
     public auth: AuthService,
@@ -31,6 +33,14 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   get noLeidas(): number {
     return this.notificaciones().filter((n) => !n.leido).length;
+  }
+
+  get inicialesUsuario(): string {
+    const nombre = this.auth.usuario()?.nombre ?? '';
+    const partes = nombre.trim().split(' ').filter(Boolean);
+    if (partes.length === 0) return '?';
+    if (partes.length === 1) return partes[0].charAt(0).toUpperCase();
+    return (partes[0].charAt(0) + partes[1].charAt(0)).toUpperCase();
   }
 
   ngOnInit(): void {
@@ -57,6 +67,10 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.panelNotifAbierto.update((v) => !v);
   }
 
+  toggleSidebar(): void {
+    this.colapsado.update((v) => !v);
+  }
+
   marcarLeido(n: Notificacion): void {
     if (n.leido) return;
     this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
@@ -64,7 +78,32 @@ export class ShellComponent implements OnInit, OnDestroy {
     });
   }
 
-  cerrarSesion(): void {
+  abrirModalLogout(): void {
+    this.mostrarModalLogout.set(true);
+  }
+
+  cancelarLogout(): void {
+    this.mostrarModalLogout.set(false);
+  }
+
+  confirmarLogout(): void {
+    this.mostrarModalLogout.set(false);
     this.auth.logout();
+  }
+
+  tipoIcono(nombre: string): string {
+    const n = (nombre ?? '').toLowerCase();
+
+    if (n.includes('dashboard') || n.includes('inicio') || n.includes('panel')) return 'dashboard';
+    if (n.includes('lote')) return 'lotes';
+    if (n.includes('contrato')) return 'contratos';
+    if (n.includes('cliente')) return 'clientes';
+    if (n.includes('usuario') || n.includes('equipo')) return 'usuarios';
+    if (n.includes('proyecto')) return 'proyectos';
+    if (n.includes('pago') || n.includes('cobranza') || n.includes('cuota')) return 'pagos';
+    if (n.includes('reporte') || n.includes('kpi') || n.includes('meta')) return 'reportes';
+    if (n.includes('lead') || n.includes('seguimiento')) return 'leads';
+
+    return 'default';
   }
 }

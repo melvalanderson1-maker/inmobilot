@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/services/api.service';
@@ -33,12 +33,57 @@ export class LotesListComponent implements OnInit, OnDestroy {
     id_manzana: null as number | null,
     codigo: '',
     ubicacion_lote: '',
+    perimetro: null as number | null,
     area_m2: null as number | null,
+    precio_m2_base: null as number | null,
     precio_total_base: null as number | null,
+    precio_m2_contado: null as number | null,
     precio_total_contado: null as number | null,
+    inicial_financiado: null as number | null,
+    monto_financiado: null as number | null,
     precio_total_financiado: null as number | null,
     partida_registral: '',
   };
+
+  // ---- Filtros y KPIs ----
+  filtroEstado = signal<'todos' | EstadoLote>('todos');
+  filtroBusqueda = signal('');
+  filtroPrecioMin = signal<number | null>(null);
+  filtroPrecioMax = signal<number | null>(null);
+
+  lotesFiltrados = computed(() => {
+    const estado = this.filtroEstado();
+    const busqueda = this.filtroBusqueda().trim().toLowerCase();
+    const min = this.filtroPrecioMin();
+    const max = this.filtroPrecioMax();
+
+    return this.lotes().filter((l) => {
+      if (estado !== 'todos' && l.estado !== estado) return false;
+      if (busqueda) {
+        const texto = `${l.codigo} ${l.ubicacion_lote ?? ''}`.toLowerCase();
+        if (!texto.includes(busqueda)) return false;
+      }
+      const precio = l.precio_total_contado ?? l.precio_total_base ?? 0;
+      if (min !== null && precio < min) return false;
+      if (max !== null && precio > max) return false;
+      return true;
+    });
+  });
+
+  kpiTotal = computed(() => this.lotes().length);
+  kpiDisponibles = computed(() => this.lotes().filter((l) => l.estado === 'libre').length);
+  kpiSeparados = computed(() => this.lotes().filter((l) => l.estado === 'separado').length);
+  kpiVendidos = computed(() => this.lotes().filter((l) => l.estado === 'vendido').length);
+  kpiValorInventario = computed(() =>
+    this.lotes().reduce((acc, l) => acc + Number(l.precio_total_contado ?? l.precio_total_base ?? 0), 0)
+  );
+
+  limpiarFiltros(): void {
+    this.filtroEstado.set('todos');
+    this.filtroBusqueda.set('');
+    this.filtroPrecioMin.set(null);
+    this.filtroPrecioMax.set(null);
+  }
 
   // ---- Imágenes ----
   archivosNuevos: File[] = [];
@@ -131,9 +176,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
       id_manzana: null,
       codigo: '',
       ubicacion_lote: '',
+      perimetro: null,
       area_m2: null,
+      precio_m2_base: null,
       precio_total_base: null,
+      precio_m2_contado: null,
       precio_total_contado: null,
+      inicial_financiado: null,
+      monto_financiado: null,
       precio_total_financiado: null,
       partida_registral: '',
     };
@@ -149,9 +199,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
       id_manzana: lote.id_manzana,
       codigo: lote.codigo,
       ubicacion_lote: lote.ubicacion_lote ?? '',
+      perimetro: lote.perimetro ? Number(lote.perimetro) : null,
       area_m2: Number(lote.area_m2),
+      precio_m2_base: lote.precio_m2_base ? Number(lote.precio_m2_base) : null,
       precio_total_base: lote.precio_total_base ? Number(lote.precio_total_base) : null,
+      precio_m2_contado: lote.precio_m2_contado ? Number(lote.precio_m2_contado) : null,
       precio_total_contado: lote.precio_total_contado ? Number(lote.precio_total_contado) : null,
+      inicial_financiado: lote.inicial_financiado ? Number(lote.inicial_financiado) : null,
+      monto_financiado: lote.monto_financiado ? Number(lote.monto_financiado) : null,
       precio_total_financiado: lote.precio_total_financiado ? Number(lote.precio_total_financiado) : null,
       partida_registral: lote.partida_registral ?? '',
     };
@@ -249,9 +304,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
       this.loteService
         .actualizar(loteActual.id, {
           ubicacion_lote: this.form.ubicacion_lote || undefined,
+          perimetro: this.form.perimetro ?? undefined,
           area_m2: this.form.area_m2 ?? undefined,
+          precio_m2_base: this.form.precio_m2_base ?? undefined,
           precio_total_base: this.form.precio_total_base ?? undefined,
+          precio_m2_contado: this.form.precio_m2_contado ?? undefined,
           precio_total_contado: this.form.precio_total_contado ?? undefined,
+          inicial_financiado: this.form.inicial_financiado ?? undefined,
+          monto_financiado: this.form.monto_financiado ?? undefined,
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })
@@ -274,9 +334,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
           id_manzana: this.form.id_manzana,
           codigo: this.form.codigo,
           ubicacion_lote: this.form.ubicacion_lote || undefined,
+          perimetro: this.form.perimetro ?? undefined,
           area_m2: this.form.area_m2!,
+          precio_m2_base: this.form.precio_m2_base ?? undefined,
           precio_total_base: this.form.precio_total_base ?? undefined,
+          precio_m2_contado: this.form.precio_m2_contado ?? undefined,
           precio_total_contado: this.form.precio_total_contado ?? undefined,
+          inicial_financiado: this.form.inicial_financiado ?? undefined,
+          monto_financiado: this.form.monto_financiado ?? undefined,
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })

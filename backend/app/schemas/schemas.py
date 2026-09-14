@@ -189,9 +189,14 @@ class LoteOut(ORMBase):
     id_manzana: int
     codigo: str
     ubicacion_lote: Optional[str] = None
+    perimetro: Optional[Decimal] = None
     area_m2: Decimal
+    precio_m2_base: Optional[Decimal] = None
     precio_total_base: Optional[Decimal] = None
+    precio_m2_contado: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
+    inicial_financiado: Optional[Decimal] = None
+    monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
     estado: EstadoLoteEnum
     partida_registral: Optional[str] = None

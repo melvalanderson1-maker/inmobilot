@@ -7,18 +7,28 @@ export interface LoteCreate {
   id_manzana: number;
   codigo: string;
   ubicacion_lote?: string;
+  perimetro?: number;
   area_m2: number;
+  precio_m2_base?: number;
   precio_total_base?: number;
+  precio_m2_contado?: number;
   precio_total_contado?: number;
+  inicial_financiado?: number;
+  monto_financiado?: number;
   precio_total_financiado?: number;
   partida_registral?: string;
 }
 
 export interface LoteUpdate {
   ubicacion_lote?: string;
+  perimetro?: number;
   area_m2?: number;
+  precio_m2_base?: number;
   precio_total_base?: number;
+  precio_m2_contado?: number;
   precio_total_contado?: number;
+  inicial_financiado?: number;
+  monto_financiado?: number;
   precio_total_financiado?: number;
   partida_registral?: string;
 }

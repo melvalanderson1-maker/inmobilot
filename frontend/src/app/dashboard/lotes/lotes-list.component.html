@@ -18,6 +18,64 @@
     </select>
   </div>
 
+  @if (!cargando() && lotes().length > 0) {
+    <div class="kpis-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Total de lotes</span>
+        <span class="kpi-valor">{{ kpiTotal() }}</span>
+      </div>
+      <div class="kpi-card kpi-libre">
+        <span class="kpi-label">Disponibles</span>
+        <span class="kpi-valor">{{ kpiDisponibles() }}</span>
+      </div>
+      <div class="kpi-card kpi-separado">
+        <span class="kpi-label">Separados</span>
+        <span class="kpi-valor">{{ kpiSeparados() }}</span>
+      </div>
+      <div class="kpi-card kpi-vendido">
+        <span class="kpi-label">Vendidos</span>
+        <span class="kpi-valor">{{ kpiVendidos() }}</span>
+      </div>
+      <div class="kpi-card kpi-inventario">
+        <span class="kpi-label">Valor de inventario</span>
+        <span class="kpi-valor">S/ {{ kpiValorInventario() | number:'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <div class="filtros-bar">
+      <input
+        type="text"
+        class="filtro-busqueda"
+        placeholder="Buscar por código o ubicación..."
+        [ngModel]="filtroBusqueda()"
+        (ngModelChange)="filtroBusqueda.set($event)"
+      />
+      <select class="filtro-select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
+        <option value="todos">Todos los estados</option>
+        <option value="libre">Libre</option>
+        <option value="separado">Separado</option>
+        <option value="bloqueado">Bloqueado</option>
+        <option value="vendido">Vendido</option>
+      </select>
+      <input
+        type="number"
+        class="filtro-precio"
+        placeholder="Precio mín."
+        [ngModel]="filtroPrecioMin()"
+        (ngModelChange)="filtroPrecioMin.set($event)"
+      />
+      <input
+        type="number"
+        class="filtro-precio"
+        placeholder="Precio máx."
+        [ngModel]="filtroPrecioMax()"
+        (ngModelChange)="filtroPrecioMax.set($event)"
+      />
+      <button class="btn-secundario" (click)="limpiarFiltros()">Limpiar</button>
+      <span class="filtros-contador">{{ lotesFiltrados().length }} de {{ lotes().length }} lotes</span>
+    </div>
+  }
+
   @if (cargando()) {
     <div class="estado-carga">Cargando lotes...</div>
   } @else if (lotes().length === 0) {
@@ -26,21 +84,33 @@
       <button class="btn-primary" (click)="abrirNuevo()">Crear el primero</button>
     </div>
   } @else {
-    <div class="tabla-card">
-      <table class="tabla-lotes">
+    <div class="tabla-card tabla-card-scroll">
+      <table class="tabla-lotes tabla-lotes-completa">
         <thead>
           <tr>
-            <th></th>
-            <th>Código</th>
-            <th>Ubicación</th>
-            <th>Área</th>
-            <th>Precio contado</th>
-            <th>Estado</th>
-            <th></th>
+            <th rowspan="2"></th>
+            <th rowspan="2">Código</th>
+            <th rowspan="2">Ubicación</th>
+            <th rowspan="2">Perímetro</th>
+            <th rowspan="2">Área</th>
+            <th colspan="2" class="grupo-base">Inversión base</th>
+            <th colspan="2" class="grupo-contado">Inversión contado</th>
+            <th colspan="3" class="grupo-financiado">Financiado</th>
+            <th rowspan="2">Estado</th>
+            <th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th class="grupo-base">Px m²</th>
+            <th class="grupo-base">Total</th>
+            <th class="grupo-contado">Px m²</th>
+            <th class="grupo-contado">Total</th>
+            <th class="grupo-financiado">Inicial</th>
+            <th class="grupo-financiado">Financiado</th>
+            <th class="grupo-financiado">Total</th>
           </tr>
         </thead>
         <tbody>
-          @for (lote of lotes(); track lote.id) {
+          @for (lote of lotesFiltrados(); track lote.id) {
             <tr>
               <td class="celda-miniatura">
                 @if (lote.imagenes && lote.imagenes.length > 0) {
@@ -67,8 +137,15 @@
                 }
               </td>
               <td>{{ lote.ubicacion_lote || '—' }}</td>
+              <td>{{ lote.perimetro ? (lote.perimetro + ' m') : '—' }}</td>
               <td>{{ lote.area_m2 }} m²</td>
-              <td class="monto">{{ lote.precio_total_contado ? ('S/ ' + lote.precio_total_contado) : '—' }}</td>
+              <td class="grupo-base">{{ lote.precio_m2_base ? ('S/' + lote.precio_m2_base) : '—' }}</td>
+              <td class="grupo-base monto">{{ lote.precio_total_base ? ('S/ ' + (lote.precio_total_base | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
+              <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-financiado">{{ lote.inicial_financiado ? ('S/ ' + (lote.inicial_financiado | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-financiado">{{ lote.monto_financiado ? ('S/ ' + (lote.monto_financiado | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
               <td class="acciones">
                 <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">✏️</button>
@@ -127,22 +204,53 @@
             </div>
           </div>
 
-          <div class="campo">
-            <label>Área (m²)</label>
-            <input type="number" [(ngModel)]="form.area_m2" />
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Perímetro (m)</label>
+              <input type="number" [(ngModel)]="form.perimetro" />
+            </div>
+            <div class="campo">
+              <label>Área (m²)</label>
+              <input type="number" [(ngModel)]="form.area_m2" />
+            </div>
           </div>
 
-          <div class="campo-triple">
+          <h4 class="subseccion">Inversión base</h4>
+          <div class="campo-doble">
             <div class="campo">
-              <label>Precio base</label>
+              <label>Precio por m²</label>
+              <input type="number" [(ngModel)]="form.precio_m2_base" />
+            </div>
+            <div class="campo">
+              <label>Precio total</label>
               <input type="number" [(ngModel)]="form.precio_total_base" />
             </div>
+          </div>
+
+          <h4 class="subseccion">Inversión final contado</h4>
+          <div class="campo-doble">
             <div class="campo">
-              <label>Precio contado</label>
-              <input type="number" [(ngModel)]="form.precio_total_contado" />
+              <label>Precio por m²</label>
+              <input type="number" [(ngModel)]="form.precio_m2_contado" />
             </div>
             <div class="campo">
-              <label>Precio financiado</label>
+              <label>Precio total</label>
+              <input type="number" [(ngModel)]="form.precio_total_contado" />
+            </div>
+          </div>
+
+          <h4 class="subseccion">Inversión final financiado</h4>
+          <div class="campo-triple">
+            <div class="campo">
+              <label>Inicial</label>
+              <input type="number" [(ngModel)]="form.inicial_financiado" />
+            </div>
+            <div class="campo">
+              <label>Monto financiado</label>
+              <input type="number" [(ngModel)]="form.monto_financiado" />
+            </div>
+            <div class="campo">
+              <label>Total</label>
               <input type="number" [(ngModel)]="form.precio_total_financiado" />
             </div>
           </div>

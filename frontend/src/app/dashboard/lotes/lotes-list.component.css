@@ -449,3 +449,57 @@
 
   .modal { max-width: 100%; }
 }
+
+
+
+/* ===== KPIs ===== */
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.kpi-card {
+  background: #fff;
+  border: 1px solid #e1e6ed;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #8993a2; letter-spacing: 0.05em; }
+.kpi-valor { font-size: 20px; font-weight: 800; color: #172033; }
+.kpi-libre .kpi-valor { color: #26734a; }
+.kpi-separado .kpi-valor { color: #98621a; }
+.kpi-vendido .kpi-valor { color: #a33a3a; }
+.kpi-inventario .kpi-valor { font-size: 17px; }
+
+/* ===== Filtros ===== */
+.filtros-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e1e6ed;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.filtro-busqueda { flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #d8dee8; border-radius: 7px; font-size: 13px; }
+.filtro-select { padding: 8px 10px; border: 1px solid #d8dee8; border-radius: 7px; font-size: 13px; }
+.filtro-precio { width: 110px; padding: 8px 10px; border: 1px solid #d8dee8; border-radius: 7px; font-size: 13px; }
+.filtros-contador { margin-left: auto; font-size: 12px; color: #8993a2; }
+
+/* ===== Tabla ampliada ===== */
+.tabla-card-scroll { overflow-x: auto; }
+.tabla-lotes-completa { min-width: 1200px; }
+.tabla-lotes-completa th, .tabla-lotes-completa td { font-size: 12px; white-space: nowrap; }
+.grupo-base { background: #fff4ec; }
+.grupo-contado { background: #eefaf1; }
+.grupo-financiado { background: #eaf6fb; }
+
+@media (max-width: 1100px) {
+  .kpis-grid { grid-template-columns: repeat(2, 1fr); }
+}

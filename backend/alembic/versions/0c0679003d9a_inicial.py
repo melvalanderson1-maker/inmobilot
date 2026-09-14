@@ -211,6 +211,8 @@ def upgrade() -> None:
     sa.Column('partida_registral', sa.String(length=50), nullable=True),
     sa.Column('sunarp_url', sa.String(length=300), nullable=True),
     sa.Column('orden', sa.Integer(), nullable=True),
+    sa.Column('mapa_x', sa.Numeric(precision=6, scale=2), nullable=True),
+    sa.Column('mapa_y', sa.Numeric(precision=6, scale=2), nullable=True),
     sa.Column('activo', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),

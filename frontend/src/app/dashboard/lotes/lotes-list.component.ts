@@ -93,6 +93,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
   kpiTotal = computed(() => this.lotes().length);
   kpiDisponibles = computed(() => this.lotes().filter((l) => l.estado === 'libre').length);
   kpiSeparados = computed(() => this.lotes().filter((l) => l.estado === 'separado').length);
+  kpiBloqueados = computed(() => this.lotes().filter((l) => l.estado === 'bloqueado').length);
   kpiVendidos = computed(() => this.lotes().filter((l) => l.estado === 'vendido').length);
   kpiValorInventario = computed(() =>
     this.lotes().reduce((acc, l) => acc + Number(l.precio_total_contado ?? l.precio_total_base ?? 0), 0)

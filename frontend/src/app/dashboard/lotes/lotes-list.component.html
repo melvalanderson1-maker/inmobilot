@@ -32,6 +32,10 @@
         <span class="kpi-label">Separados</span>
         <span class="kpi-valor">{{ kpiSeparados() }}</span>
       </div>
+      <div class="kpi-card kpi-bloqueado">
+        <span class="kpi-label">Bloqueados</span>
+        <span class="kpi-valor">{{ kpiBloqueados() }}</span>
+      </div>
       <div class="kpi-card kpi-vendido">
         <span class="kpi-label">Vendidos</span>
         <span class="kpi-valor">{{ kpiVendidos() }}</span>
@@ -467,7 +471,7 @@
   </div>
   }
 
-  <!-- Modal: visor de imagen -->
+  <!-- Modal: visor de imagen --> 
   @if (modalImagenAbierto()) {
     <div class="modal-overlay" (click)="cerrarImagen()">
       <div class="modal modal-visor" (click)="$event.stopPropagation()">

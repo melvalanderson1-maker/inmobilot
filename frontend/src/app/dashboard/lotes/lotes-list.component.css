@@ -670,7 +670,7 @@
 /* ===== KPIs ===== */
 .kpis-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -687,6 +687,7 @@
 .kpi-valor { font-size: 20px; font-weight: 800; color: #172033; }
 .kpi-libre .kpi-valor { color: #26734a; }
 .kpi-separado .kpi-valor { color: #98621a; }
+.kpi-bloqueado .kpi-valor { color: #b91c1c; }
 .kpi-vendido .kpi-valor { color: #a33a3a; }
 .kpi-inventario .kpi-valor { font-size: 17px; }
 
@@ -716,9 +717,12 @@
 .grupo-financiado { background: #eaf6fb; }
 
 @media (max-width: 1100px) {
-  .kpis-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpis-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+@media (max-width: 600px) {
+  .kpis-grid { grid-template-columns: repeat(2, 1fr); }
+}
 
 .btn-guardar { display: inline-flex; align-items: center; gap: 0.5rem; }
 .spinner { width: 16px; height: 16px; animation: girar 0.7s linear infinite; }

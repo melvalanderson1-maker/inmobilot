@@ -244,7 +244,12 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   cargarLotes(): void {
-    this.cargando.set(true);
+    // Solo mostramos "Cargando..." si es la primera carga (lista vacía).
+    // En recargas por socket o cambios de estado, no ocultamos la tabla
+    // para evitar el parpadeo.
+    if (this.lotes().length === 0) {
+      this.cargando.set(true);
+    }
     this.api
       .get<Lote[]>('/lotes', { id_proyecto: this.idProyectoSeleccionado })
       .subscribe({
@@ -255,7 +260,6 @@ export class LotesListComponent implements OnInit, OnDestroy {
         error: () => this.cargando.set(false),
       });
   }
-
   // ---- Abrir formulario ----
 
   abrirNuevo(): void {
@@ -526,12 +530,23 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   cambiarEstado(lote: Lote, estado: EstadoLote): void {
+    const estadoAnterior = lote.estado;
+
+    // Actualización optimista: cambiamos el estado en memoria de inmediato,
+    // sin recargar toda la lista (evita el parpadeo de la tabla).
+    this.lotes.update((lista) =>
+      lista.map((l) => (l.id === lote.id ? { ...l, estado } : l))
+    );
+
     this.api.patch(`/lotes/${lote.id}/estado`, { estado }).subscribe({
       next: () => {
-        this.cargarLotes();
         this.toastService.exito(`Estado del lote ${lote.codigo} actualizado correctamente`);
       },
       error: (err) => {
+        // Si falla, revertimos al estado anterior
+        this.lotes.update((lista) =>
+          lista.map((l) => (l.id === lote.id ? { ...l, estado: estadoAnterior } : l))
+        );
         const mensaje = err?.error?.detail ?? 'No se pudo cambiar el estado del lote';
         this.toastService.error(mensaje);
       },

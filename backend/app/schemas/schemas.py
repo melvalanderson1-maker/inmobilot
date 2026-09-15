@@ -156,6 +156,9 @@ class LoteCreate(BaseModel):
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
+    inicial_financiado_60c: Optional[Decimal] = None
+    cuota_mensual_60c: Optional[Decimal] = None
+    frontis: Optional[str] = None
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
@@ -174,6 +177,9 @@ class LoteUpdate(BaseModel):
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
+    inicial_financiado_60c: Optional[Decimal] = None
+    cuota_mensual_60c: Optional[Decimal] = None
+    frontis: Optional[str] = None
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
@@ -202,6 +208,9 @@ class LoteOut(ORMBase):
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
+    inicial_financiado_60c: Optional[Decimal] = None
+    cuota_mensual_60c: Optional[Decimal] = None
+    frontis: Optional[str] = None
     estado: EstadoLoteEnum
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None

@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { LoteService } from '../../core/services/lote.service';
 import { TenantService } from '../../core/services/tenant.service';
+import { ToastService } from '../../core/services/toast.service';
 import { EstadoLote, Lote, Manzana, Proyecto } from '../../core/models';
 
 @Component({
@@ -100,7 +101,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
     public auth: AuthService,
     private socket: SocketService,
     private loteService: LoteService,
-    public tenant: TenantService
+    public tenant: TenantService,
+    private toastService: ToastService
   ) {}
 
   // ---- Ubicar en el mapa (clic directo sobre la imagen) ----
@@ -372,12 +374,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })
-        .subscribe({
+        .subscribe({ 
           next: () => this.subirImagenesPendientes(loteActual.id, loteActual.imagenes.length),
-          error: (err) => {
-            this.guardando.set(false);
-            this.error.set(err?.error?.detail ?? 'Error al actualizar el lote');
-          },
+          error: (err) => { 
+            this.guardando.set(false); 
+            const mensaje = err?.error?.detail ?? 'Error al actualizar el lote';
+            this.error.set(mensaje);
+            this.toastService.error(mensaje);
+          }, 
         });
     } else {
       if (!this.form.id_manzana) {
@@ -402,24 +406,32 @@ export class LotesListComponent implements OnInit, OnDestroy {
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })
-        .subscribe({
+        .subscribe({ 
           next: (lote) => this.subirImagenesPendientes(lote.id, 0),
-          error: (err) => {
-            this.guardando.set(false);
-            this.error.set(err?.error?.detail ?? 'Error al crear el lote');
-          },
+          error: (err) => { 
+            this.guardando.set(false); 
+            const mensaje = err?.error?.detail ?? 'Error al crear el lote';
+            this.error.set(mensaje);
+            this.toastService.error(mensaje);
+          }, 
         });
     }
   }
 
   private subirImagenesPendientes(idLote: number, imagenesExistentes: number): void {
-    if (this.archivosNuevos.length === 0) {
-      this.guardando.set(false);
+    if (this.archivosNuevos.length === 0) { 
+      this.guardando.set(false); 
       this.cerrarFormulario();
       this.cargarLotes();
-      return;
-    }
 
+      const mensaje = this.loteEditando()
+        ? 'Lote actualizado correctamente'
+        : 'Lote creado correctamente';
+
+      this.toastService.exito(mensaje);
+
+      return; 
+    }
     this.subiendoImagenes.set(true);
     let completados = 0;
 
@@ -433,38 +445,67 @@ export class LotesListComponent implements OnInit, OnDestroy {
           this.loteService.agregarImagen(idLote, res.url, esPortada, imagenesExistentes + index).subscribe({
             next: () => {
               completados++;
-              if (completados === this.archivosNuevos.length) {
-                this.subiendoImagenes.set(false);
-                this.guardando.set(false);
-                this.cerrarFormulario();
-                this.cargarLotes();
-              }
+            if (completados === this.archivosNuevos.length) { 
+              this.subiendoImagenes.set(false); 
+              this.guardando.set(false); 
+              this.cerrarFormulario(); 
+              this.cargarLotes();
+
+              const mensaje = this.loteEditando()
+                ? 'Lote actualizado correctamente'
+                : 'Lote creado correctamente';
+
+              this.toastService.exito(mensaje);
+            }
             },
-            error: (err) => {
-              console.error('Error al vincular imagen al lote:', err);
-              this.error.set(err?.error?.detail ?? 'La imagen se subió pero no se pudo vincular al lote');
-              completados++;
-              if (completados === this.archivosNuevos.length) {
-                this.subiendoImagenes.set(false);
-                this.guardando.set(false);
-              }
-            },
+              error: (err) => { 
+                console.error('Error al vincular imagen al lote:', err);
+
+                const mensaje =
+                  err?.error?.detail ??
+                  'La imagen se subió pero no se pudo vincular al lote';
+
+                this.error.set(mensaje);
+                this.toastService.error(mensaje);
+
+                completados++;
+
+                if (completados === this.archivosNuevos.length) { 
+                  this.subiendoImagenes.set(false); 
+                  this.guardando.set(false); 
+                } 
+              },
           });
         },
-        error: (err) => {
+        error: (err) => { 
           console.error('Error al subir imagen:', err);
-          this.error.set(err?.error?.detail ?? 'No se pudo subir la imagen');
+
+          const mensaje = err?.error?.detail ?? 'No se pudo subir la imagen';
+
+          this.error.set(mensaje);
+          this.toastService.error(mensaje);
+
           completados++;
-          if (completados === this.archivosNuevos.length) {
-            this.subiendoImagenes.set(false);
-            this.guardando.set(false);
-          }
+
+          if (completados === this.archivosNuevos.length) { 
+            this.subiendoImagenes.set(false); 
+            this.guardando.set(false); 
+          } 
         },
       });
     });
   }
 
   cambiarEstado(lote: Lote, estado: EstadoLote): void {
-    this.api.patch(`/lotes/${lote.id}/estado`, { estado }).subscribe(() => this.cargarLotes());
+    this.api.patch(`/lotes/${lote.id}/estado`, { estado }).subscribe({
+      next: () => {
+        this.cargarLotes();
+        this.toastService.exito(`Estado del lote ${lote.codigo} actualizado correctamente`);
+      },
+      error: (err) => {
+        const mensaje = err?.error?.detail ?? 'No se pudo cambiar el estado del lote';
+        this.toastService.error(mensaje);
+      },
+    });
   }
 }

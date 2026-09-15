@@ -1,0 +1,42 @@
+<div class="toast-viewport">
+  @for (toast of toastService.toasts(); track toast.id) {
+    <div class="toast toast-{{ toast.tipo }}">
+      <div class="toast-icono">
+        @switch (toast.tipo) {
+          @case ('exito') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="m8.5 12.5 2.5 2.5 5-5" />
+            </svg>
+          }
+          @case ('error') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v5" />
+              <path d="M12 16.2h.01" />
+            </svg>
+          }
+          @case ('info') {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v5" />
+              <path d="M12 7.8h.01" />
+            </svg>
+          }
+        }
+      </div>
+      <div class="toast-texto">
+        <strong>{{ toast.titulo }}</strong>
+        @if (toast.mensaje) {
+          <span>{{ toast.mensaje }}</span>
+        }
+      </div>
+      <button class="toast-cerrar" (click)="toastService.cerrar(toast.id)" title="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <path d="M6 6l12 12" />
+          <path d="M18 6 6 18" />
+        </svg>
+      </button>
+    </div>
+  }
+</div>

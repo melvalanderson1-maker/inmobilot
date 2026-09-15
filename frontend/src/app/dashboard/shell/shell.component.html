@@ -1,4 +1,7 @@
-<app-toast-container></app-toast-container>
+<div class="shell">
+  @if (menuMovilAbierto()) {
+    <div class="overlay-movil" (click)="cerrarMenuMovil()"></div>
+  }
 
 <div class="shell">
   @if (menuMovilAbierto()) {
@@ -204,3 +207,5 @@
     </div>
   </div>
 }
+
+<app-toast-container />

@@ -306,13 +306,14 @@
             </button>
         </div>
 
-        <div class="modal-body">
-          @if (error()) {
-            <div class="mensaje-error">{{ error() }}</div>
-          }
+      <div class="modal-body">
+        @if (error()) {
+          <div class="mensaje-error">{{ error() }}</div>
+        }
 
+        <div class="form-grid">
           @if (!loteEditando()) {
-            <div class="campo">
+            <div class="campo campo-span-4">
               <label>Manzana</label>
               <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
                 <option [ngValue]="null" disabled>Selecciona una manzana</option>
@@ -322,82 +323,67 @@
                   </option>
                 }
               </select>
-              <small style="font-size:11px;color:#8993a2;">
-                Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).
-              </small>
+              <small class="ayuda">Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).</small>
             </div>
           }
 
-          <div class="campo-doble">
-            <div class="campo">
-              <label>Código</label>
-              <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
-            </div>
-            <div class="campo">
-              <label>Ubicación</label>
-              <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
-            </div>
-          </div>
-
-          <div class="campo-doble">
-            <div class="campo">
-              <label>Perímetro (m)</label>
-              <input type="number" [(ngModel)]="form.perimetro" />
-            </div>
-            <div class="campo">
-              <label>Área (m²)</label>
-              <input type="number" [(ngModel)]="form.area_m2" />
-            </div>
-          </div>
-
-          <h4 class="subseccion">Inversión base</h4>
-          <div class="campo-doble">
-            <div class="campo">
-              <label>Precio por m²</label>
-              <input type="number" [(ngModel)]="form.precio_m2_base" />
-            </div>
-            <div class="campo">
-              <label>Precio total</label>
-              <input type="number" [(ngModel)]="form.precio_total_base" />
-            </div>
-          </div>
-
-          <h4 class="subseccion">Inversión final contado</h4>
-          <div class="campo-doble">
-            <div class="campo">
-              <label>Precio por m²</label>
-              <input type="number" [(ngModel)]="form.precio_m2_contado" />
-            </div>
-            <div class="campo">
-              <label>Precio total</label>
-              <input type="number" [(ngModel)]="form.precio_total_contado" />
-            </div>
-          </div>
-
-          <h4 class="subseccion">Inversión final financiado</h4>
-          <div class="campo-triple">
-            <div class="campo">
-              <label>Inicial</label>
-              <input type="number" [(ngModel)]="form.inicial_financiado" />
-            </div>
-            <div class="campo">
-              <label>Monto financiado</label>
-              <input type="number" [(ngModel)]="form.monto_financiado" />
-            </div>
-            <div class="campo">
-              <label>Total</label>
-              <input type="number" [(ngModel)]="form.precio_total_financiado" />
-            </div>
-          </div>
-
           <div class="campo">
+            <label>Código</label>
+            <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
+          </div>
+          <div class="campo">
+            <label>Ubicación</label>
+            <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
+          </div>
+          <div class="campo">
+            <label>Perímetro (m)</label>
+            <input type="number" [(ngModel)]="form.perimetro" />
+          </div>
+          <div class="campo">
+            <label>Área (m²)</label>
+            <input type="number" [(ngModel)]="form.area_m2" />
+          </div>
+
+          <h4 class="subseccion campo-span-4">Inversión base</h4>
+          <div class="campo campo-span-2">
+            <label>Precio por m²</label>
+            <input type="number" [(ngModel)]="form.precio_m2_base" />
+          </div>
+          <div class="campo campo-span-2">
+            <label>Precio total</label>
+            <input type="number" [(ngModel)]="form.precio_total_base" />
+          </div>
+
+          <h4 class="subseccion campo-span-4">Inversión final contado</h4>
+          <div class="campo campo-span-2">
+            <label>Precio por m²</label>
+            <input type="number" [(ngModel)]="form.precio_m2_contado" />
+          </div>
+          <div class="campo campo-span-2">
+            <label>Precio total</label>
+            <input type="number" [(ngModel)]="form.precio_total_contado" />
+          </div>
+
+          <h4 class="subseccion campo-span-4">Inversión final financiado</h4>
+          <div class="campo">
+            <label>Inicial</label>
+            <input type="number" [(ngModel)]="form.inicial_financiado" />
+          </div>
+          <div class="campo">
+            <label>Monto financiado</label>
+            <input type="number" [(ngModel)]="form.monto_financiado" />
+          </div>
+          <div class="campo campo-span-2">
+            <label>Total</label>
+            <input type="number" [(ngModel)]="form.precio_total_financiado" />
+          </div>
+
+          <div class="campo campo-span-4">
             <label>Partida registral (SUNARP)</label>
             <input type="text" [(ngModel)]="form.partida_registral" />
-            <small style="font-size:11px;color:#8993a2;">
-              Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana.
-              Reemplázala por la partida propia del lote cuando SUNARP la independice.
-            </small>
+            <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
           </div>
+        </div>
 
           <h4 class="subseccion">Imágenes del lote</h4>
 
@@ -449,8 +435,14 @@
 
         <div class="modal-footer">
           <button class="btn-secundario" (click)="cerrarFormulario()">Cancelar</button>
-          <button class="btn-primary" (click)="guardarLote()" [disabled]="guardando()">
-            {{ subiendoImagenes() ? 'Subiendo imágenes...' : guardando() ? 'Guardando...' : 'Guardar lote' }}
+          <button class="btn-primary btn-guardar" (click)="guardarLote()" [disabled]="guardando()">
+            @if (guardando()) {
+              <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
+                <path d="M21 12a9 9 0 0 0-9-9" />
+              </svg>
+            }
+            <span>{{ subiendoImagenes() ? 'Subiendo imágenes...' : guardando() ? 'Guardando...' : 'Guardar lote' }}</span>
           </button>
         </div>
       </div>

@@ -48,7 +48,6 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     { valor: 'libre', etiqueta: 'Disponible' },
     { valor: 'separado', etiqueta: 'Separado' },
     { valor: 'vendido', etiqueta: 'Vendido' },
-    { valor: 'bloqueado', etiqueta: 'Bloqueado' },
   ];
 
   filtroEstado = signal<FiltroEstado>('todos');
@@ -151,6 +150,40 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     this.lotes().filter((l) => (l as any).mapa_x != null && (l as any).mapa_y != null)
   );
 
+  // Paginación del catálogo
+  paginaActual = signal(1);
+  porPagina = 12;
+
+  lotesPaginados = computed(() => {
+    const inicio = (this.paginaActual() - 1) * this.porPagina;
+    return this.lotesFiltrados().slice(inicio, inicio + this.porPagina);
+  });
+
+  totalPaginas = computed(() => Math.max(1, Math.ceil(this.lotesFiltrados().length / this.porPagina)));
+
+  irAPagina(pagina: number): void {
+    const total = this.totalPaginas();
+    this.paginaActual.set(Math.min(Math.max(pagina, 1), total));
+    document.getElementById('lotes')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  paginaSiguiente(): void {
+    this.irAPagina(this.paginaActual() + 1);
+  }
+
+  paginaAnterior(): void {
+    this.irAPagina(this.paginaActual() - 1);
+  }
+
+  rangoPaginas(): number[] {
+    const total = this.totalPaginas();
+    const actual = this.paginaActual();
+    let inicio = Math.max(1, actual - 2);
+    const fin = Math.min(total, inicio + 4);
+    inicio = Math.max(1, fin - 4);
+    return Array.from({ length: fin - inicio + 1 }, (_, i) => inicio + i);
+  }
+
   posicionLote(lote: LotePublico): { x: number; y: number } {
     const l = lote as any;
     return { x: Number(l.mapa_x) ?? 50, y: Number(l.mapa_y) ?? 50 };
@@ -158,6 +191,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
   cambiarFiltroEstado(valor: FiltroEstado): void {
     this.filtroEstado.set(valor);
+    this.paginaActual.set(1);
   }
 
   estadoActivo(valor: FiltroEstado): boolean {
@@ -166,14 +200,17 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
   cambiarOrden(valor: OrdenPrecio): void {
     this.ordenPrecio.set(valor);
+    this.paginaActual.set(1);
   }
 
   actualizarPrecioMin(valor: string): void {
     this.precioMin.set(valor ? Number(valor) : null);
+    this.paginaActual.set(1);
   }
 
   actualizarPrecioMax(valor: string): void {
     this.precioMax.set(valor ? Number(valor) : null);
+    this.paginaActual.set(1);
   }
 
   limpiarFiltros(): void {
@@ -181,6 +218,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     this.ordenPrecio.set('relevancia');
     this.precioMin.set(null);
     this.precioMax.set(null);
+    this.paginaActual.set(1);
   }
 
   irALote(lote: LotePublico): void {
@@ -257,14 +295,19 @@ export class CatalogoComponent implements OnInit, OnDestroy {
           this.socket.onEvento.subscribe((evento) => {
             if (evento.evento === 'lote:cambio_estado') {
               const loteActualizado = evento.data as LotePublico;
-              this.lotes.update((actuales) =>
-                actuales.map((l) =>
-                  l.id === loteActualizado.id ? { ...l, estado: loteActualizado.estado } : l
-                )
-              );
+              if (loteActualizado.estado === 'bloqueado') {
+                this.lotes.update((actuales) => actuales.filter((l) => l.id !== loteActualizado.id));
+              } else {
+                this.lotes.update((actuales) =>
+                  actuales.map((l) =>
+                    l.id === loteActualizado.id ? { ...l, estado: loteActualizado.estado } : l
+                  )
+                );
+              }
             }
             if (evento.evento === 'lote:nuevo') {
               const loteNuevo = evento.data as LotePublico;
+              if (loteNuevo.estado === 'bloqueado') return;
               this.lotes.update((actuales) => {
                 const yaExiste = actuales.some((l) => l.id === loteNuevo.id);
                 return yaExiste ? actuales : [...actuales, loteNuevo];
@@ -272,10 +315,14 @@ export class CatalogoComponent implements OnInit, OnDestroy {
             }
             if (evento.evento === 'lote:actualizado') {
               const loteActualizado = evento.data as LotePublico;
-              this.lotes.update((actuales) =>
-                actuales.map((l) => (l.id === loteActualizado.id ? { ...l, ...loteActualizado } : l))
-              );
-              this.indiceImagenPorLote.update((mapa) => ({ ...mapa, [loteActualizado.id]: 0 }));
+              if (loteActualizado.estado === 'bloqueado') {
+                this.lotes.update((actuales) => actuales.filter((l) => l.id !== loteActualizado.id));
+              } else {
+                this.lotes.update((actuales) =>
+                  actuales.map((l) => (l.id === loteActualizado.id ? { ...l, ...loteActualizado } : l))
+                );
+                this.indiceImagenPorLote.update((mapa) => ({ ...mapa, [loteActualizado.id]: 0 }));
+              }
             }
           });
         }
@@ -289,7 +336,7 @@ export class CatalogoComponent implements OnInit, OnDestroy {
       .get<LotePublico[]>(`/public/proyectos/${this.empresaSlug}/${this.proyectoSlug}/lotes`)
       .subscribe({
         next: (lotes) => {
-          this.lotes.set(lotes);
+          this.lotes.set(lotes.filter((l) => l.estado !== 'bloqueado'));
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),

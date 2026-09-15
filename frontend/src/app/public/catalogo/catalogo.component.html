@@ -154,7 +154,7 @@
 
       <div class="lotes-grid">
 
-        @for (lote of lotesFiltrados(); track lote.id; let i = $index) {
+        @for (lote of lotesPaginados(); track lote.id; let i = $index) {
 
           <article
             class="lote-card"
@@ -269,6 +269,59 @@
         }
 
       </div>
+
+      @if (totalPaginas() > 1) {
+        <nav class="gv-paginacion" aria-label="Paginación de lotes">
+          <button
+            type="button"
+            class="gv-pagina-btn gv-pagina-nav"
+            [disabled]="paginaActual() === 1"
+            (click)="paginaAnterior()"
+            aria-label="Página anterior"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+          </button>
+
+          @if (rangoPaginas()[0] > 1) {
+            <button type="button" class="gv-pagina-btn" (click)="irAPagina(1)">1</button>
+            @if (rangoPaginas()[0] > 2) {
+              <span class="gv-pagina-puntos">…</span>
+            }
+          }
+
+          @for (pagina of rangoPaginas(); track pagina) {
+            <button
+              type="button"
+              class="gv-pagina-btn"
+              [class.activo]="paginaActual() === pagina"
+              (click)="irAPagina(pagina)"
+            >
+              {{ pagina }}
+            </button>
+          }
+
+          @if (rangoPaginas()[rangoPaginas().length - 1] < totalPaginas()) {
+            @if (rangoPaginas()[rangoPaginas().length - 1] < totalPaginas() - 1) {
+              <span class="gv-pagina-puntos">…</span>
+            }
+            <button type="button" class="gv-pagina-btn" (click)="irAPagina(totalPaginas())">{{ totalPaginas() }}</button>
+          }
+
+          <button
+            type="button"
+            class="gv-pagina-btn gv-pagina-nav"
+            [disabled]="paginaActual() === totalPaginas()"
+            (click)="paginaSiguiente()"
+            aria-label="Página siguiente"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </button>
+        </nav>
+      }
 
     }
 
@@ -513,7 +566,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M9 20 4 18V6l5 2m0 12 6-2m-6 2V8m6 10 5 2V8l-5-2m0 14V6m0 2-6-2"/>
       </svg>
-      <span>Ver mapa</span>
+      <span>Ver plano de lotes</span>
     </button>
   }
 

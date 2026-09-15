@@ -111,7 +111,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (lote of lotesFiltrados(); track lote.id) {
+          @for (lote of lotesPaginados(); track lote.id) {
             <tr>
               <td class="celda-miniatura">
                 @if (lote.imagenes && lote.imagenes.length > 0) {
@@ -290,6 +290,18 @@
         </div>
       }
     </div>
+
+    @if (totalPaginas() > 1) {
+      <div class="paginacion">
+        <button class="btn-pagina" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="paginacion-info">Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+        <button class="btn-pagina" (click)="irAPagina(paginaActual() + 1)" [disabled]="paginaActual() === totalPaginas()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    }
   }
 
   <!-- Modal: crear / editar lote -->
@@ -306,96 +318,123 @@
             </button>
         </div>
 
-      <div class="modal-body">
+      <div class="modal-body modal-body-lote">
         @if (error()) {
           <div class="mensaje-error">{{ error() }}</div>
         }
 
-        <div class="form-grid">
-          @if (!loteEditando()) {
-            <div class="campo campo-span-4">
-              <label>Manzana</label>
-              <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
-                <option [ngValue]="null" disabled>Selecciona una manzana</option>
-                @for (m of manzanas(); track m.id) {
-                  <option [ngValue]="m.id">
-                    {{ m.nombre }} — {{ m.etapa?.nombre || 'Sin etapa' }} (Partida {{ m.etapa?.partida_registral || 's/n' }})
-                  </option>
-                }
-              </select>
-              <small class="ayuda">Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).</small>
+        <div class="lote-form-layout">
+          <div class="form-col">
+            <div class="form-grid">
+              @if (!loteEditando()) {
+                <div class="campo campo-span-2">
+                  <label>Manzana</label>
+                  <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
+                    <option [ngValue]="null" disabled>Selecciona una manzana</option>
+                    @for (m of manzanas(); track m.id) {
+                      <option [ngValue]="m.id">
+                        {{ m.nombre }} — {{ m.etapa?.nombre || 'Sin etapa' }} (Partida {{ m.etapa?.partida_registral || 's/n' }})
+                      </option>
+                    }
+                  </select>
+                  <small class="ayuda">Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).</small>
+                </div>
+              }
+
+              <div class="campo">
+                <label>Código</label>
+                <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
+              </div>
+              <div class="campo">
+                <label>Ubicación</label>
+                <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
+              </div>
+              <div class="campo">
+                <label>Perímetro (m)</label>
+                <input type="number" [(ngModel)]="form.perimetro" />
+              </div>
+              <div class="campo">
+                <label>Área (m²)</label>
+                <input type="number" [(ngModel)]="form.area_m2" />
+              </div>
+
+              <h4 class="subseccion campo-span-2">Inversión base</h4>
+              <div class="campo">
+                <label>Precio por m²</label>
+                <input type="number" [(ngModel)]="form.precio_m2_base" />
+              </div>
+              <div class="campo">
+                <label>Precio total</label>
+                <input type="number" [(ngModel)]="form.precio_total_base" />
+              </div>
+
+              <h4 class="subseccion campo-span-2">Inversión final contado</h4>
+              <div class="campo">
+                <label>Precio por m²</label>
+                <input type="number" [(ngModel)]="form.precio_m2_contado" />
+              </div>
+              <div class="campo">
+                <label>Precio total</label>
+                <input type="number" [(ngModel)]="form.precio_total_contado" />
+              </div>
+
+              <h4 class="subseccion campo-span-2">Inversión final financiado</h4>
+              <div class="campo">
+                <label>Inicial</label>
+                <input type="number" [(ngModel)]="form.inicial_financiado" />
+              </div>
+              <div class="campo">
+                <label>Monto financiado</label>
+                <input type="number" [(ngModel)]="form.monto_financiado" />
+              </div>
+              <div class="campo campo-span-2">
+                <label>Total</label>
+                <input type="number" [(ngModel)]="form.precio_total_financiado" />
+              </div>
+
+              <div class="campo campo-span-2">
+                <label>Partida registral (SUNARP)</label>
+                <input type="text" [(ngModel)]="form.partida_registral" />
+                <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
+              </div>
             </div>
-          }
-
-          <div class="campo">
-            <label>Código</label>
-            <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
-          </div>
-          <div class="campo">
-            <label>Ubicación</label>
-            <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
-          </div>
-          <div class="campo">
-            <label>Perímetro (m)</label>
-            <input type="number" [(ngModel)]="form.perimetro" />
-          </div>
-          <div class="campo">
-            <label>Área (m²)</label>
-            <input type="number" [(ngModel)]="form.area_m2" />
           </div>
 
-          <h4 class="subseccion campo-span-4">Inversión base</h4>
-          <div class="campo campo-span-2">
-            <label>Precio por m²</label>
-            <input type="number" [(ngModel)]="form.precio_m2_base" />
-          </div>
-          <div class="campo campo-span-2">
-            <label>Precio total</label>
-            <input type="number" [(ngModel)]="form.precio_total_base" />
-          </div>
+          <div class="imagenes-col">
+            <h4 class="subseccion subseccion-imagenes">Imágenes del lote</h4>
 
-          <h4 class="subseccion campo-span-4">Inversión final contado</h4>
-          <div class="campo campo-span-2">
-            <label>Precio por m²</label>
-            <input type="number" [(ngModel)]="form.precio_m2_contado" />
-          </div>
-          <div class="campo campo-span-2">
-            <label>Precio total</label>
-            <input type="number" [(ngModel)]="form.precio_total_contado" />
-          </div>
+            <label class="dropzone dropzone-compacta">
+              <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onImagenesSeleccionadas($event)" hidden />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M12 16V4" />
+                <path d="m7 9 5-5 5 5" />
+                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+              </svg>
+              <span>Subir imágenes</span>
+            </label>
 
-          <h4 class="subseccion campo-span-4">Inversión final financiado</h4>
-          <div class="campo">
-            <label>Inicial</label>
-            <input type="number" [(ngModel)]="form.inicial_financiado" />
-          </div>
-          <div class="campo">
-            <label>Monto financiado</label>
-            <input type="number" [(ngModel)]="form.monto_financiado" />
-          </div>
-          <div class="campo campo-span-2">
-            <label>Total</label>
-            <input type="number" [(ngModel)]="form.precio_total_financiado" />
-          </div>
+            <div class="galeria-columna">
+              @if (loteEditando() && loteEditando()!.imagenes.length > 0) {
+                @for (img of loteEditando()!.imagenes; track img.id) {
+                  <div class="imagen-item imagen-item-col">
+                    <img [src]="urlImagenLote(img.url)" (click)="abrirImagen(img.url)" alt="Imagen del lote" />
+                    @if (img.es_portada) {
+                      <span class="etiqueta-portada">Portada</span>
+                    }
+                    <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                        <path d="M6 6l12 12" />
+                        <path d="M18 6 6 18" />
+                      </svg>
+                    </button>
+                  </div>
+                }
+              }
 
-          <div class="campo campo-span-4">
-            <label>Partida registral (SUNARP)</label>
-            <input type="text" [(ngModel)]="form.partida_registral" />
-            <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
-          </div>
-        </div>
-
-          <h4 class="subseccion">Imágenes del lote</h4>
-
-          @if (loteEditando() && loteEditando()!.imagenes.length > 0) {
-            <div class="galeria-existente">
-              @for (img of loteEditando()!.imagenes; track img.id) {
-                <div class="imagen-item">
-                  <img [src]="urlImagenLote(img.url)" (click)="abrirImagen(img.url)" alt="Imagen del lote" />
-                  @if (img.es_portada) {
-                    <span class="etiqueta-portada">Portada</span>
-                  }
-                  <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar">
+              @for (url of previsualizaciones; track $index) {
+                <div class="imagen-item imagen-item-col">
+                  <img [src]="url" alt="Nueva imagen" />
+                  <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                       <path d="M6 6l12 12" />
                       <path d="M18 6 6 18" />
@@ -403,34 +442,12 @@
                   </button>
                 </div>
               }
-            </div>
-          }
 
-          <label class="dropzone">
-            <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onImagenesSeleccionadas($event)" hidden />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-              <path d="M12 16V4" />
-              <path d="m7 9 5-5 5 5" />
-              <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-            </svg>
-            <span>Haz click para subir imágenes (JPG, PNG o WEBP)</span>
-          </label>
-
-          @if (previsualizaciones.length > 0) {
-            <div class="galeria-nueva">
-              @for (url of previsualizaciones; track $index) {
-                <div class="imagen-item">
-                  <img [src]="url" alt="Nueva imagen" />
-                  <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                    <path d="M6 6l12 12" />
-                    <path d="M18 6 6 18" />
-                  </svg>
-                </button>
-                </div>
+              @if ((!loteEditando() || loteEditando()!.imagenes.length === 0) && previsualizaciones.length === 0) {
+                <p class="sin-imagenes">Aún no hay imágenes</p>
               }
             </div>
-          }
+          </div>
         </div>
 
         <div class="modal-footer">

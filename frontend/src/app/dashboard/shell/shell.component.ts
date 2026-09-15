@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
@@ -79,6 +79,21 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   cerrarMenuMovil(): void {
     this.menuMovilAbierto.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.panelNotifAbierto()) {
+      this.panelNotifAbierto.set(false);
+      return;
+    }
+    if (this.mostrarModalLogout()) {
+      this.cancelarLogout();
+      return;
+    }
+    if (this.menuMovilAbierto()) {
+      this.cerrarMenuMovil();
+    }
   }
 
   marcarLeido(n: Notificacion): void {

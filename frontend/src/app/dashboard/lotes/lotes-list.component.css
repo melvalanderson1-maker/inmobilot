@@ -245,7 +245,7 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
-.modal-grande { max-width: 780px; }
+.modal-grande { max-width: 1040px; width: 96vw; }
 .modal-visor { max-width: 720px; }
 
 .modal-header {
@@ -314,7 +314,12 @@
 
 .campo label { font-size: 0.82rem; color: #475569; font-weight: 600; }
 
+.campo { min-width: 0; }
+
 .campo input, .campo select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: #f8fafc;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -338,13 +343,11 @@
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem 1.1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem 1rem;
 }
 
 .campo-span-2 { grid-column: span 2; }
-.campo-span-3 { grid-column: span 3; }
-.campo-span-4 { grid-column: span 4; }
 
 .form-grid .subseccion {
   margin: 0.2rem 0 -0.3rem;
@@ -720,3 +723,62 @@
 .btn-guardar { display: inline-flex; align-items: center; gap: 0.5rem; }
 .spinner { width: 16px; height: 16px; animation: girar 0.7s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+
+
+.modal-body-lote { max-height: 78vh; }
+
+.lote-form-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.form-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 74vh;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+
+.imagenes-col {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-height: 74vh;
+  overflow-y: auto;
+}
+
+.form-col::-webkit-scrollbar, .imagenes-col::-webkit-scrollbar { width: 6px; }
+.form-col::-webkit-scrollbar-thumb, .imagenes-col::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 999px; }
+
+.subseccion-imagenes { border-top: none; padding-top: 0; margin: 0; }
+
+.dropzone-compacta { padding: 0.9rem 0.6rem; font-size: 0.78rem; }
+.dropzone-compacta svg { width: 20px; height: 20px; }
+
+.galeria-columna { display: flex; flex-direction: column; gap: 0.6rem; }
+.imagen-item-col { width: 100%; aspect-ratio: 4/3; }
+
+.sin-imagenes {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  text-align: center;
+  padding: 1rem 0.5rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+}
+
+@media (max-width: 720px) {
+  .lote-form-layout { flex-direction: column; }
+  .imagenes-col { flex: none; max-height: none; overflow: visible; }
+  .form-col { max-height: none; overflow: visible; }
+  .modal-body-lote { max-height: none; overflow: visible; }
+}
+
+.paginacion { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.2rem; padding: 0.75rem; }
+.btn-pagina { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; color: #334155; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.btn-pagina:hover:not(:disabled) { background: #f1f5f9; }
+.btn-pagina:disabled { opacity: 0.4; cursor: not-allowed; }
+.paginacion-info { font-size: 0.85rem; color: #64748b; font-weight: 500; }

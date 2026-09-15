@@ -164,7 +164,8 @@
       </button>
 
       @if (panelNotifAbierto()) {
-        <div class="panel-notif">
+        <div class="overlay-notif" (click)="toggleNotificaciones()"></div>
+        <div class="panel-notif" (click)="$event.stopPropagation()">
           @if (notificaciones().length === 0) {
             <p class="vacio">Sin notificaciones</p>
           }

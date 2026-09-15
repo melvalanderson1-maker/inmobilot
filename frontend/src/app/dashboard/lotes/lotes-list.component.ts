@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/services/api.service';
@@ -72,6 +72,24 @@ export class LotesListComponent implements OnInit, OnDestroy {
     });
   });
 
+  // ---- Paginación (solo afecta la vista de tabla) ----
+  paginaActual = signal(1);
+  itemsPorPagina = 20;
+
+  totalPaginas = computed(() => Math.max(1, Math.ceil(this.lotesFiltrados().length / this.itemsPorPagina)));
+
+  lotesPaginados = computed(() => {
+    const pagina = this.paginaActual();
+    const inicio = (pagina - 1) * this.itemsPorPagina;
+    return this.lotesFiltrados().slice(inicio, inicio + this.itemsPorPagina);
+  });
+
+  irAPagina(pagina: number): void {
+    const total = this.totalPaginas();
+    if (pagina < 1 || pagina > total) return;
+    this.paginaActual.set(pagina);
+  }
+
   kpiTotal = computed(() => this.lotes().length);
   kpiDisponibles = computed(() => this.lotes().filter((l) => l.estado === 'libre').length);
   kpiSeparados = computed(() => this.lotes().filter((l) => l.estado === 'separado').length);
@@ -85,6 +103,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
     this.filtroBusqueda.set('');
     this.filtroPrecioMin.set(null);
     this.filtroPrecioMax.set(null);
+    this.paginaActual.set(1);
   }
 
   // ---- Imágenes ----
@@ -103,8 +122,17 @@ export class LotesListComponent implements OnInit, OnDestroy {
     private loteService: LoteService,
     public tenant: TenantService,
     private toastService: ToastService
-  ) {}
-
+  ) {
+    // Resetea a la página 1 cada vez que cambia cualquier filtro,
+    // para no quedar "atrapado" en una página que ya no existe.
+    effect(() => {
+      this.filtroEstado();
+      this.filtroBusqueda();
+      this.filtroPrecioMin();
+      this.filtroPrecioMax();
+      this.paginaActual.set(1);
+    });
+  }
   // ---- Ubicar en el mapa (clic directo sobre la imagen) ----
   modalMapaAbierto = signal(false);
   loteUbicando = signal<Lote | null>(null);
@@ -191,6 +219,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
 
   cambiarProyecto(): void {
     if (!this.idProyectoSeleccionado) return;
+    this.paginaActual.set(1);
     this.cargarManzanas();
     this.cargarLotes();
   }

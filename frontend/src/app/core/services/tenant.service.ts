@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from './config.service';
 import { calcularColorTexto, asegurarLegibleSobreBlanco } from '../utils/contraste';
+import { aplicarPaletaEnDocumento } from '../utils/color-utils';
 
 export interface TenantConfig {
   nombre: string;
@@ -42,34 +43,29 @@ export class TenantService {
   }
 
   private aplicarTema(cfg: TenantConfig): void {
-    document.documentElement.style.setProperty(
-      '--color-primario',
-      cfg.color_primario
-    );
-
-    document.documentElement.style.setProperty(
-      '--color-secundario',
+    aplicarPaletaEnDocumento(
+      cfg.color_primario,
       cfg.color_secundario
     );
 
-    // Texto siempre legible encima de cada color, sin importar
-    // qué tonos elija cada inmobiliaria.
+    // Texto siempre legible encima de cada color.
     document.documentElement.style.setProperty(
       '--texto-sobre-primario',
       calcularColorTexto(cfg.color_primario)
     );
+
     document.documentElement.style.setProperty(
       '--texto-sobre-secundario',
       calcularColorTexto(cfg.color_secundario)
     );
 
-    // Para icono/texto que usan el color de marca SOBRE fondo blanco
-    // (no como fondo) — si el color elegido es muy claro, se oscurece
-    // manteniendo el tono, para que nunca desaparezca.
+    // Para iconos/textos que usan el color de marca
+    // sobre fondo blanco.
     document.documentElement.style.setProperty(
       '--primario-legible',
       asegurarLegibleSobreBlanco(cfg.color_primario)
     );
+
     document.documentElement.style.setProperty(
       '--secundario-legible',
       asegurarLegibleSobreBlanco(cfg.color_secundario)

@@ -2,19 +2,19 @@
    TOKENS
 ========================================================== */
 :host {
-  --gv-verde-950: #fcfcfc;
+  --gv-verde-950: var(--color-secundario-superclaro, #fcfcfc);
   --gv-verde-900: var(--color-secundario, #0b3d33);
   --gv-verde-700: var(--color-primario, #0f8f73);
-  --gv-verde-500: var(--color-primario, #14b892);
-  --gv-verde-100: #e6f5f0;
-  --gv-verde-50: #f4faf8;
+  --gv-verde-500: var(--color-primario-claro, #14b892);
+  --gv-verde-100: var(--color-primario-suave, #e6f5f0);
+  --gv-verde-50: var(--color-primario-suave-50, #f4faf8);
 
   --gv-dorado: #f2c14e;
   --gv-dorado-dark: #c99a2e;
 
   --gv-texto: #142622;
   --gv-texto-suave: #5b6f6a;
-  --gv-borde: #e1ece8;
+  --gv-borde: var(--color-borde, #e1ece8);
 
   --gv-rojo: #c94f4f;
   --gv-naranja: #d98a35;
@@ -560,8 +560,8 @@
 .btn-lote {
   width: 100%;
   border: none;
-  background: linear-gradient(135deg, var(--gv-verde-900) 0%, var(--gv-verde-700) 100%);
-  color: var(--texto-sobre-secundario, #fff);
+  background: var(--color-primario, var(--gv-verde-700));
+  color: var(--texto-sobre-primario, #fff);
   padding: 12px 16px;
   border-radius: 999px;
   font-weight: 700;
@@ -579,7 +579,7 @@
 }
 
 .btn-lote:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--gv-verde-700) 0%, var(--gv-verde-900) 100%);
+  background: var(--color-primario-oscuro, var(--gv-verde-900));
 }
 
 .btn-lote:disabled {
@@ -1578,9 +1578,9 @@
 }
 
 .gv-pagina-btn.activo {
-  background: linear-gradient(135deg, var(--gv-verde-900) 0%, var(--gv-verde-700) 100%);
+  background: var(--color-primario, var(--gv-verde-700));
   border-color: transparent;
-  color: var(--texto-sobre-secundario, #fff);
+  color: var(--texto-sobre-primario, #fff);
 }
 
 .gv-pagina-btn:disabled {

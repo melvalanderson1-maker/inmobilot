@@ -221,8 +221,22 @@ export class CatalogoComponent implements OnInit, OnDestroy {
     this.paginaActual.set(1);
   }
 
-  irALote(lote: LotePublico): void {
+irALote(lote: LotePublico): void {
     this.cerrarMapa();
+
+    // Si hay un filtro activo que esconde el lote (ej. "solo disponibles"
+    // y el lote está vendido), lo limpiamos para que sí aparezca en la lista.
+    this.filtroEstado.set('todos');
+    this.precioMin.set(null);
+    this.precioMax.set(null);
+
+    // Ubicamos en qué página cae el lote dentro de la lista ya filtrada,
+    // y saltamos a esa página ANTES de intentar hacer scroll.
+    const indice = this.lotesFiltrados().findIndex((l) => l.id === lote.id);
+    if (indice === -1) return;
+    const pagina = Math.floor(indice / this.porPagina) + 1;
+    this.paginaActual.set(pagina);
+
     setTimeout(() => {
       const el = document.getElementById('lote-' + lote.id);
       if (!el) return;

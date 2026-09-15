@@ -57,16 +57,25 @@ export class LotesListComponent implements OnInit, OnDestroy {
   filtroPrecioMin = signal<number | null>(null);
   filtroPrecioMax = signal<number | null>(null);
 
+  // El signo de grado (°) y el ordinal masculino (º) se ven casi idénticos
+  // pero son caracteres distintos: los unificamos antes de comparar, para
+  // que la búsqueda encuentre el lote sin importar cuál haya tecleado el usuario.
+  private normalizarTexto(valor: string): string {
+    return valor.toLowerCase().replace(/[°º]/g, '°');
+  }
+
   lotesFiltrados = computed(() => {
     const estado = this.filtroEstado();
-    const busqueda = this.filtroBusqueda().trim().toLowerCase();
+    const busqueda = this.normalizarTexto(this.filtroBusqueda().trim());
     const min = this.filtroPrecioMin();
     const max = this.filtroPrecioMax();
 
     return this.lotes().filter((l) => {
       if (estado !== 'todos' && l.estado !== estado) return false;
       if (busqueda) {
-        const texto = `${l.codigo} ${l.ubicacion_lote ?? ''} ${l.partida_registral ?? ''}`.toLowerCase();
+        const texto = this.normalizarTexto(
+          `${l.codigo} ${l.ubicacion_lote ?? ''} ${l.partida_registral ?? ''}`
+        );
         if (!texto.includes(busqueda)) return false;
       }
       const precio = l.precio_total_contado ?? l.precio_total_base ?? 0;

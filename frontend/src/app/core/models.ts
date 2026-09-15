@@ -52,6 +52,8 @@ export interface Lote {
   inicial_financiado?: number;
   monto_financiado?: number;
   precio_total_financiado?: number;
+  inicial_financiado_60c?: number;
+  cuota_mensual_60c?: number;
   estado: EstadoLote;
   partida_registral?: string;
   sunarp_url?: string;

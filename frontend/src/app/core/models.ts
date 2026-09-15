@@ -49,11 +49,13 @@ export interface Lote {
   precio_total_base?: number;
   precio_m2_contado?: number;
   precio_total_contado?: number;
+  precio_m2_financiado?: number;
   inicial_financiado?: number;
   monto_financiado?: number;
   precio_total_financiado?: number;
   inicial_financiado_60c?: number;
   cuota_mensual_60c?: number;
+  frontis?: string;
   estado: EstadoLote;
   partida_registral?: string;
   sunarp_url?: string;

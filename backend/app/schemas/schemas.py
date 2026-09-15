@@ -153,6 +153,7 @@ class LoteCreate(BaseModel):
     precio_total_base: Optional[Decimal] = None
     precio_m2_contado: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
+    precio_m2_financiado: Optional[Decimal] = None
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
@@ -174,6 +175,7 @@ class LoteUpdate(BaseModel):
     precio_total_base: Optional[Decimal] = None
     precio_m2_contado: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
+    precio_m2_financiado: Optional[Decimal] = None
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
@@ -205,6 +207,7 @@ class LoteOut(ORMBase):
     precio_total_base: Optional[Decimal] = None
     precio_m2_contado: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
+    precio_m2_financiado: Optional[Decimal] = None
     inicial_financiado: Optional[Decimal] = None
     monto_financiado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None

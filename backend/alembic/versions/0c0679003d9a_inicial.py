@@ -204,6 +204,7 @@ def upgrade() -> None:
     sa.Column('precio_total_base', sa.Numeric(precision=12, scale=2), nullable=True),
     sa.Column('precio_m2_contado', sa.Numeric(precision=10, scale=2), nullable=True),
     sa.Column('precio_total_contado', sa.Numeric(precision=12, scale=2), nullable=True),
+    sa.Column('precio_m2_financiado', sa.Numeric(precision=10, scale=2), nullable=True),
     sa.Column('inicial_financiado', sa.Numeric(precision=12, scale=2), nullable=True),
     sa.Column('monto_financiado', sa.Numeric(precision=12, scale=2), nullable=True),
     sa.Column('precio_total_financiado', sa.Numeric(precision=12, scale=2), nullable=True),

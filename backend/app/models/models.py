@@ -273,6 +273,7 @@ class Lote(Base):
     precio_total_base = Column(Numeric(12, 2))
     precio_m2_contado = Column(Numeric(10, 2))
     precio_total_contado = Column(Numeric(12, 2))
+    precio_m2_financiado = Column(Numeric(10, 2))
     inicial_financiado = Column(Numeric(12, 2))
     monto_financiado = Column(Numeric(12, 2))
     precio_total_financiado = Column(Numeric(12, 2))

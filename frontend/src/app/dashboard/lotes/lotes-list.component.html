@@ -96,25 +96,27 @@
             <th rowspan="2">Código</th>
             <th rowspan="2">Ubicación</th>
             <th rowspan="2">Partida</th>
+            <th rowspan="2">Frontis</th>
             <th rowspan="2">Perímetro</th>
             <th rowspan="2">Área</th>
             <th colspan="2" class="grupo-base">Inversión base</th>
-            <th colspan="2" class="grupo-contado">Inversión contado</th>
-            <th colspan="3" class="grupo-financiado">Financiado</th>
-            <th colspan="2" class="grupo-cuotas">Financiado 5 años</th>
+            <th colspan="4" class="grupo-financiado">Inversión financiado 2 años</th>
+            <th colspan="2" class="grupo-cuotas">Inversión financiado 5 años</th>
+            <th colspan="2" class="grupo-contado">Inversión al contado</th>
             <th rowspan="2">Estado</th>
             <th rowspan="2"></th>
           </tr>
           <tr>
             <th class="grupo-base">Px m²</th>
             <th class="grupo-base">Total</th>
-            <th class="grupo-contado">Px m²</th>
-            <th class="grupo-contado">Total</th>
+            <th class="grupo-financiado">Px m²</th>
             <th class="grupo-financiado">Inicial</th>
             <th class="grupo-financiado">Financiado</th>
             <th class="grupo-financiado">Total</th>
             <th class="grupo-cuotas">Inicial</th>
-            <th class="grupo-cuotas">Cuota/mes</th>
+            <th class="grupo-cuotas">60 cuotas</th>
+            <th class="grupo-contado">Px m²</th>
+            <th class="grupo-contado">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -146,17 +148,19 @@
               </td>
               <td>{{ lote.ubicacion_lote || '—' }}</td>
               <td>{{ lote.partida_registral || '—' }}</td>
+              <td>{{ lote.frontis || '—' }}</td>
               <td>{{ lote.perimetro ? (lote.perimetro + ' m') : '—' }}</td>
               <td>{{ lote.area_m2 }} m²</td>
               <td class="grupo-base">{{ lote.precio_m2_base ? ('S/' + lote.precio_m2_base) : '—' }}</td>
               <td class="grupo-base monto">{{ lote.precio_total_base ? ('S/ ' + (lote.precio_total_base | number:'1.0-0')) : '—' }}</td>
-              <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
-              <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-financiado">{{ lote.precio_m2_financiado ? ('S/' + lote.precio_m2_financiado) : '—' }}</td>
               <td class="grupo-financiado">{{ lote.inicial_financiado ? ('S/ ' + (lote.inicial_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado">{{ lote.monto_financiado ? ('S/ ' + (lote.monto_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-cuotas">{{ lote.inicial_financiado_60c ? ('S/ ' + (lote.inicial_financiado_60c | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-cuotas monto">{{ lote.cuota_mensual_60c ? ('S/ ' + (lote.cuota_mensual_60c | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
+              <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
               <td class="acciones">
                 <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
@@ -359,6 +363,10 @@
                 <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
               </div>
               <div class="campo">
+                <label>Frontis</label>
+                <input type="text" [(ngModel)]="form.frontis" placeholder="Ej: 8.50 m" />
+              </div>
+              <div class="campo">
                 <label>Perímetro (m)</label>
                 <input type="number" [(ngModel)]="form.perimetro" />
               </div>
@@ -388,6 +396,10 @@
               </div>
 
               <h4 class="subseccion campo-span-2">Inversión final financiado</h4>
+              <div class="campo">
+                <label>Precio por m²</label>
+                <input type="number" [(ngModel)]="form.precio_m2_financiado" />
+              </div>
               <div class="campo">
                 <label>Inicial</label>
                 <input type="number" [(ngModel)]="form.inicial_financiado" />

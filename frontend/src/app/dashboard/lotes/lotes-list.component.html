@@ -317,9 +317,14 @@
               <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
                 <option [ngValue]="null" disabled>Selecciona una manzana</option>
                 @for (m of manzanas(); track m.id) {
-                  <option [ngValue]="m.id">{{ m.nombre }}</option>
+                  <option [ngValue]="m.id">
+                    {{ m.nombre }} — {{ m.etapa?.nombre || 'Sin etapa' }} (Partida {{ m.etapa?.partida_registral || 's/n' }})
+                  </option>
                 }
               </select>
+              <small style="font-size:11px;color:#8993a2;">
+                Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).
+              </small>
             </div>
           }
 

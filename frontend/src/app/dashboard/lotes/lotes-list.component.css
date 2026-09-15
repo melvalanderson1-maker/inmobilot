@@ -715,6 +715,7 @@
 .grupo-base { background: #fff4ec; }
 .grupo-contado { background: #eefaf1; }
 .grupo-financiado { background: #eaf6fb; }
+.grupo-cuotas { background: #f5f0fa; }
 
 @media (max-width: 1100px) {
   .kpis-grid { grid-template-columns: repeat(3, 1fr); }

@@ -44,6 +44,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
     inicial_financiado: null as number | null,
     monto_financiado: null as number | null,
     precio_total_financiado: null as number | null,
+    inicial_financiado_60c: null as number | null,
+    cuota_mensual_60c: null as number | null,
     partida_registral: '',
   };
 
@@ -278,6 +280,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
       inicial_financiado: null,
       monto_financiado: null,
       precio_total_financiado: null,
+      inicial_financiado_60c: null,
+      cuota_mensual_60c: null,
       partida_registral: '',
     };
     this.archivosNuevos = [];
@@ -301,6 +305,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
       inicial_financiado: lote.inicial_financiado ? Number(lote.inicial_financiado) : null,
       monto_financiado: lote.monto_financiado ? Number(lote.monto_financiado) : null,
       precio_total_financiado: lote.precio_total_financiado ? Number(lote.precio_total_financiado) : null,
+      inicial_financiado_60c: (lote as any).inicial_financiado_60c ? Number((lote as any).inicial_financiado_60c) : null,
+      cuota_mensual_60c: (lote as any).cuota_mensual_60c ? Number((lote as any).cuota_mensual_60c) : null,
       partida_registral: lote.partida_registral ?? '',
     };
     this.archivosNuevos = [];
@@ -406,6 +412,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
           inicial_financiado: this.form.inicial_financiado ?? undefined,
           monto_financiado: this.form.monto_financiado ?? undefined,
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
+          inicial_financiado_60c: this.form.inicial_financiado_60c ?? undefined,
+          cuota_mensual_60c: this.form.cuota_mensual_60c ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })
         .subscribe({ 
@@ -438,6 +446,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
           inicial_financiado: this.form.inicial_financiado ?? undefined,
           monto_financiado: this.form.monto_financiado ?? undefined,
           precio_total_financiado: this.form.precio_total_financiado ?? undefined,
+          inicial_financiado_60c: this.form.inicial_financiado_60c ?? undefined,
+          cuota_mensual_60c: this.form.cuota_mensual_60c ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
         })
         .subscribe({ 

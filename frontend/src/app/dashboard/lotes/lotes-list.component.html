@@ -101,6 +101,7 @@
             <th colspan="2" class="grupo-base">Inversión base</th>
             <th colspan="2" class="grupo-contado">Inversión contado</th>
             <th colspan="3" class="grupo-financiado">Financiado</th>
+            <th colspan="2" class="grupo-cuotas">Financiado 5 años</th>
             <th rowspan="2">Estado</th>
             <th rowspan="2"></th>
           </tr>
@@ -112,6 +113,8 @@
             <th class="grupo-financiado">Inicial</th>
             <th class="grupo-financiado">Financiado</th>
             <th class="grupo-financiado">Total</th>
+            <th class="grupo-cuotas">Inicial</th>
+            <th class="grupo-cuotas">Cuota/mes</th>
           </tr>
         </thead>
         <tbody>
@@ -152,6 +155,8 @@
               <td class="grupo-financiado">{{ lote.inicial_financiado ? ('S/ ' + (lote.inicial_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado">{{ lote.monto_financiado ? ('S/ ' + (lote.monto_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-cuotas">{{ lote.inicial_financiado_60c ? ('S/ ' + (lote.inicial_financiado_60c | number:'1.0-0')) : '—' }}</td>
+              <td class="grupo-cuotas monto">{{ lote.cuota_mensual_60c ? ('S/ ' + (lote.cuota_mensual_60c | number:'1.0-0')) : '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
               <td class="acciones">
                 <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
@@ -394,6 +399,16 @@
               <div class="campo campo-span-2">
                 <label>Total</label>
                 <input type="number" [(ngModel)]="form.precio_total_financiado" />
+              </div>
+
+              <h4 class="subseccion campo-span-2">Financiado a 5 años (60 cuotas)</h4>
+              <div class="campo">
+                <label>Inicial</label>
+                <input type="number" [(ngModel)]="form.inicial_financiado_60c" />
+              </div>
+              <div class="campo">
+                <label>Cuota mensual</label>
+                <input type="number" [(ngModel)]="form.cuota_mensual_60c" />
               </div>
 
               <div class="campo campo-span-2">

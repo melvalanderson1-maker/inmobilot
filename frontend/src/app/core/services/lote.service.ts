@@ -16,6 +16,8 @@ export interface LoteCreate {
   inicial_financiado?: number;
   monto_financiado?: number;
   precio_total_financiado?: number;
+  inicial_financiado_60c?: number;
+  cuota_mensual_60c?: number;
   partida_registral?: string;
 }
 
@@ -30,6 +32,8 @@ export interface LoteUpdate {
   inicial_financiado?: number;
   monto_financiado?: number;
   precio_total_financiado?: number;
+  inicial_financiado_60c?: number;
+  cuota_mensual_60c?: number;
   partida_registral?: string;
 }
 

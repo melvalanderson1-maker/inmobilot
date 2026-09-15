@@ -3,11 +3,6 @@
     <div class="overlay-movil" (click)="cerrarMenuMovil()"></div>
   }
 
-<div class="shell">
-  @if (menuMovilAbierto()) {
-    <div class="overlay-movil" (click)="cerrarMenuMovil()"></div>
-  }
-
   <aside class="sidebar" [class.colapsado]="colapsado()" [class.abierto-movil]="menuMovilAbierto()">
     <div class="sidebar-top">
       <div class="logo" [class.logo-solo]="colapsado()">

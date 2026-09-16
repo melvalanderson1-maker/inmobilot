@@ -260,6 +260,15 @@
 
 .btn-icono svg { width: 16px; height: 16px; }
 
+.btn-icono.icono-ubicado {
+  color: #059669;
+}
+
+.btn-icono.icono-ubicado:hover {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .select-estado {
   background: white;
   border: 1px solid #cbd5e1;

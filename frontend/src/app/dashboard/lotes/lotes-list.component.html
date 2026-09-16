@@ -206,7 +206,12 @@
                     </svg>
                   </button>
                   @if (urlMaqueta()) {
-                    <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">
+                    <button
+                      class="btn-icono"
+                      [class.icono-ubicado]="lote.mapa_x != null"
+                      (click)="abrirUbicarMapa(lote)"
+                      [title]="lote.mapa_x != null ? 'Ya ubicado en el mapa' : 'Ubicar en el mapa'"
+                    >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                         <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
                         <circle cx="12" cy="10" r="2.5" />

@@ -16,6 +16,7 @@ def obtener_config_tenant():
         "nombre": settings.EMPRESA_NOMBRE,
         "slug": settings.EMPRESA_SLUG,
         "logo_url": settings.EMPRESA_LOGO_URL,
+        "logo_header_url": settings.EMPRESA_LOGO_HEADER_URL,
         "mascota_url": settings.EMPRESA_MASCOTA_URL,
         "hero_url": settings.EMPRESA_HERO_URL,
         "mapa_url": settings.EMPRESA_MAPA_URL,

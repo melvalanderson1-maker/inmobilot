@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     EMPRESA_SLUG: str = "demo"
     EMPRESA_DOMINIO: str = "localhost:4200"
     EMPRESA_LOGO_URL: str = "/static/branding/logo.png"
+    EMPRESA_LOGO_HEADER_URL: str = ""
     EMPRESA_MASCOTA_URL: str = ""
     EMPRESA_HERO_URL: str = ""
     EMPRESA_MAPA_URL: str = ""

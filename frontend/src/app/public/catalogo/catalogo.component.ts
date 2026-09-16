@@ -435,6 +435,12 @@ irALote(lote: LotePublico): void {
     return url ? this.componerUrlMarca(url) : null;
   }
 
+  urlLogoHeader(): string | null {
+    // Si aún no subiste un logo específico para el header, usa el logo normal (footer) como respaldo.
+    const url = this.tenant.config()?.logo_header_url || this.tenant.config()?.logo_url;
+    return url ? this.componerUrlMarca(url) : null;
+  }
+
   urlMascota(): string | null {
     const url = this.tenant.config()?.mascota_url;
     return url ? this.componerUrlMarca(url) : null;

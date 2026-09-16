@@ -8,6 +8,7 @@ export interface TenantConfig {
   nombre: string;
   slug: string;
   logo_url: string;
+  logo_header_url: string;
   mascota_url: string;
   hero_url: string;
   mapa_url: string;

@@ -9,7 +9,15 @@ from app.sockets import socket_app
 
 
 from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup
-app = FastAPI(title=settings.APP_NAME)
+
+DOCS_HABILITADOS = settings.ENV != "production"
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    docs_url="/docs" if DOCS_HABILITADOS else None,
+    redoc_url="/redoc" if DOCS_HABILITADOS else None,
+    openapi_url="/openapi.json" if DOCS_HABILITADOS else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

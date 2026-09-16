@@ -814,3 +814,86 @@
 .btn-pagina:hover:not(:disabled) { background: #f1f5f9; }
 .btn-pagina:disabled { opacity: 0.4; cursor: not-allowed; }
 .paginacion-info { font-size: 0.85rem; color: #64748b; font-weight: 500; }
+
+
+/* ===== Dropdown de estado en la tabla ===== */
+
+.celda-estado { position: relative; }
+
+.estado-dropdown {
+  position: relative;
+  display: inline-flex;
+}
+
+.chip-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chip-boton:hover {
+  filter: brightness(0.95);
+}
+
+.chip-boton svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.estado-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.15);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 30;
+  min-width: 130px;
+}
+
+.estado-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.6rem;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  color: #334155;
+  text-transform: capitalize;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.estado-menu-item:hover {
+  background: #f1f5f9;
+}
+
+.estado-menu-item.activo {
+  background: #eef2ff;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.estado-punto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.punto-libre { background: #059669; }
+.punto-separado { background: #ea580c; }
+.punto-bloqueado { background: #dc2626; }
+.punto-vendido { background: #1d4ed8; }

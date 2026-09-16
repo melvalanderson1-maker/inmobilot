@@ -129,6 +129,9 @@ export class LotesListComponent implements OnInit, OnDestroy {
   modalImagenAbierto = signal(false);
   imagenUrlActual = signal<string | null>(null);
 
+  // ---- Dropdown de estado (en la tabla) ----
+  menuEstadoAbierto = signal<number | null>(null);
+
   constructor(
     private api: ApiService,
     public auth: AuthService,
@@ -393,6 +396,10 @@ export class LotesListComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.menuEstadoAbierto() !== null) {
+      this.cerrarMenuEstado();
+      return;
+    }
     if (this.modalImagenAbierto()) {
       this.cerrarImagen();
       return;
@@ -400,6 +407,28 @@ export class LotesListComponent implements OnInit, OnDestroy {
     if (this.formularioAbierto()) {
       this.cerrarFormulario();
     }
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    if (this.menuEstadoAbierto() !== null) {
+      this.menuEstadoAbierto.set(null);
+    }
+  }
+
+  toggleMenuEstado(idLote: number, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuEstadoAbierto.update((actual) => (actual === idLote ? null : idLote));
+  }
+
+  cerrarMenuEstado(): void {
+    this.menuEstadoAbierto.set(null);
+  }
+
+  seleccionarEstado(lote: Lote, estado: string): void {
+    this.cerrarMenuEstado();
+    if (estado === lote.estado) return;
+    this.cambiarEstado(lote, estado as EstadoLote);
   }
 
   // ---- Guardar (crear o editar) + subir imágenes ----

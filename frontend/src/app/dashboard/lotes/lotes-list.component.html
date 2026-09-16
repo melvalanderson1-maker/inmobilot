@@ -162,7 +162,37 @@
 
               <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
               <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
-              <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
+              <td class="celda-estado">
+                <div class="estado-dropdown">
+                  <button
+                    type="button"
+                    class="chip chip-boton"
+                    [ngClass]="'chip-' + lote.estado"
+                    (click)="toggleMenuEstado(lote.id, $event)"
+                  >
+                    {{ lote.estado }}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+
+                  @if (menuEstadoAbierto() === lote.id) {
+                    <div class="estado-menu" (click)="$event.stopPropagation()">
+                      @for (opcion of ['libre','separado','bloqueado','vendido']; track opcion) {
+                        <button
+                          type="button"
+                          class="estado-menu-item"
+                          [class.activo]="lote.estado === opcion"
+                          (click)="seleccionarEstado(lote, opcion)"
+                        >
+                          <span class="estado-punto" [ngClass]="'punto-' + opcion"></span>
+                          {{ opcion }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </td>
               <td class="acciones">
                 <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -178,16 +208,6 @@
                     </svg>
                   </button>
                 }
-                <select
-                  class="select-estado"
-                  (change)="cambiarEstado(lote, $any($event.target).value)"
-                >
-                  <option value="" disabled selected>Estado</option>
-                  <option value="libre">Libre</option>
-                  <option value="separado">Separado</option>
-                  <option value="bloqueado">Bloqueado</option>
-                  <option value="vendido">Vendido</option>
-                </select>
               </td>
             </tr>
           }

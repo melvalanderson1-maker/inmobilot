@@ -548,10 +548,4 @@ main {
 
 :host {
   display: block;
-  overflow-x: hidden;
-}
-
-.shell {
-  max-width: 100vw;
-  overflow-x: hidden;
 }

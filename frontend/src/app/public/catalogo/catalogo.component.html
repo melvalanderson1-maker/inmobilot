@@ -8,7 +8,9 @@
 
       <div class="gv-brand">
         <span class="gv-brand-mark">
-          @if (urlLogo()) {
+          @if (!headerFlotante() && urlLogoHeader()) {
+            <img [src]="urlLogoHeader()" [alt]="nombreProyecto()" />
+          } @else if (headerFlotante() && urlLogo()) {
             <img [src]="urlLogo()" [alt]="nombreProyecto()" />
           }
         </span>

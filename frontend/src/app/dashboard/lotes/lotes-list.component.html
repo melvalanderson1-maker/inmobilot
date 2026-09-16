@@ -319,7 +319,8 @@
               }
               <select
                 class="select-estado select-estado-card"
-                (change)="cambiarEstado(lote, $any($event.target).value)"
+                #selectEstadoLote
+                (change)="cambiarEstado(lote, $any($event.target).value, selectEstadoLote)"
               >
                 <option value="" disabled selected>Cambiar estado</option>
                 <option value="libre">Libre</option>

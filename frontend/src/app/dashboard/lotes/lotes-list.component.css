@@ -951,6 +951,12 @@
   min-width: 130px;
 }
 
+/* Las últimas filas abren el menú hacia arriba para no cortarse */
+.tabla-lotes tbody tr:nth-last-child(-n + 3) .estado-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .estado-menu-item {
   display: flex;
   align-items: center;

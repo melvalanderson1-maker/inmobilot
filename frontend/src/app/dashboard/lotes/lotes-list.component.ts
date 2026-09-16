@@ -605,14 +605,24 @@ export class LotesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  async cambiarEstado(lote: Lote, estado: EstadoLote): Promise<void> {
-    if (estado === lote.estado) return;
+  
+async cambiarEstado(lote: Lote, estado: EstadoLote, selectElement?: HTMLSelectElement): Promise<void> {
+  if (estado === lote.estado) {
+    if (selectElement) selectElement.value = '';
+    return;
+  }
 
-    const confirmado = await this.confirmModal.confirm(
-      'Cambiar estado del lote',
-      `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`
-    );
-    if (!confirmado) return;
+  const confirmado = await this.confirmModal.confirm(
+    'Cambiar estado del lote',
+    `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`
+  );
+
+  // Apenas se resuelve el modal (confirmes o canceles), el select
+  // vuelve a mostrar "Cambiar estado" — así nunca queda "pegado"
+  // en una opción que en realidad no se aplicó.
+  if (selectElement) selectElement.value = '';
+
+  if (!confirmado) return;
 
     const estadoAnterior = lote.estado;
 

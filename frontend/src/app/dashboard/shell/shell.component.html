@@ -11,13 +11,16 @@
           <span class="logo-texto">Inmobilot</span>
         }
       </div>
-
-      <button class="btn-colapsar" (click)="toggleSidebar()" [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotado]="colapsado()">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
     </div>
+
+    <button class="btn-colapsar" (click)="toggleSidebar()" [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotado]="colapsado()">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+      @if (!colapsado()) {
+        <span>Colapsar menú</span>
+      }
+    </button>
 
     <nav>
       @for (modulo of modulos; track modulo.id) {
@@ -114,13 +117,13 @@
       }
     </nav>
 
-    <div class="usuario">
+    <div class="usuario" [title]="auth.usuario()?.nombre">
       <div class="avatar">{{ inicialesUsuario }}</div>
 
       @if (!colapsado()) {
         <div class="usuario-info">
-          <div class="nombre">{{ auth.usuario()?.nombre }}</div>
-          <div class="rol">{{ auth.usuario()?.rol?.nombre }}</div>
+          <div class="nombre" [title]="auth.usuario()?.nombre">{{ auth.usuario()?.nombre }}</div>
+          <div class="rol" [title]="auth.usuario()?.rol?.nombre">{{ auth.usuario()?.rol?.nombre }}</div>
         </div>
       }
     </div>

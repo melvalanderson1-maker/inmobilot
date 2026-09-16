@@ -184,10 +184,33 @@
 
 .miniatura-vacia:hover { transform: none; }
 
+.codigo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
 .codigo {
   display: block;
   font-weight: 700;
   color: #0f172a;
+}
+
+.avatar-usuario-mini {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  text-transform: uppercase;
 }
 
 .contador-imagenes {
@@ -749,8 +772,10 @@
    quedan siempre visibles aunque hagas scroll horizontal. */
 
 .tabla-lotes-completa .acciones {
-  width: 76px;
-  min-width: 76px;
+  width: 44px;
+  min-width: 44px;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .tabla-lotes-completa .celda-miniatura,
@@ -770,7 +795,7 @@
 .tabla-lotes-completa .celda-estado,
 .tabla-lotes-completa th.celda-estado {
   position: sticky;
-  right: 76px;
+  right: 44px;
   z-index: 4;
   background: #fff;
   box-shadow: -2px 0 4px rgba(15, 23, 42, 0.06);

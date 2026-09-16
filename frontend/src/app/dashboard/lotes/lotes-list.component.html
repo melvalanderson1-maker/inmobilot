@@ -140,12 +140,16 @@
                 }
               </td>
               <td>
-                <span class="codigo">{{ lote.codigo }}</span>
+                <div class="codigo-wrap">
+                  <span class="codigo">{{ lote.codigo }}</span>
+                  @if (lote.actualizado_por_nombre || lote.creado_por_nombre) {
+                    <span class="avatar-usuario-mini" [title]="lote.actualizado_por_nombre || lote.creado_por_nombre">
+                      {{ inicialesUsuarioLote(lote.actualizado_por_nombre || lote.creado_por_nombre) }}
+                    </span>
+                  }
+                </div>
                 @if (lote.imagenes && lote.imagenes.length > 1) {
                   <span class="contador-imagenes">+{{ lote.imagenes.length - 1 }} fotos</span>
-                }
-                @if (lote.actualizado_por_nombre || lote.creado_por_nombre) {
-                  <span class="contador-imagenes">por {{ lote.actualizado_por_nombre || lote.creado_por_nombre }}</span>
                 }
               </td>
               <td>{{ lote.ubicacion_lote || '—' }}</td>

@@ -372,6 +372,16 @@ export class LotesListComponent implements OnInit, OnDestroy {
     if (relativa.startsWith('http://') || relativa.startsWith('https://')) return relativa;
     return this.api.apiUrl + relativa;
   }
+
+  inicialesUsuarioLote(nombre: string): string {
+    return nombre
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((palabra) => palabra[0])
+      .join('')
+      .toUpperCase();
+  }
   
   abrirImagen(relativa: string): void {
     this.imagenUrlActual.set(this.urlImagenLote(relativa));

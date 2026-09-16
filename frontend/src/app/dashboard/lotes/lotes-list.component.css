@@ -907,6 +907,10 @@
 
 .celda-estado { position: relative; }
 
+.tabla-lotes-completa .celda-estado.celda-estado-activa {
+  z-index: 25;
+}
+
 .estado-dropdown {
   position: relative;
   display: inline-flex;

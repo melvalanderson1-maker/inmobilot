@@ -7,11 +7,13 @@ import { ApiService } from '../../core/services/api.service';
 import { SocketService } from '../../core/services/socket.service';
 import { Notificacion } from '../../core/models';
 import { ToastContainerComponent } from '../../shared/toast/toast-container.component';
+import { LoaderComponent } from '../../shared/loader/loader.component';
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent, LoaderComponent, ConfirmModalComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.css',
 })

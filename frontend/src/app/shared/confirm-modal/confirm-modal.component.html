@@ -1,0 +1,21 @@
+@if (confirmModal.estado().visible) {
+  <div class="modal-overlay" (click)="confirmModal.responder(false)">
+    <div class="modal-confirm" (click)="$event.stopPropagation()">
+      <div class="modal-icono">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </div>
+
+      <h3>{{ confirmModal.estado().titulo }}</h3>
+      <p>{{ confirmModal.estado().mensaje }}</p>
+
+      <div class="modal-acciones">
+        <button class="btn-cancelar" (click)="confirmModal.responder(false)">Cancelar</button>
+        <button class="btn-confirmar" (click)="confirmModal.responder(true)">Confirmar</button>
+      </div>
+    </div>
+  </div>
+}

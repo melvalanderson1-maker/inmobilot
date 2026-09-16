@@ -8,6 +8,8 @@ import { SocketService } from '../../core/services/socket.service';
 import { LoteService } from '../../core/services/lote.service';
 import { TenantService } from '../../core/services/tenant.service';
 import { ToastService } from '../../core/services/toast.service';
+import { LoaderService } from '../../core/services/loader.service';
+import { ConfirmModalService } from '../../core/services/confirm-modal.service';
 import { EstadoLote, Lote, Manzana, Proyecto } from '../../core/models';
 
 @Component({
@@ -138,7 +140,9 @@ export class LotesListComponent implements OnInit, OnDestroy {
     private socket: SocketService,
     private loteService: LoteService,
     public tenant: TenantService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private loader: LoaderService,
+    private confirmModal: ConfirmModalService
   ) {
     // Resetea a la página 1 cada vez que cambia cualquier filtro,
     // para no quedar "atrapado" en una página que ya no existe.
@@ -601,7 +605,15 @@ export class LotesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  cambiarEstado(lote: Lote, estado: EstadoLote): void {
+  async cambiarEstado(lote: Lote, estado: EstadoLote): Promise<void> {
+    if (estado === lote.estado) return;
+
+    const confirmado = await this.confirmModal.confirm(
+      'Cambiar estado del lote',
+      `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`
+    );
+    if (!confirmado) return;
+
     const estadoAnterior = lote.estado;
 
     // Actualización optimista: cambiamos el estado en memoria de inmediato,
@@ -610,12 +622,16 @@ export class LotesListComponent implements OnInit, OnDestroy {
       lista.map((l) => (l.id === lote.id ? { ...l, estado } : l))
     );
 
+    this.loader.show('Actualizando estado del lote...');
+
     this.api.patch<Lote>(`/lotes/${lote.id}/estado`, { estado }).subscribe({
       next: (loteActualizado) => {
+        this.loader.hide();
         const sufijo = loteActualizado.actualizado_por_nombre ? ` por ${loteActualizado.actualizado_por_nombre}` : '';
         this.toastService.exito(`Estado del lote ${lote.codigo} actualizado correctamente${sufijo}`);
       },
       error: (err) => {
+        this.loader.hide();
         // Si falla, revertimos al estado anterior
         this.lotes.update((lista) =>
           lista.map((l) => (l.id === lote.id ? { ...l, estado: estadoAnterior } : l))

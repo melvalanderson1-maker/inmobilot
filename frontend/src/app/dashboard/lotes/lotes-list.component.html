@@ -166,7 +166,7 @@
 
               <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
               <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
-              <td class="celda-estado">
+              <td class="celda-estado" [class.celda-estado-activa]="menuEstadoAbierto() === lote.id">
                 <div class="estado-dropdown">
                   <button
                     type="button"
@@ -198,19 +198,21 @@
                 </div>
               </td>
               <td class="acciones">
-                <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </button>
-                @if (urlMaqueta()) {
-                  <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">
+                @if (auth.usuario()?.rol?.clave === 'admin') {
+                  <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
-                      <circle cx="12" cy="10" r="2.5" />
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
                     </svg>
                   </button>
+                  @if (urlMaqueta()) {
+                    <button class="btn-icono" (click)="abrirUbicarMapa(lote)" title="Ubicar en el mapa">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
+                        <circle cx="12" cy="10" r="2.5" />
+                      </svg>
+                    </button>
+                  }
                 }
               </td>
             </tr>
@@ -297,21 +299,23 @@
             </div>
 
             <div class="lote-card-acciones">
-              <button class="btn-secundario btn-card-accion" (click)="abrirEditar(lote)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
-                  <path d="M12 20h9" />
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                </svg>
-                Editar
-              </button>
-              @if (urlMaqueta()) {
-                <button class="btn-secundario btn-card-accion" (click)="abrirUbicarMapa(lote)">
+              @if (auth.usuario()?.rol?.clave === 'admin') {
+                <button class="btn-secundario btn-card-accion" (click)="abrirEditar(lote)">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
-                    <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
-                    <circle cx="12" cy="10" r="2.5" />
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
                   </svg>
-                  Mapa
+                  Editar
                 </button>
+                @if (urlMaqueta()) {
+                  <button class="btn-secundario btn-card-accion" (click)="abrirUbicarMapa(lote)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15">
+                      <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                    Mapa
+                  </button>
+                }
               }
               <select
                 class="select-estado select-estado-card"

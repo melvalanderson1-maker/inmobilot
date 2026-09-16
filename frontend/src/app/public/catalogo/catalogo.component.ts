@@ -350,7 +350,7 @@ irALote(lote: LotePublico): void {
       .get<LotePublico[]>(`/public/proyectos/${this.empresaSlug}/${this.proyectoSlug}/lotes`)
       .subscribe({
         next: (lotes) => {
-          this.lotes.set(lotes.filter((l) => l.estado !== 'bloqueado'));
+          this.lotes.set(lotes);
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),

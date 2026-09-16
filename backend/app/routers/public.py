@@ -27,7 +27,11 @@ def listar_lotes_publicos(empresa_slug: str, proyecto_slug: str, db: Session = D
     lotes = (
         db.query(m.Lote)
         .options(joinedload(m.Lote.imagenes))
-        .filter(m.Lote.id_proyecto == proyecto.id, m.Lote.activo.is_(True))
+        .filter(
+            m.Lote.id_proyecto == proyecto.id,
+            m.Lote.activo.is_(True),
+            m.Lote.estado != m.EstadoLoteEnum.bloqueado,
+        )
         .order_by(m.Lote.orden.asc().nulls_last(), m.Lote.codigo.asc())
         .all()
     )

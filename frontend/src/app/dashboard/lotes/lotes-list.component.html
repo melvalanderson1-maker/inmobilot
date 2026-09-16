@@ -101,7 +101,7 @@
             <th rowspan="2">Área</th>
             <th colspan="2" class="grupo-base">Inversión base</th>
             <th colspan="4" class="grupo-financiado">Inversión financiado 2 años</th>
-            <th colspan="2" class="grupo-cuotas">Inversión financiado 5 años</th>
+
             <th colspan="2" class="grupo-contado">Inversión al contado</th>
             <th rowspan="2">Estado</th>
             <th rowspan="2"></th>
@@ -113,8 +113,7 @@
             <th class="grupo-financiado">Inicial</th>
             <th class="grupo-financiado">Financiado</th>
             <th class="grupo-financiado">Total</th>
-            <th class="grupo-cuotas">Inicial</th>
-            <th class="grupo-cuotas">60 cuotas</th>
+
             <th class="grupo-contado">Px m²</th>
             <th class="grupo-contado">Total</th>
           </tr>
@@ -145,6 +144,9 @@
                 @if (lote.imagenes && lote.imagenes.length > 1) {
                   <span class="contador-imagenes">+{{ lote.imagenes.length - 1 }} fotos</span>
                 }
+                @if (lote.actualizado_por_nombre || lote.creado_por_nombre) {
+                  <span class="contador-imagenes">por {{ lote.actualizado_por_nombre || lote.creado_por_nombre }}</span>
+                }
               </td>
               <td>{{ lote.ubicacion_lote || '—' }}</td>
               <td>{{ lote.partida_registral || '—' }}</td>
@@ -157,8 +159,7 @@
               <td class="grupo-financiado">{{ lote.inicial_financiado ? ('S/ ' + (lote.inicial_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado">{{ lote.monto_financiado ? ('S/ ' + (lote.monto_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
-              <td class="grupo-cuotas">{{ lote.inicial_financiado_60c ? ('S/ ' + (lote.inicial_financiado_60c | number:'1.0-0')) : '—' }}</td>
-              <td class="grupo-cuotas monto">{{ lote.cuota_mensual_60c ? ('S/ ' + (lote.cuota_mensual_60c | number:'1.0-0')) : '—' }}</td>
+
               <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
               <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + lote.estado">{{ lote.estado }}</span></td>
@@ -413,15 +414,7 @@
                 <input type="number" [(ngModel)]="form.precio_total_financiado" />
               </div>
 
-              <h4 class="subseccion campo-span-2">Financiado a 5 años (60 cuotas)</h4>
-              <div class="campo">
-                <label>Inicial</label>
-                <input type="number" [(ngModel)]="form.inicial_financiado_60c" />
-              </div>
-              <div class="campo">
-                <label>Cuota mensual</label>
-                <input type="number" [(ngModel)]="form.cuota_mensual_60c" />
-              </div>
+
 
               <div class="campo campo-span-2">
                 <label>Partida registral (SUNARP)</label>

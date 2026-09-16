@@ -434,7 +434,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
           partida_registral: this.form.partida_registral || undefined,
         })
         .subscribe({ 
-          next: () => this.subirImagenesPendientes(loteActual.id, loteActual.imagenes.length),
+          next: (loteActualizado) => this.subirImagenesPendientes(loteActual.id, loteActual.imagenes.length, loteActualizado.actualizado_por_nombre),
           error: (err) => { 
             this.guardando.set(false); 
             const mensaje = err?.error?.detail ?? 'Error al actualizar el lote';
@@ -470,7 +470,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
           partida_registral: this.form.partida_registral || undefined,
         })
         .subscribe({ 
-          next: (lote) => this.subirImagenesPendientes(lote.id, 0),
+          next: (lote) => this.subirImagenesPendientes(lote.id, 0, lote.creado_por_nombre),
           error: (err) => { 
             this.guardando.set(false); 
             const mensaje = err?.error?.detail ?? 'Error al crear el lote';
@@ -481,15 +481,16 @@ export class LotesListComponent implements OnInit, OnDestroy {
     }
   }
 
-  private subirImagenesPendientes(idLote: number, imagenesExistentes: number): void {
+  private subirImagenesPendientes(idLote: number, imagenesExistentes: number, nombreUsuario?: string): void {
     if (this.archivosNuevos.length === 0) { 
       this.guardando.set(false); 
       this.cerrarFormulario();
       this.cargarLotes();
 
+      const sufijo = nombreUsuario ? ` por ${nombreUsuario}` : '';
       const mensaje = this.loteEditando()
-        ? 'Lote actualizado correctamente'
-        : 'Lote creado correctamente';
+        ? `Lote actualizado correctamente${sufijo}`
+        : `Lote creado correctamente${sufijo}`;
 
       this.toastService.exito(mensaje);
 
@@ -514,9 +515,10 @@ export class LotesListComponent implements OnInit, OnDestroy {
               this.cerrarFormulario(); 
               this.cargarLotes();
 
+              const sufijo = nombreUsuario ? ` por ${nombreUsuario}` : '';
               const mensaje = this.loteEditando()
-                ? 'Lote actualizado correctamente'
-                : 'Lote creado correctamente';
+                ? `Lote actualizado correctamente${sufijo}`
+                : `Lote creado correctamente${sufijo}`;
 
               this.toastService.exito(mensaje);
             }
@@ -568,9 +570,10 @@ export class LotesListComponent implements OnInit, OnDestroy {
       lista.map((l) => (l.id === lote.id ? { ...l, estado } : l))
     );
 
-    this.api.patch(`/lotes/${lote.id}/estado`, { estado }).subscribe({
-      next: () => {
-        this.toastService.exito(`Estado del lote ${lote.codigo} actualizado correctamente`);
+    this.api.patch<Lote>(`/lotes/${lote.id}/estado`, { estado }).subscribe({
+      next: (loteActualizado) => {
+        const sufijo = loteActualizado.actualizado_por_nombre ? ` por ${loteActualizado.actualizado_por_nombre}` : '';
+        this.toastService.exito(`Estado del lote ${lote.codigo} actualizado correctamente${sufijo}`);
       },
       error: (err) => {
         // Si falla, revertimos al estado anterior

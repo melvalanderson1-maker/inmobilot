@@ -63,6 +63,8 @@ export interface Lote {
   imagenes: LoteImagen[];
   mapa_x?: number;
   mapa_y?: number;
+  creado_por_nombre?: string;
+  actualizado_por_nombre?: string;
 }
 
 export interface LotePublico {

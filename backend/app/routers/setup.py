@@ -22,6 +22,21 @@ MODULOS_BASE = {
 }
 
 
+# Roles globales adicionales y que modulos ve cada uno.
+# Debe coincidir con ROLES_NUEVOS de la migracion a1c9f3e7b210.
+ROLES_EXTRA = {
+    "ejecutivo_ventas": {
+        "nombre": "Ejecutivo de Ventas",
+        "descripcion": "Gestiona lotes y leads de sus proyectos asignados",
+        "modulos": ["proyectos", "lotes", "contratos", "pagos", "leads", "documentos", "reportes"],
+    },
+    "comisionista": {
+        "nombre": "Agente Comisionista",
+        "descripcion": "Vende lotes disponibles o separados; comisiona por venta",
+        "modulos": ["lotes", "leads"],
+    },
+}
+
 class CrearAdminInicial(BaseModel):
     clave_bootstrap: str
     nombre: str
@@ -77,7 +92,7 @@ def crear_admin_inicial(payload: CrearAdminInicial, db: Session = Depends(get_db
         db.add(rol_admin)
         db.flush()
 
-    # 4. Vincular TODOS los módulos al rol admin (esto es lo que faltaba)
+    # 4. Vincular TODOS los módulos al rol admin
     for clave_mod in MODULOS_BASE.keys():
         modulo = db.query(m.Modulo).filter(m.Modulo.clave == clave_mod).first()
         if not modulo:
@@ -89,6 +104,34 @@ def crear_admin_inicial(payload: CrearAdminInicial, db: Session = Depends(get_db
         )
         if not existe:
             db.add(m.RolModulo(id_rol=rol_admin.id, id_modulo=modulo.id))
+    db.flush()
+
+    # 4b. Roles globales adicionales + sus módulos.
+    # La migración a1c9f3e7b210 ya creó los roles, pero en un tenant nuevo
+    # no pudo vincular módulos porque la tabla modulos aún estaba vacía.
+    for clave_rol, cfg in ROLES_EXTRA.items():
+        rol = db.query(m.Rol).filter(m.Rol.id_empresa.is_(None), m.Rol.clave == clave_rol).first()
+        if not rol:
+            rol = m.Rol(
+                id_empresa=None,
+                clave=clave_rol,
+                nombre=cfg["nombre"],
+                descripcion=cfg["descripcion"],
+            )
+            db.add(rol)
+            db.flush()
+
+        for clave_mod in cfg["modulos"]:
+            modulo = db.query(m.Modulo).filter(m.Modulo.clave == clave_mod).first()
+            if not modulo:
+                continue
+            existe = (
+                db.query(m.RolModulo)
+                .filter(m.RolModulo.id_rol == rol.id, m.RolModulo.id_modulo == modulo.id)
+                .first()
+            )
+            if not existe:
+                db.add(m.RolModulo(id_rol=rol.id, id_modulo=modulo.id))
     db.flush()
 
     # 5. Usuario admin

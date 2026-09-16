@@ -295,8 +295,13 @@ class Lote(Base):
         Index("idx_lotes_estado", "id_proyecto", "estado"),
     )
 
+    creado_por = Column(Integer, ForeignKey("usuarios.id"))
+    actualizado_por = Column(Integer, ForeignKey("usuarios.id"))
+
     manzana = relationship("Manzana", back_populates="lotes")
     imagenes = relationship("LoteImagen", back_populates="lote")
+    usuario_creador = relationship("Usuario", foreign_keys=[creado_por])
+    usuario_actualizador = relationship("Usuario", foreign_keys=[actualizado_por])
 
 
 class LoteImagen(Base):

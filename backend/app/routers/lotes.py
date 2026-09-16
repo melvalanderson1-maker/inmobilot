@@ -24,13 +24,21 @@ def listar_lotes(
 ):
     _validar_acceso_proyecto(db, usuario, id_proyecto)
 
-    return (
+    query = (
         db.query(m.Lote)
-        .options(joinedload(m.Lote.imagenes))
+        .options(
+            joinedload(m.Lote.imagenes),
+            joinedload(m.Lote.usuario_creador),
+            joinedload(m.Lote.usuario_actualizador),
+        )
         .filter(m.Lote.id_proyecto == id_proyecto)
-        .order_by(m.Lote.codigo.asc())
-        .all()
     )
+
+    if usuario.rol.clave == "comisionista":
+        query = query.filter(m.Lote.estado.in_([m.EstadoLoteEnum.libre, m.EstadoLoteEnum.separado]))
+
+    lotes = query.order_by(m.Lote.codigo.asc()).all()
+    return [s.LoteOut.desde_lote(lote) for lote in lotes]
 
 
 @router.get("/{id_lote}", response_model=s.LoteOut)
@@ -39,11 +47,20 @@ def obtener_lote(
     usuario: m.Usuario = Depends(require_modulo("lotes")),
     db: Session = Depends(get_db),
 ):
-    lote = db.query(m.Lote).options(joinedload(m.Lote.imagenes)).filter(m.Lote.id == id_lote).first()
+    lote = (
+        db.query(m.Lote)
+        .options(
+            joinedload(m.Lote.imagenes),
+            joinedload(m.Lote.usuario_creador),
+            joinedload(m.Lote.usuario_actualizador),
+        )
+        .filter(m.Lote.id == id_lote)
+        .first()
+    )
     if not lote:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
     _validar_acceso_proyecto(db, usuario, lote.id_proyecto)
-    return lote
+    return s.LoteOut.desde_lote(lote)
 
 
 @router.post("", response_model=s.LoteOut, status_code=status.HTTP_201_CREATED)
@@ -62,7 +79,7 @@ async def crear_lote(
     if existe:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe un lote con ese código en el proyecto")
 
-    lote = m.Lote(**payload.model_dump())
+    lote = m.Lote(**payload.model_dump(), creado_por=usuario.id)
     db.add(lote)
     db.commit()
     db.refresh(lote)
@@ -81,20 +98,30 @@ async def crear_lote(
         id_usuario_destino=None,
         tipo="nuevo_lote",
         titulo="Nuevo lote registrado",
-        mensaje=f"Se registró el lote {lote.codigo}",
-        data={"id_lote": lote.id, "id_proyecto": lote.id_proyecto},
+        mensaje=f"{usuario.nombre} registró el lote {lote.codigo}",
+        data={
+            "id_lote": lote.id,
+            "id_proyecto": lote.id_proyecto,
+            "id_usuario_accion": usuario.id,
+            "usuario_accion_nombre": usuario.nombre,
+        },
     )
     db.add(notif)
     db.commit()
     db.refresh(lote)
 
+    lote_completo = db.query(m.Lote).options(
+        joinedload(m.Lote.imagenes), joinedload(m.Lote.usuario_creador), joinedload(m.Lote.usuario_actualizador)
+    ).filter(m.Lote.id == lote.id).first()
+    lote_out = s.LoteOut.desde_lote(lote_completo)
+
     await notificar_nuevo_lote(
-        s.LoteOut.model_validate(lote).model_dump(mode="json"),
+        lote_out.model_dump(mode="json"),
         id_proyecto=lote.id_proyecto,
         id_empresa=usuario.id_empresa,
     )
 
-    return lote
+    return lote_out
 
 
 @router.patch("/{id_lote}", response_model=s.LoteOut)
@@ -111,18 +138,38 @@ async def actualizar_lote(
 
     for campo, valor in payload.model_dump(exclude_unset=True).items():
         setattr(lote, campo, valor)
+    lote.actualizado_por = usuario.id
+
+    notif = m.Notificacion(
+        id_empresa=usuario.id_empresa,
+        id_usuario_destino=None,
+        tipo="actualizacion_lote",
+        titulo=f"Lote {lote.codigo} actualizado",
+        mensaje=f"{usuario.nombre} actualizó los datos del lote",
+        data={
+            "id_lote": lote.id,
+            "id_proyecto": lote.id_proyecto,
+            "id_usuario_accion": usuario.id,
+            "usuario_accion_nombre": usuario.nombre,
+        },
+    )
+    db.add(notif)
 
     db.commit()
     db.refresh(lote)
 
-    lote_completo = db.query(m.Lote).options(joinedload(m.Lote.imagenes)).filter(m.Lote.id == lote.id).first()
+    lote_completo = db.query(m.Lote).options(
+        joinedload(m.Lote.imagenes), joinedload(m.Lote.usuario_creador), joinedload(m.Lote.usuario_actualizador)
+    ).filter(m.Lote.id == lote.id).first()
+    lote_out = s.LoteOut.desde_lote(lote_completo)
+
     await notificar_actualizacion_lote(
-        s.LoteOut.model_validate(lote_completo).model_dump(mode="json"),
+        lote_out.model_dump(mode="json"),
         id_proyecto=lote.id_proyecto,
         id_empresa=usuario.id_empresa,
     )
 
-    return lote_completo
+    return lote_out
 
 
 @router.patch("/{id_lote}/estado", response_model=s.LoteOut)
@@ -139,6 +186,7 @@ async def cambiar_estado_lote(
 
     estado_anterior = lote.estado
     lote.estado = payload.estado
+    lote.actualizado_por = usuario.id
 
     historial = m.LoteEstadoHistorial(
         id_lote=lote.id,
@@ -154,21 +202,39 @@ async def cambiar_estado_lote(
         id_usuario_destino=None,
         tipo="cambio_estado_lote",
         titulo=f"Lote {lote.codigo} cambió a {payload.estado.value}",
-        mensaje=payload.observacion,
-        data={"id_lote": lote.id, "id_proyecto": lote.id_proyecto, "estado": payload.estado.value},
+        mensaje=f"{usuario.nombre} cambió el estado" + (f": {payload.observacion}" if payload.observacion else ""),
+        data={
+            "id_lote": lote.id,
+            "id_proyecto": lote.id_proyecto,
+            "estado": payload.estado.value,
+            "id_usuario_accion": usuario.id,
+            "usuario_accion_nombre": usuario.nombre,
+        },
     )
     db.add(notif)
 
     db.commit()
     db.refresh(lote)
 
+    lote_completo = (
+        db.query(m.Lote)
+        .options(
+            joinedload(m.Lote.imagenes),
+            joinedload(m.Lote.usuario_creador),
+            joinedload(m.Lote.usuario_actualizador),
+        )
+        .filter(m.Lote.id == lote.id)
+        .first()
+    )
+    lote_out = s.LoteOut.desde_lote(lote_completo)
+
     await notificar_cambio_estado_lote(
-        s.LoteOut.model_validate(lote).model_dump(mode="json"),
+        lote_out.model_dump(mode="json"),
         id_proyecto=lote.id_proyecto,
         id_empresa=usuario.id_empresa,
     )
 
-    return lote
+    return lote_out
 
 @router.post("/{id_lote}/imagenes", response_model=s.LoteImagenOut, status_code=status.HTTP_201_CREATED)
 async def agregar_imagen_lote(
@@ -192,9 +258,18 @@ async def agregar_imagen_lote(
     db.commit()
     db.refresh(imagen)
 
-    lote_completo = db.query(m.Lote).options(joinedload(m.Lote.imagenes)).filter(m.Lote.id == id_lote).first()
+    lote_completo = (
+        db.query(m.Lote)
+        .options(
+            joinedload(m.Lote.imagenes),
+            joinedload(m.Lote.usuario_creador),
+            joinedload(m.Lote.usuario_actualizador),
+        )
+        .filter(m.Lote.id == id_lote)
+        .first()
+    )
     await notificar_actualizacion_lote(
-        s.LoteOut.model_validate(lote_completo).model_dump(mode="json"),
+        s.LoteOut.desde_lote(lote_completo).model_dump(mode="json"),
         id_proyecto=lote.id_proyecto,
         id_empresa=usuario.id_empresa,
     )
@@ -221,9 +296,18 @@ async def eliminar_imagen_lote(
     db.delete(imagen)
     db.commit()
 
-    lote_completo = db.query(m.Lote).options(joinedload(m.Lote.imagenes)).filter(m.Lote.id == id_lote).first()
+    lote_completo = (
+        db.query(m.Lote)
+        .options(
+            joinedload(m.Lote.imagenes),
+            joinedload(m.Lote.usuario_creador),
+            joinedload(m.Lote.usuario_actualizador),
+        )
+        .filter(m.Lote.id == id_lote)
+        .first()
+    )
     await notificar_actualizacion_lote(
-        s.LoteOut.model_validate(lote_completo).model_dump(mode="json"),
+        s.LoteOut.desde_lote(lote_completo).model_dump(mode="json"),
         id_proyecto=lote.id_proyecto,
         id_empresa=usuario.id_empresa,
     )

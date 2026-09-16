@@ -219,6 +219,15 @@ class LoteOut(ORMBase):
     sunarp_url: Optional[str] = None
     activo: bool
     imagenes: list[LoteImagenOut] = []
+    creado_por_nombre: Optional[str] = None
+    actualizado_por_nombre: Optional[str] = None
+
+    @staticmethod
+    def desde_lote(lote) -> "LoteOut":
+        data = LoteOut.model_validate(lote)
+        data.creado_por_nombre = lote.usuario_creador.nombre if lote.usuario_creador else None
+        data.actualizado_por_nombre = lote.usuario_actualizador.nombre if lote.usuario_actualizador else None
+        return data
 
 
 class LotePublicoOut(ORMBase):

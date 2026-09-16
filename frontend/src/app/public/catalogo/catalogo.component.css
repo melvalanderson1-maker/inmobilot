@@ -3,7 +3,7 @@
 ========================================================== */
 :host {
   --gv-verde-950: var(--color-secundario-superclaro, #fcfcfc);
-  --gv-verde-900: var(--color-secundario, #0b3d33);
+  --gv-verde-900: var(--secundario-legible, #0b3d33);
   --gv-verde-700: var(--color-primario, #0f8f73);
   --gv-verde-500: var(--color-primario-claro, #14b892);
   --gv-verde-100: var(--color-primario-suave, #e6f5f0);

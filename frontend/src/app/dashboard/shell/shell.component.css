@@ -32,6 +32,7 @@
 .sidebar {
   width: 250px;
   height: 100vh;
+  height: 100dvh;
   position: sticky;
   top: 0;
   background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%);
@@ -123,6 +124,7 @@ nav {
   flex-direction: column;
   gap: 0.3rem;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -448,6 +450,7 @@ main {
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh;
     width: 260px;
     max-width: 82vw;
     transform: translateX(-100%);

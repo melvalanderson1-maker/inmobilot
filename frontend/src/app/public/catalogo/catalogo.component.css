@@ -1171,9 +1171,12 @@
   pointer-events: none;
 }
 
-.hero-title,
+.hero-title {
+  color: #ffffff;
+}
+
 .hero-sub {
-  color: var(--texto-sobre-secundario, white);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 
@@ -1350,7 +1353,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--gv-verde-900);
+  background: var(--gv-verde-500);
   color: #fff;
   border: none;
   padding: 14px 20px;

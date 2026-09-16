@@ -373,7 +373,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
     return this.api.apiUrl + relativa;
   }
 
-  inicialesUsuarioLote(nombre: string): string {
+  inicialesUsuarioLote(nombre: string | undefined | null): string {
+    if (!nombre) return '';
     return nombre
       .trim()
       .split(/\s+/)

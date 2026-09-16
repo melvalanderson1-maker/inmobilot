@@ -126,21 +126,22 @@
 }
 
 .gv-header--flotante .gv-nav a {
-  color: var(--gv-verde-900);
+  color: rgba(255, 255, 255, 0.85);
   opacity: 1;
   font-weight: 700;
 }
 
 .gv-header--flotante .gv-nav a:hover {
-  color: var(--gv-verde-950);
+  color: #ffffff;
   opacity: 1;
 }
 
 .gv-header--flotante .gv-nav a.activo {
-  color: var(--gv-verde-900);
+  color: #ffffff;
   opacity: 1;
   border-bottom-color: var(--gv-dorado);
 }
+
 
 .gv-header--flotante .gv-whatsapp {
   background: #ffffff;
@@ -1176,7 +1177,7 @@
 }
 
 .hero-sub {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgb(255, 255, 255);
 }
 
 

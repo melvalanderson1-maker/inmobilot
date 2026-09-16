@@ -744,6 +744,68 @@
 .tabla-lotes-completa thead .grupo-contado { background: #dff5e5; }
 .tabla-lotes-completa thead .grupo-financiado { background: #dcedf7; }
 
+/* ===== Columnas fijas (sticky) en la tabla completa =====
+   Código a la izquierda, y Estado + Acciones a la derecha,
+   quedan siempre visibles aunque hagas scroll horizontal. */
+
+.tabla-lotes-completa .acciones {
+  width: 76px;
+  min-width: 76px;
+}
+
+.tabla-lotes-completa .celda-miniatura,
+.tabla-lotes-completa th.celda-miniatura {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #fff;
+  box-shadow: 2px 0 4px rgba(15, 23, 42, 0.06);
+}
+
+.tabla-lotes-completa thead th.celda-miniatura {
+  z-index: 6;
+  background: #f8fafc;
+}
+
+.tabla-lotes-completa .celda-estado,
+.tabla-lotes-completa th.celda-estado {
+  position: sticky;
+  right: 76px;
+  z-index: 4;
+  background: #fff;
+  box-shadow: -2px 0 4px rgba(15, 23, 42, 0.06);
+}
+
+.tabla-lotes-completa thead th.celda-estado {
+  z-index: 6;
+  background: #f8fafc;
+}
+
+.tabla-lotes-completa .acciones,
+.tabla-lotes-completa th.acciones {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background: #fff;
+}
+
+.tabla-lotes-completa thead th.acciones {
+  z-index: 6;
+  background: #f8fafc;
+}
+
+.tabla-lotes-completa tbody tr:nth-child(even) .celda-miniatura,
+.tabla-lotes-completa tbody tr:nth-child(even) .celda-estado,
+.tabla-lotes-completa tbody tr:nth-child(even) .acciones {
+  background: #fafbfd;
+}
+
+.tabla-lotes-completa tbody tr:hover .celda-miniatura,
+.tabla-lotes-completa tbody tr:hover .celda-estado,
+.tabla-lotes-completa tbody tr:hover .acciones {
+  background: #eef2ff;
+}
+
 @media (max-width: 1100px) {
   .kpis-grid { grid-template-columns: repeat(3, 1fr); }
 }

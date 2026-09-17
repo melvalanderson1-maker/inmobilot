@@ -270,6 +270,21 @@ irALote(lote: LotePublico): void {
     }
   }
 
+  @HostListener('document:keydown.escape')
+  onEscapePresionado(): void {
+    if (this.mapaAbierto()) {
+      this.cerrarMapa();
+      return;
+    }
+    if (this.modalDetalleAbierto()) {
+      this.cerrarDetalle();
+      return;
+    }
+    if (this.modalAbierto()) {
+      this.cerrarModal();
+    }
+  }
+
   ngOnInit(): void {
     this.empresaSlug = this.route.snapshot.paramMap.get('empresaSlug') ?? this.tenant.config()?.slug ?? '';
     this.proyectoSlug = this.route.snapshot.paramMap.get('proyectoSlug') ?? '';

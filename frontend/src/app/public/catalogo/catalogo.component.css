@@ -891,26 +891,28 @@
   position: absolute;
   top: 16px;
   right: 16px;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: var(--gv-verde-100);
-  color: var(--gv-verde-900);
+  background: var(--gv-verde-900);
+  color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease;
+  box-shadow: 0 3px 10px rgba(11, 61, 51, 0.35);
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .modal-close:hover {
-  background: var(--gv-verde-500);
-  color: #fff;
+  background: var(--gv-rojo);
+  transform: scale(1.06);
 }
 
 .modal-close svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.5;
 }
 
 .modal-header span {
@@ -1075,7 +1077,27 @@
   .lotes-grid { grid-template-columns: 1fr; }
   .beneficios { padding: 48px 16px; }
   .cta-final { padding: 48px 16px; }
-  .modal { padding: 24px 20px; }
+
+  .modal-backdrop { align-items: flex-start; padding: 0; }
+
+  .modal {
+    max-width: 100%;
+    width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    padding: 24px 20px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal .modal-close {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 20;
+  }
+
   .modal-actions { flex-direction: column; }
 }
 
@@ -1474,20 +1496,21 @@
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.85);
   color: #fff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .gv-lightbox-cerrar:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--gv-rojo);
+  transform: scale(1.06);
 }
-
 .gv-lightbox-cerrar svg {
   width: 18px;
   height: 18px;

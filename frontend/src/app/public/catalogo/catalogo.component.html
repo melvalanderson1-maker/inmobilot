@@ -42,10 +42,13 @@
     <div class="hero-overlay"></div>
     <div class="hero-inner">
 
-      <h1 class="hero-title">Elige el Lote de tus sueños</h1>
+      <h1 class="hero-title">
+        Terrenos en venta en Mazamari
+      </h1>
       <p class="hero-sub">
-        Opciones estratégicas para construir, invertir y vivir en
-        {{ nombreProyecto() }}, {{ ubicacionProyecto() }}.
+        Encuentra terrenos y lotes en venta en Mazamari, Selva Central.
+        Conoce los lotes disponibles de {{ nombreProyecto() }},
+        su ubicación, características y opciones para construir o invertir.
       </p>
 
       <div class="hero-chips">
@@ -69,6 +72,18 @@
        CATÁLOGO DE LOTES
   ========================================================== -->
   <section class="seccion-lotes" id="lotes">
+
+
+    <div class="gv-seo-intro">
+      <h2>Terrenos y lotes en venta en Mazamari</h2>
+
+      <p>
+        Conoce los terrenos disponibles de {{ nombreProyecto() }} en
+        {{ ubicacionProyecto() }}. Explora nuestros lotes, revisa sus
+        áreas, precios y disponibilidad, y encuentra el espacio ideal
+        para construir tu próximo proyecto en la Selva Central.
+      </p>
+    </div>
 
     <!-- FILTRO AVANZADO -->
     <div class="gv-filtros">
@@ -223,7 +238,7 @@
               <span class="lote-proyecto">{{ nombreProyecto() }}</span>
 
               <h3 class="lote-titulo">
-                Lote {{ lote.codigo }}
+                Terreno Lote {{ lote.codigo }}
                 <span>{{ lote.ubicacion_lote || ubicacionProyecto() }}</span>
               </h3>
 
@@ -336,8 +351,11 @@
   <section class="beneficios" id="beneficios">
 
     <div class="beneficios-header">
-      <h2>Una ubicación pensada para tu futuro</h2>
-      <p>Vive rodeado de naturaleza y con una ubicación estratégica en la Selva Central.</p>
+      <h2>Vive e invierte en Mazamari, Selva Central</h2>
+      <p>
+        Descubre las ventajas de adquirir un terreno en Mazamari,
+        una ubicación estratégica en la Selva Central de Junín.
+      </p>
     </div>
 
     <div class="beneficios-grid">
@@ -397,8 +415,13 @@
   ========================================================== -->
   <section class="cta-final" id="contacto">
     <div class="cta-content">
-      <h2>El lugar donde comienza tu próximo proyecto.</h2>
-      <p>Conoce nuestros lotes disponibles en Mazamari y encuentra el espacio que estabas buscando.</p>
+    <h2>Encuentra tu terreno en Mazamari</h2>
+
+    <p>
+      Conoce los lotes disponibles de Gruselva y encuentra el terreno
+      ideal para construir, invertir y formar parte de nuestro proyecto
+      en la Selva Central.
+    </p>
       <a href="#lotes" class="btn-cta">Ver lotes disponibles</a>
     </div>
   </section>

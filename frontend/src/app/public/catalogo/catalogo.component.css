@@ -1596,3 +1596,19 @@
   color: var(--gv-texto-suave);
   padding: 0 2px;
 }
+
+.gv-seo-intro {
+  max-width: 900px;
+  margin: 0 auto 32px;
+  text-align: center;
+}
+
+.gv-seo-intro h2 {
+  margin: 0 0 10px;
+}
+
+.gv-seo-intro p {
+  margin: 0 auto;
+  max-width: 760px;
+  line-height: 1.7;
+}

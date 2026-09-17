@@ -389,9 +389,20 @@ export class LotesListComponent implements OnInit, OnDestroy {
     this.form.sunarp_url = null;
   }
 
+  private cacheDocForm: { original: string | null; segura: SafeResourceUrl | null } = { original: null, segura: null };
+
   urlDocumentoFormSeguro(): SafeResourceUrl | null {
-    if (!this.form.sunarp_url) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(this.form.sunarp_url);
+    const url = this.form.sunarp_url;
+    if (!url) return null;
+
+    if (this.cacheDocForm.original !== url) {
+      const urlVisor = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      this.cacheDocForm = {
+        original: url,
+        segura: this.sanitizer.bypassSecurityTrustResourceUrl(urlVisor),
+      };
+    }
+    return this.cacheDocForm.segura;
   }
 
   cerrarFormulario(): void {

@@ -1686,16 +1686,18 @@
   overflow: hidden;
   border: 1px solid var(--gv-borde);
   background: var(--gv-verde-50);
+  position: relative;
 }
 
 .detalle-doc-visor iframe {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 320px;
   border: none;
   display: block;
+  overflow: hidden;
 }
-
 @media (max-width: 860px) {
   .modal-detalle--con-doc { max-width: 100%; }
   .modal-detalle--con-doc .detalle-grid { grid-template-columns: 1fr; }
@@ -1895,6 +1897,39 @@
 }
 
 @media (max-width: 560px) {
-  .modal-detalle { max-width: 100%; }
+  .modal-backdrop {
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .modal-detalle {
+    max-width: 100%;
+    width: 100%;
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal-detalle .modal-close {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 20;
+    background: rgba(15, 23, 42, 0.55);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  }
+
+  .modal-detalle .modal-close:hover {
+    background: rgba(15, 23, 42, 0.75);
+  }
+
   .detalle-body { padding: 18px 20px 22px; }
+
+  .detalle-columna-doc {
+    border-left: none;
+    border-top: 1px solid var(--gv-borde);
+  }
 }

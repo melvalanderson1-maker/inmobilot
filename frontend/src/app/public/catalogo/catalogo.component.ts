@@ -404,9 +404,23 @@ irALote(lote: LotePublico): void {
       .map(([clave]) => ({ clave, etiqueta: etiquetas[clave] ?? clave }));
   }
 
+  private cacheDocPublico: { original: string | null; segura: SafeResourceUrl | null } = { original: null, segura: null };
+
   urlDocumentoSeguro(lote: LotePublico | null): SafeResourceUrl | null {
-    if (!lote?.sunarp_url) return null;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(lote.sunarp_url);
+    const url = lote?.sunarp_url ?? null;
+    if (!url) return null;
+
+    // Cacheamos la URL segura para no regenerarla en cada ciclo de detección
+    // de cambios de Angular — regenerarla en cada render era lo que hacía
+    // parpadear el iframe (el navegador lo interpretaba como una recarga).
+    if (this.cacheDocPublico.original !== url) {
+      const urlVisor = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+      this.cacheDocPublico = {
+        original: url,
+        segura: this.sanitizer.bypassSecurityTrustResourceUrl(urlVisor),
+      };
+    }
+    return this.cacheDocPublico.segura;
   }
 
   pedirInformacionDesdeDetalle(): void {

@@ -37,6 +37,13 @@ export interface LoteImagen {
   es_portada: boolean;
 }
 
+export interface ServiciosLote {
+  agua?: boolean;
+  desague?: boolean;
+  luz?: boolean;
+  internet?: boolean;
+}
+
 export interface Lote {
   id: number;
   id_proyecto: number;
@@ -65,12 +72,15 @@ export interface Lote {
   mapa_y?: number;
   creado_por_nombre?: string;
   actualizado_por_nombre?: string;
+  servicios?: ServiciosLote;
 }
 
 export interface LotePublico {
   id: number;
   codigo: string;
   ubicacion_lote?: string;
+  perimetro?: number;
+  frontis?: string;
   area_m2: number;
   precio_total_base?: number;
   precio_total_contado?: number;
@@ -78,6 +88,10 @@ export interface LotePublico {
   url: string;
   estado: EstadoLote;
   imagenes: LoteImagen[];
+  sunarp_url?: string;
+  servicios?: ServiciosLote;
+  mapa_x?: number;
+  mapa_y?: number;
 }
 
 export interface Proyecto {

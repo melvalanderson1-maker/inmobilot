@@ -51,7 +51,11 @@ export class LotesListComponent implements OnInit, OnDestroy {
     inicial_financiado_60c: null as number | null,
     cuota_mensual_60c: null as number | null,
     partida_registral: '',
+    sunarp_url: '' as string | null,
+    servicios: { agua: false, desague: false, luz: false, internet: false },
   };
+
+  subiendoSunarp = signal(false);
 
   // ---- Filtros y KPIs ----
   filtroEstado = signal<'todos' | EstadoLote>('todos');
@@ -303,6 +307,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
       inicial_financiado_60c: null,
       cuota_mensual_60c: null,
       partida_registral: '',
+      sunarp_url: null,
+      servicios: { agua: false, desague: false, luz: false, internet: false },
     };
     this.archivosNuevos = [];
     this.previsualizaciones = [];
@@ -330,11 +336,55 @@ export class LotesListComponent implements OnInit, OnDestroy {
       inicial_financiado_60c: (lote as any).inicial_financiado_60c ? Number((lote as any).inicial_financiado_60c) : null,
       cuota_mensual_60c: (lote as any).cuota_mensual_60c ? Number((lote as any).cuota_mensual_60c) : null,
       partida_registral: lote.partida_registral ?? '',
+      sunarp_url: lote.sunarp_url ?? null,
+      servicios: {
+        agua: lote.servicios?.agua ?? false,
+        desague: lote.servicios?.desague ?? false,
+        luz: lote.servicios?.luz ?? false,
+        internet: lote.servicios?.internet ?? false,
+      },
     };
     this.archivosNuevos = [];
     this.previsualizaciones = [];
     this.error.set(null);
     this.formularioAbierto.set(true);
+  }
+
+  onArchivoSunarpSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    if (archivo.type !== 'application/pdf') {
+      this.toastService.error('El documento de partida registral debe ser un PDF');
+      input.value = '';
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El documento debe pesar menos de 8MB');
+      input.value = '';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+
+    this.subiendoSunarp.set(true);
+    this.loteService.subirDocumentoSunarp(formData).subscribe({
+      next: (res) => {
+        this.form.sunarp_url = res.url;
+        this.subiendoSunarp.set(false);
+      },
+      error: (err) => {
+        this.subiendoSunarp.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el documento');
+      },
+    });
+    input.value = '';
+  }
+
+  quitarSunarpUrl(): void {
+    this.form.sunarp_url = null;
   }
 
   cerrarFormulario(): void {
@@ -476,6 +526,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
           inicial_financiado_60c: this.form.inicial_financiado_60c ?? undefined,
           cuota_mensual_60c: this.form.cuota_mensual_60c ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
+          sunarp_url: this.form.sunarp_url || undefined,
+          servicios: this.form.servicios,
         })
         .subscribe({ 
           next: (loteActualizado) => this.subirImagenesPendientes(loteActual.id, loteActual.imagenes.length, loteActualizado.actualizado_por_nombre),
@@ -512,6 +564,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
           inicial_financiado_60c: this.form.inicial_financiado_60c ?? undefined,
           cuota_mensual_60c: this.form.cuota_mensual_60c ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
+          sunarp_url: this.form.sunarp_url || undefined,
+          servicios: this.form.servicios,
         })
         .subscribe({ 
           next: (lote) => this.subirImagenesPendientes(lote.id, 0, lote.creado_por_nombre),

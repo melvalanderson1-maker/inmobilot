@@ -455,6 +455,53 @@
                 <input type="text" [(ngModel)]="form.partida_registral" />
                 <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
               </div>
+
+              <div class="campo campo-span-2">
+                <label>Documento de partida registral (PDF)</label>
+                @if (form.sunarp_url) {
+                  <div class="sunarp-archivo-actual">
+                    <a [href]="form.sunarp_url" target="_blank" rel="noopener">Ver documento actual</a>
+                    <button type="button" class="btn-eliminar-imagen" (click)="quitarSunarpUrl()" title="Quitar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                        <path d="M6 6l12 12" />
+                        <path d="M18 6 6 18" />
+                      </svg>
+                    </button>
+                  </div>
+                } @else {
+                  <label class="dropzone dropzone-compacta">
+                    <input type="file" accept="application/pdf" (change)="onArchivoSunarpSeleccionado($event)" [disabled]="subiendoSunarp()" hidden />
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                      <path d="M12 16V4" />
+                      <path d="m7 9 5-5 5 5" />
+                      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                    </svg>
+                    <span>{{ subiendoSunarp() ? 'Subiendo...' : 'Arrastra o selecciona el PDF' }}</span>
+                  </label>
+                }
+              </div>
+
+              <div class="campo campo-span-2">
+                <label>Servicios disponibles</label>
+                <div class="servicios-checks">
+                  <label class="servicio-check">
+                    <input type="checkbox" [(ngModel)]="form.servicios.agua" />
+                    Agua
+                  </label>
+                  <label class="servicio-check">
+                    <input type="checkbox" [(ngModel)]="form.servicios.desague" />
+                    Desagüe
+                  </label>
+                  <label class="servicio-check">
+                    <input type="checkbox" [(ngModel)]="form.servicios.luz" />
+                    Luz
+                  </label>
+                  <label class="servicio-check">
+                    <input type="checkbox" [(ngModel)]="form.servicios.internet" />
+                    Internet
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 

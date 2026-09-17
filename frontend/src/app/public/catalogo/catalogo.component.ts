@@ -365,6 +365,40 @@ irALote(lote: LotePublico): void {
     this.modalAbierto.set(true);
   }
 
+  // ---- Modal de detalle (ver más) ----
+  modalDetalleAbierto = signal(false);
+  loteDetalle = signal<LotePublico | null>(null);
+
+  abrirDetalle(lote: LotePublico): void {
+    this.loteDetalle.set(lote);
+    this.modalDetalleAbierto.set(true);
+  }
+
+  cerrarDetalle(): void {
+    this.modalDetalleAbierto.set(false);
+    this.loteDetalle.set(null);
+  }
+
+  serviciosActivos(lote: LotePublico | null): string[] {
+    if (!lote?.servicios) return [];
+    const etiquetas: Record<string, string> = {
+      agua: 'Agua',
+      desague: 'Desagüe',
+      luz: 'Luz',
+      internet: 'Internet',
+    };
+    return Object.entries(lote.servicios)
+      .filter(([, activo]) => activo)
+      .map(([clave]) => etiquetas[clave] ?? clave);
+  }
+
+  pedirInformacionDesdeDetalle(): void {
+    const lote = this.loteDetalle();
+    if (!lote) return;
+    this.cerrarDetalle();
+    this.verLote(lote);
+  }
+
   cerrarModal(): void {
     this.modalAbierto.set(false);
     this.nombre = '';

@@ -297,6 +297,7 @@ class Lote(Base):
 
     creado_por = Column(Integer, ForeignKey("usuarios.id"))
     actualizado_por = Column(Integer, ForeignKey("usuarios.id"))
+    servicios = Column(JSONB, nullable=True)
 
     manzana = relationship("Manzana", back_populates="lotes")
     imagenes = relationship("LoteImagen", back_populates="lote")

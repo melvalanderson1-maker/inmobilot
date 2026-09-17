@@ -163,6 +163,7 @@ class LoteCreate(BaseModel):
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
+    servicios: Optional[dict] = None
 
 
 class LoteUpdate(BaseModel):
@@ -186,6 +187,7 @@ class LoteUpdate(BaseModel):
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
     activo: Optional[bool] = None
+    servicios: Optional[dict] = None
 
 
 class LoteEstadoUpdate(BaseModel):
@@ -221,6 +223,7 @@ class LoteOut(ORMBase):
     imagenes: list[LoteImagenOut] = []
     creado_por_nombre: Optional[str] = None
     actualizado_por_nombre: Optional[str] = None
+    servicios: Optional[dict] = None
 
     @staticmethod
     def desde_lote(lote) -> "LoteOut":
@@ -231,18 +234,25 @@ class LoteOut(ORMBase):
 
 
 class LotePublicoOut(ORMBase):
-    """Lo que se muestra en el sitio público - sin datos sensibles."""
+    """Lo que se muestra en el sitio público. sunarp_url se expone a
+    propósito (partida registral) porque el negocio decidió mostrarla
+    como respaldo legal al público; sigue sin exponerse nada de clientes,
+    contratos ni pagos."""
     id: int
     codigo: str
     ubicacion_lote: Optional[str] = None
     mapa_x: Optional[Decimal] = None
     mapa_y: Optional[Decimal] = None
+    perimetro: Optional[Decimal] = None
+    frontis: Optional[str] = None
     area_m2: Decimal
     precio_total_base: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
     precio_total_financiado: Optional[Decimal] = None
     estado: EstadoLoteEnum
     imagenes: list[LoteImagenOut] = []
+    sunarp_url: Optional[str] = None
+    servicios: Optional[dict] = None
 
 
 # ------------------------------------------------------------- CLIENTES ---

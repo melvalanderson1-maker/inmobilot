@@ -11,15 +11,18 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 EXTENSIONES_COMPROBANTE = {".jpg", ".jpeg", ".png", ".pdf"}
 EXTENSIONES_IMAGEN = {".jpg", ".jpeg", ".png", ".webp"}
+EXTENSIONES_DOCUMENTO = {".pdf"}
 TAMANO_MAXIMO_MB = 8
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR_COMPROBANTES = os.path.join(BASE_DIR, "static", "comprobantes")
 DIR_LOTES = os.path.join(BASE_DIR, "static", "lotes")
 DIR_MARCA = os.path.join(BASE_DIR, "static", "marca")
+DIR_DOCUMENTOS_LOTE = os.path.join(BASE_DIR, "static", "documentos_lote")
 os.makedirs(DIR_COMPROBANTES, exist_ok=True)
 os.makedirs(DIR_LOTES, exist_ok=True)
 os.makedirs(DIR_MARCA, exist_ok=True)
+os.makedirs(DIR_DOCUMENTOS_LOTE, exist_ok=True)
 
 
 async def _guardar_archivo(archivo: UploadFile, extensiones_permitidas: set[str], carpeta: str, subcarpeta: str) -> str:
@@ -57,6 +60,16 @@ async def subir_imagen_lote(
     usuario: m.Usuario = Depends(get_current_user),
 ):
     url = await _guardar_archivo(archivo, EXTENSIONES_IMAGEN, DIR_LOTES, "lotes")
+    return {"url": url}
+
+
+@router.post("/documento-lote")
+async def subir_documento_lote(
+    archivo: UploadFile = File(...),
+    usuario: m.Usuario = Depends(get_current_user),
+):
+    """PDF de partida registral u otro documento legal del lote."""
+    url = await _guardar_archivo(archivo, EXTENSIONES_DOCUMENTO, DIR_DOCUMENTOS_LOTE, "documentos_lote")
     return {"url": url}
 
 

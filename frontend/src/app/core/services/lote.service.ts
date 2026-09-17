@@ -2,6 +2,13 @@ import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
 import { Lote, LoteImagen } from '../models';
 
+export interface ServiciosLote {
+  agua?: boolean;
+  desague?: boolean;
+  luz?: boolean;
+  internet?: boolean;
+}
+
 export interface LoteCreate {
   id_proyecto: number;
   id_manzana: number;
@@ -21,6 +28,8 @@ export interface LoteCreate {
   cuota_mensual_60c?: number;
   frontis?: string;
   partida_registral?: string;
+  sunarp_url?: string;
+  servicios?: ServiciosLote;
 }
 
 export interface LoteUpdate {
@@ -39,6 +48,8 @@ export interface LoteUpdate {
   cuota_mensual_60c?: number;
   frontis?: string;
   partida_registral?: string;
+  sunarp_url?: string;
+  servicios?: ServiciosLote;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,6 +66,10 @@ export class LoteService {
 
   subirImagen(formData: FormData) {
     return this.api.post<{ url: string }>('/uploads/imagen-lote', formData);
+  }
+
+  subirDocumentoSunarp(formData: FormData) {
+    return this.api.post<{ url: string }>('/uploads/documento-lote', formData);
   }
 
   agregarImagen(idLote: number, url: string, esPortada: boolean, orden: number) {

@@ -573,24 +573,14 @@
           }
 
           <div class="detalle-precios">
-            @if (lote.precio_total_contado) {
-              <div class="precio-fila precio-destacado">
-                <span>Contado</span>
-                <strong>S/ {{ lote.precio_total_contado | number:'1.0-0' }}</strong>
-              </div>
-            }
-            @if (lote.precio_total_financiado) {
-              <div class="precio-fila">
-                <span>Financiado (total)</span>
-                <strong>S/ {{ lote.precio_total_financiado | number:'1.0-0' }}</strong>
-              </div>
-            }
-            @if (!lote.precio_total_contado && !lote.precio_total_financiado && lote.precio_total_base) {
-              <div class="precio-fila precio-destacado">
-                <span>Precio base</span>
+            <div class="precio-fila precio-destacado">
+              <span>Desde</span>
+              @if (lote.precio_total_base) {
                 <strong>S/ {{ lote.precio_total_base | number:'1.0-0' }}</strong>
-              </div>
-            }
+              } @else {
+                <strong class="consultar">A consultar</strong>
+              }
+            </div>
           </div>
 
           @if (lote.sunarp_url) {

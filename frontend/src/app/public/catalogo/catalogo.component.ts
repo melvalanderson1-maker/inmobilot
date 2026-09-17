@@ -331,11 +331,21 @@ irALote(lote: LotePublico): void {
               const loteActualizado = evento.data as LotePublico;
               if (loteActualizado.estado === 'bloqueado') {
                 this.lotes.update((actuales) => actuales.filter((l) => l.id !== loteActualizado.id));
+                if (this.loteDetalle()?.id === loteActualizado.id) {
+                  this.cerrarDetalle();
+                }
               } else {
                 this.lotes.update((actuales) =>
                   actuales.map((l) => (l.id === loteActualizado.id ? { ...l, ...loteActualizado } : l))
                 );
                 this.indiceImagenPorLote.update((mapa) => ({ ...mapa, [loteActualizado.id]: 0 }));
+
+                // Si el modal de "Ver más" está abierto mostrando este mismo
+                // lote, refrescamos también loteDetalle para que servicios,
+                // imágenes y el documento SUNARP se vean sin cerrar el modal.
+                if (this.loteDetalle()?.id === loteActualizado.id) {
+                  this.loteDetalle.update((actual) => (actual ? { ...actual, ...loteActualizado } : actual));
+                }
               }
             }
           });

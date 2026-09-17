@@ -21,7 +21,8 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              { "glob": "env.json", "input": "public", "output": "/" }
+              { "glob": "env.json", "input": "public", "output": "/" },
+              { "glob": "google08b4790f627fccf0.html", "input": "public", "output": "/" }
             ],
             "styles": ["src/styles.css"],
             "scripts": []

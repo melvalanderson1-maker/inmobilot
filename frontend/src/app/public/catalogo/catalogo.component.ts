@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { ApiService } from '../../core/services/api.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -255,7 +256,8 @@ irALote(lote: LotePublico): void {
     private api: ApiService,
     private route: ActivatedRoute,
     private socket: SocketService,
-    public tenant: TenantService
+    public tenant: TenantService,
+    private sanitizer: DomSanitizer
   ) {}
 
   @HostListener('window:scroll')
@@ -389,7 +391,7 @@ irALote(lote: LotePublico): void {
     this.loteDetalle.set(null);
   }
 
-  serviciosActivos(lote: LotePublico | null): string[] {
+  serviciosActivos(lote: LotePublico | null): { clave: string; etiqueta: string }[] {
     if (!lote?.servicios) return [];
     const etiquetas: Record<string, string> = {
       agua: 'Agua',
@@ -399,7 +401,12 @@ irALote(lote: LotePublico): void {
     };
     return Object.entries(lote.servicios)
       .filter(([, activo]) => activo)
-      .map(([clave]) => etiquetas[clave] ?? clave);
+      .map(([clave]) => ({ clave, etiqueta: etiquetas[clave] ?? clave }));
+  }
+
+  urlDocumentoSeguro(lote: LotePublico | null): SafeResourceUrl | null {
+    if (!lote?.sunarp_url) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(lote.sunarp_url);
   }
 
   pedirInformacionDesdeDetalle(): void {

@@ -355,7 +355,7 @@
   <!-- Modal: crear / editar lote -->
   @if (formularioAbierto()) {
     <div class="modal-overlay" (click)="cerrarFormulario()">
-      <div class="modal modal-grande" (click)="$event.stopPropagation()">
+      <div class="modal modal-grande" [class.modal-grande--con-doc]="form.sunarp_url" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>{{ loteEditando() ? 'Editar lote ' + loteEditando()!.codigo : 'Nuevo lote' }}</h2>
             <button class="btn-cerrar" (click)="cerrarFormulario()">
@@ -553,6 +553,16 @@
               }
             </div>
           </div>
+
+          @if (form.sunarp_url) {
+            <div class="documento-col">
+              <h4 class="subseccion subseccion-documento">Partida registral (PDF)</h4>
+              <div class="documento-visor">
+                <iframe [src]="urlDocumentoFormSeguro()" title="Partida registral del lote" loading="lazy"></iframe>
+              </div>
+              <a class="documento-abrir" [href]="form.sunarp_url" target="_blank" rel="noopener">Abrir en pestaña nueva</a>
+            </div>
+          }
         </div>
 
         <div class="modal-footer">

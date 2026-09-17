@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, computed, effect, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -146,7 +147,8 @@ export class LotesListComponent implements OnInit, OnDestroy {
     public tenant: TenantService,
     private toastService: ToastService,
     private loader: LoaderService,
-    private confirmModal: ConfirmModalService
+    private confirmModal: ConfirmModalService,
+    private sanitizer: DomSanitizer
   ) {
     // Resetea a la página 1 cada vez que cambia cualquier filtro,
     // para no quedar "atrapado" en una página que ya no existe.
@@ -385,6 +387,11 @@ export class LotesListComponent implements OnInit, OnDestroy {
 
   quitarSunarpUrl(): void {
     this.form.sunarp_url = null;
+  }
+
+  urlDocumentoFormSeguro(): SafeResourceUrl | null {
+    if (!this.form.sunarp_url) return null;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(this.form.sunarp_url);
   }
 
   cerrarFormulario(): void {

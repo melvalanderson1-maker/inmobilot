@@ -42,6 +42,15 @@
     <div class="hero-overlay"></div>
     <div class="hero-inner">
 
+      <h1 class="hero-title">
+        Terrenos en venta en Mazamari
+      </h1>
+      <p class="hero-sub">
+        Encuentra terrenos y lotes en venta en Mazamari, Selva Central.
+        Conoce los lotes disponibles de {{ nombreProyecto() }},
+        su ubicación, características y opciones para construir o invertir.
+      </p>
+
       <div class="hero-chips">
         @for (opcion of estadosDisponibles; track opcion.valor) {
           <button
@@ -63,18 +72,6 @@
        CATÁLOGO DE LOTES
   ========================================================== -->
   <section class="seccion-lotes" id="lotes">
-
-
-    <div class="gv-seo-intro">
-      <h2>Terrenos y lotes en venta en Mazamari</h2>
-
-      <p>
-        Conoce los terrenos disponibles de {{ nombreProyecto() }} en
-        {{ ubicacionProyecto() }}. Explora nuestros lotes, revisa sus
-        áreas, precios y disponibilidad, y encuentra el espacio ideal
-        para construir tu próximo proyecto en la Selva Central.
-      </p>
-    </div>
 
     <!-- FILTRO AVANZADO -->
     <div class="gv-filtros">

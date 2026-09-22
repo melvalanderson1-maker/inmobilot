@@ -1540,6 +1540,7 @@
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(11, 61, 51, 0.35);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1;
 }
 
 .gv-maqueta-punto::before {
@@ -1549,11 +1550,24 @@
   border-radius: 50%;
 }
 
-.gv-maqueta-punto:hover {
+.gv-maqueta-punto:hover,
+.gv-maqueta-punto:focus-visible {
   transform: translate(-50%, -50%) scale(1.3);
   box-shadow: 0 6px 14px rgba(11, 61, 51, 0.45);
+  z-index: 5;
 }
 
+@media (max-width: 560px) {
+  .gv-maqueta-punto {
+    width: 10px;
+    height: 10px;
+    border-width: 1.5px;
+  }
+
+  .gv-maqueta-punto::before {
+    inset: -14px;
+  }
+}
 .gv-maqueta-punto.libre { background: #14b892; }
 .gv-maqueta-punto.separado { background: var(--gv-naranja); }
 .gv-maqueta-punto.vendido { background: var(--gv-rojo); }

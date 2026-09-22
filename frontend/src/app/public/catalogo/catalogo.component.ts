@@ -77,19 +77,30 @@ export class CatalogoComponent implements OnInit, OnDestroy {
   panMapa = signal<{ x: number; y: number }>({ x: 0, y: 0 });
   arrastrandoMapa = signal(false);
   private ultimoPuntero = { x: 0, y: 0 };
+  private ultimaDistanciaPinch = 0;
 
   zoomIn(): void {
-    this.zoomMapa.update((z) => Math.min(z + 0.4, 4));
+    this.aplicarZoom(0.4);
   }
 
   zoomOut(): void {
-    this.zoomMapa.update((z) => Math.max(z - 0.4, 1));
+    this.aplicarZoom(-0.4);
   }
 
   onWheelMapa(evento: WheelEvent): void {
     evento.preventDefault();
     const delta = evento.deltaY > 0 ? -0.2 : 0.2;
-    this.zoomMapa.update((z) => Math.min(Math.max(z + delta, 1), 4));
+    this.aplicarZoom(delta);
+  }
+
+  // Centraliza todo cambio de zoom: si vuelve al mínimo (1),
+  // resetea el arrastre para mostrar el mapa completo sin bugs.
+  private aplicarZoom(delta: number): void {
+    const nuevoZoom = Math.min(Math.max(this.zoomMapa() + delta, 1), 4);
+    this.zoomMapa.set(nuevoZoom);
+    if (nuevoZoom <= 1) {
+      this.panMapa.set({ x: 0, y: 0 });
+    }
   }
 
   iniciarArrastreMapa(evento: MouseEvent): void {
@@ -108,6 +119,53 @@ export class CatalogoComponent implements OnInit, OnDestroy {
 
   soltarMapa(): void {
     this.arrastrandoMapa.set(false);
+  }
+
+  // ---- Soporte táctil (arrastre con 1 dedo, zoom con 2 dedos) ----
+
+  onTouchStart(evento: TouchEvent): void {
+    if (evento.touches.length === 1) {
+      if (this.zoomMapa() <= 1) return;
+      this.arrastrandoMapa.set(true);
+      this.ultimoPuntero = { x: evento.touches[0].clientX, y: evento.touches[0].clientY };
+    } else if (evento.touches.length === 2) {
+      this.arrastrandoMapa.set(false);
+      this.ultimaDistanciaPinch = this.distanciaEntreDedos(evento);
+    }
+  }
+
+  onTouchMove(evento: TouchEvent): void {
+    if (evento.touches.length === 1 && this.arrastrandoMapa()) {
+      evento.preventDefault();
+      const dx = (evento.touches[0].clientX - this.ultimoPuntero.x) / this.zoomMapa();
+      const dy = (evento.touches[0].clientY - this.ultimoPuntero.y) / this.zoomMapa();
+      this.ultimoPuntero = { x: evento.touches[0].clientX, y: evento.touches[0].clientY };
+      this.panMapa.update((p) => ({ x: p.x + dx, y: p.y + dy }));
+    } else if (evento.touches.length === 2) {
+      evento.preventDefault();
+      const distanciaActual = this.distanciaEntreDedos(evento);
+      if (this.ultimaDistanciaPinch > 0) {
+        const delta = (distanciaActual - this.ultimaDistanciaPinch) * 0.01;
+        this.aplicarZoom(delta);
+      }
+      this.ultimaDistanciaPinch = distanciaActual;
+    }
+  }
+
+  onTouchEnd(evento: TouchEvent): void {
+    if (evento.touches.length === 0) {
+      this.arrastrandoMapa.set(false);
+      this.ultimaDistanciaPinch = 0;
+    } else if (evento.touches.length === 1) {
+      this.ultimaDistanciaPinch = 0;
+      this.arrastrandoMapa.set(true);
+      this.ultimoPuntero = { x: evento.touches[0].clientX, y: evento.touches[0].clientY };
+    }
+  }
+
+  private distanciaEntreDedos(evento: TouchEvent): number {
+    const [t1, t2] = [evento.touches[0], evento.touches[1]];
+    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
   }
 
   urlMaqueta(): string | null {

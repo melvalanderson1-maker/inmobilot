@@ -1438,6 +1438,7 @@
   overflow: hidden;
   border-radius: 12px;
   cursor: grab;
+  touch-action: none;
   animation: gv-lightbox-entrada 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -1448,6 +1449,10 @@
 .gv-lightbox-imagen-zoom {
   transform-origin: 0 0;
   transition: transform 0.15s ease-out;
+}
+
+.gv-lightbox-imagen.arrastrando .gv-lightbox-imagen-zoom {
+  transition: none;
 }
 
 .gv-lightbox-imagen-zoom img {

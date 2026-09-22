@@ -781,6 +781,10 @@
         (mousemove)="moverMapa($event)"
         (mouseup)="soltarMapa()"
         (mouseleave)="soltarMapa()"
+        (touchstart)="onTouchStart($event)"
+        (touchmove)="onTouchMove($event)"
+        (touchend)="onTouchEnd($event)"
+        (touchcancel)="onTouchEnd($event)"
       >
         <div
           class="gv-maqueta-imagen gv-lightbox-imagen-zoom"

@@ -65,7 +65,7 @@ export interface Lote {
   frontis?: string;
   estado: EstadoLote;
   partida_registral?: string;
-  sunarp_url?: string;
+  sunarp_url?: string | null;
   activo: boolean;
   imagenes: LoteImagen[];
   mapa_x?: number;

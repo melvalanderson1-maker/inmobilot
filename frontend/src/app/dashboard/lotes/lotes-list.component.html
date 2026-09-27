@@ -461,11 +461,24 @@
                 @if (form.sunarp_url) {
                   <div class="sunarp-archivo-actual">
                     <a [href]="form.sunarp_url" target="_blank" rel="noopener">Ver documento actual</a>
-                    <button type="button" class="btn-eliminar-imagen" (click)="quitarSunarpUrl()" title="Quitar">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                        <path d="M6 6l12 12" />
-                        <path d="M18 6 6 18" />
-                      </svg>
+                    <button
+                      type="button"
+                      class="btn-eliminar-imagen"
+                      (click)="quitarSunarpUrl()"
+                      [disabled]="eliminandoSunarp()"
+                      title="Quitar"
+                    >
+                      @if (eliminandoSunarp()) {
+                        <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                          <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
+                          <path d="M21 12a9 9 0 0 0-9-9" />
+                        </svg>
+                      } @else {
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                          <path d="M6 6l12 12" />
+                          <path d="M18 6 6 18" />
+                        </svg>
+                      }
                     </button>
                   </div>
                 } @else {
@@ -556,7 +569,29 @@
 
           @if (form.sunarp_url) {
             <div class="documento-col">
-              <h4 class="subseccion subseccion-documento">Partida registral (PDF)</h4>
+              <div class="documento-col-header">
+                <h4 class="subseccion subseccion-documento">Partida registral (PDF)</h4>
+                <div class="documento-col-acciones">
+                  <label class="btn-secundario btn-documento-accion" [class.disabled]="subiendoSunarp() || eliminandoSunarp()">
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      (change)="onArchivoSunarpSeleccionado($event)"
+                      [disabled]="subiendoSunarp() || eliminandoSunarp()"
+                      hidden
+                    />
+                    {{ subiendoSunarp() ? 'Subiendo...' : 'Reemplazar' }}
+                  </label>
+                  <button
+                    type="button"
+                    class="btn-secundario btn-documento-accion btn-documento-eliminar"
+                    (click)="quitarSunarpUrl()"
+                    [disabled]="subiendoSunarp() || eliminandoSunarp()"
+                  >
+                    {{ eliminandoSunarp() ? 'Eliminando...' : 'Eliminar' }}
+                  </button>
+                </div>
+              </div>
               <div class="documento-visor">
                 <iframe [src]="urlDocumentoFormSeguro()" title="Partida registral del lote" loading="lazy"></iframe>
               </div>

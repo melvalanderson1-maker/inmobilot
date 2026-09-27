@@ -28,7 +28,7 @@ export interface LoteCreate {
   cuota_mensual_60c?: number;
   frontis?: string;
   partida_registral?: string;
-  sunarp_url?: string;
+  sunarp_url?: string | null;
   servicios?: ServiciosLote;
 }
 
@@ -48,7 +48,7 @@ export interface LoteUpdate {
   cuota_mensual_60c?: number;
   frontis?: string;
   partida_registral?: string;
-  sunarp_url?: string;
+  sunarp_url?: string | null;
   servicios?: ServiciosLote;
 }
 

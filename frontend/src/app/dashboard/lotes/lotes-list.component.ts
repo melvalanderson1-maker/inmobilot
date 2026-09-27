@@ -57,6 +57,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
   };
 
   subiendoSunarp = signal(false);
+  eliminandoSunarp = signal(false);
 
   // ---- Filtros y KPIs ----
   filtroEstado = signal<'todos' | EstadoLote>('todos');
@@ -386,6 +387,32 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   quitarSunarpUrl(): void {
+    const lote = this.loteEditando();
+
+    // Si el lote ya existe y el documento ya está persistido en el backend,
+    // lo eliminamos de inmediato (igual que con las imágenes), en vez de
+    // esperar a que el usuario presione "Guardar lote".
+    if (lote && lote.sunarp_url) {
+      if (!confirm('¿Eliminar el documento de partida registral actual? Podrás subir uno nuevo enseguida.')) return;
+
+      this.eliminandoSunarp.set(true);
+      this.loteService.actualizar(lote.id, { sunarp_url: null }).subscribe({
+        next: () => {
+          this.form.sunarp_url = null;
+          this.loteEditando.set({ ...lote, sunarp_url: null });
+          this.eliminandoSunarp.set(false);
+          this.toastService.exito('Documento eliminado. Ya puedes subir el nuevo.');
+          this.cargarLotes();
+        },
+        error: (err) => {
+          this.eliminandoSunarp.set(false);
+          this.toastService.error(err?.error?.detail ?? 'No se pudo eliminar el documento');
+        },
+      });
+      return;
+    }
+
+    // Lote nuevo o documento aún no guardado: solo limpiamos el campo local.
     this.form.sunarp_url = null;
   }
 
@@ -544,7 +571,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
           inicial_financiado_60c: this.form.inicial_financiado_60c ?? undefined,
           cuota_mensual_60c: this.form.cuota_mensual_60c ?? undefined,
           partida_registral: this.form.partida_registral || undefined,
-          sunarp_url: this.form.sunarp_url || undefined,
+          sunarp_url: this.form.sunarp_url,
           servicios: this.form.servicios,
         })
         .subscribe({ 

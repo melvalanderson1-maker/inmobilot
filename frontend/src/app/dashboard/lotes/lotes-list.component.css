@@ -1048,3 +1048,42 @@
 .punto-separado { background: #ea580c; }
 .punto-bloqueado { background: #dc2626; }
 .punto-vendido { background: #1d4ed8; }
+
+
+
+.documento-col-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.documento-col-acciones {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-documento-accion {
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-documento-accion.disabled,
+.btn-documento-accion:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-documento-eliminar {
+  color: #c94f4f;
+  border-color: #f0d5d5;
+}
+
+.btn-documento-eliminar:hover:not(:disabled) {
+  background: #fdf2f2;
+}

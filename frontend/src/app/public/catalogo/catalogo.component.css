@@ -1432,9 +1432,11 @@
 
 .gv-lightbox-imagen {
   position: relative;
-  max-width: 1100px;
-  width: 100%;
-  max-height: 88vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(1100px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
   overflow: hidden;
   border-radius: 12px;
   cursor: grab;
@@ -1457,7 +1459,10 @@
 
 .gv-lightbox-imagen-zoom img {
   display: block;
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-width: min(1100px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
   pointer-events: none;
   user-select: none;
 }
@@ -1529,7 +1534,10 @@
 }
 
 .gv-maqueta-imagen img {
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-width: min(1100px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
   display: block;
 }
 

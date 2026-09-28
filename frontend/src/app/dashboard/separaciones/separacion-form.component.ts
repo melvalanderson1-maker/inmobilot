@@ -65,6 +65,8 @@ export class SeparacionFormComponent implements OnInit {
         this.clienteService.obtener(idCliente).subscribe((cliente) => {
           this.clienteEncontrado.set(cliente);
           this.clienteNoEncontrado.set(false);
+          this.dniFrenteUrl = cliente.dni_frente_url ?? null;
+          this.dniReversoUrl = cliente.dni_reverso_url ?? null;
         });
       }
     });
@@ -92,6 +94,8 @@ export class SeparacionFormComponent implements OnInit {
         this.buscandoCliente.set(false);
         if (cliente) {
           this.clienteEncontrado.set(cliente);
+          this.dniFrenteUrl = cliente.dni_frente_url ?? null;
+          this.dniReversoUrl = cliente.dni_reverso_url ?? null;
         } else {
           this.clienteNoEncontrado.set(true);
         }
@@ -117,6 +121,8 @@ export class SeparacionFormComponent implements OnInit {
     this.clienteEncontrado.set(null);
     this.clienteNoEncontrado.set(false);
     this.documentoBusqueda = '';
+    this.dniFrenteUrl = null;
+    this.dniReversoUrl = null;
   }
 
   private subirArchivo(archivo: File, destino: 'frente' | 'reverso' | 'voucher'): void {

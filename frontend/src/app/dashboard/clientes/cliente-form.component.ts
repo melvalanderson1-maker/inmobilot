@@ -22,7 +22,8 @@ export class ClienteFormComponent implements OnInit {
   guardando = signal(false);
   cargando = signal(false);
   error = signal<string | null>(null);
-  subiendoDni = signal(false);
+  subiendoDniFrente = signal(false);
+  subiendoDniReverso = signal(false);
 
   form = {
     tipo_persona: 'natural' as TipoPersona,
@@ -33,7 +34,8 @@ export class ClienteFormComponent implements OnInit {
     correo: '',
     telefono: '',
     direccion: '',
-    dni_url: null as string | null,
+    dni_frente_url: null as string | null,
+    dni_reverso_url: null as string | null,
     fecha_nacimiento: '',
     estado_civil: '' as EstadoCivil | '',
     segundo_contacto_nombre: '',
@@ -90,7 +92,8 @@ export class ClienteFormComponent implements OnInit {
             correo: c.correo ?? '',
             telefono: c.telefono ?? '',
             direccion: c.direccion ?? '',
-            dni_url: c.dni_url ?? null,
+            dni_frente_url: c.dni_frente_url ?? null,
+            dni_reverso_url: c.dni_reverso_url ?? null,
             fecha_nacimiento: c.fecha_nacimiento ?? '',
             estado_civil: c.estado_civil ?? '',
             segundo_contacto_nombre: c.segundo_contacto_nombre ?? '',
@@ -114,23 +117,45 @@ export class ClienteFormComponent implements OnInit {
     }
   }
 
-  onDniSeleccionado(event: Event): void {
+  onDniFrenteSeleccionado(event: Event): void {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     if (!archivo) return;
 
     const formData = new FormData();
     formData.append('archivo', archivo);
-    this.subiendoDni.set(true);
+    this.subiendoDniFrente.set(true);
 
     this.clienteService.subirArchivo(formData).subscribe({
       next: (res) => {
-        this.form.dni_url = res.url;
-        this.subiendoDni.set(false);
+        this.form.dni_frente_url = res.url;
+        this.subiendoDniFrente.set(false);
       },
       error: (err) => {
-        this.subiendoDni.set(false);
-        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el DNI');
+        this.subiendoDniFrente.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el DNI (frente)');
+      },
+    });
+    input.value = '';
+  }
+
+  onDniReversoSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoDniReverso.set(true);
+
+    this.clienteService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.form.dni_reverso_url = res.url;
+        this.subiendoDniReverso.set(false);
+      },
+      error: (err) => {
+        this.subiendoDniReverso.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el DNI (reverso)');
       },
     });
     input.value = '';
@@ -175,7 +200,8 @@ export class ClienteFormComponent implements OnInit {
         correo: this.form.correo || undefined,
         telefono: this.form.telefono,
         direccion: this.form.direccion,
-        dni_url: this.form.dni_url || undefined,
+        dni_frente_url: this.form.dni_frente_url || undefined,
+        dni_reverso_url: this.form.dni_reverso_url || undefined,
         fecha_nacimiento: this.form.fecha_nacimiento || undefined,
         estado_civil: (this.form.estado_civil || undefined) as EstadoCivil | undefined,
         segundo_contacto_nombre: this.form.segundo_contacto_nombre || undefined,
@@ -208,7 +234,8 @@ export class ClienteFormComponent implements OnInit {
         correo: this.form.correo || undefined,
         telefono: this.form.telefono,
         direccion: this.form.direccion,
-        dni_url: this.form.dni_url || undefined,
+        dni_frente_url: this.form.dni_frente_url || undefined,
+        dni_reverso_url: this.form.dni_reverso_url || undefined,
         fecha_nacimiento: this.form.fecha_nacimiento || undefined,
         estado_civil: (this.form.estado_civil || undefined) as EstadoCivil | undefined,
         segundo_contacto_nombre: this.form.segundo_contacto_nombre || undefined,

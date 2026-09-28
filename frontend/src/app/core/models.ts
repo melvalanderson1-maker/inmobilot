@@ -266,7 +266,8 @@ export interface ClienteCreate {
   correo?: string;
   telefono?: string;
   direccion?: string;
-  dni_url?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
   segundo_contacto_nombre?: string;
@@ -281,7 +282,8 @@ export interface ClienteUpdate {
   correo?: string;
   telefono?: string;
   direccion?: string;
-  dni_url?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
   segundo_contacto_nombre?: string;
@@ -414,7 +416,8 @@ export interface Cliente {
   correo?: string;
   telefono?: string;
   direccion?: string;
-  dni_url?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
   segundo_contacto_nombre?: string;

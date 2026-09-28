@@ -28,3 +28,6 @@
 @media (max-width: 900px) {
   .detalle-grid { grid-template-columns: 1fr; }
 }
+
+
+.fila-docs-dni { display: flex; gap: 1rem; }

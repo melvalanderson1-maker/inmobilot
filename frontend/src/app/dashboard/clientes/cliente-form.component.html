@@ -72,15 +72,27 @@
               <option value="divorciado">Divorciado(a)</option>
             </select>
           </div>
-          <div class="campo campo-span-2">
-            <label>DNI (foto)</label>
-            @if (form.dni_url) {
-              <a [href]="form.dni_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
-              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniSeleccionado($event)" [disabled]="subiendoDni()" />
+          <div class="campo">
+            <label>DNI (frente)</label>
+            @if (form.dni_frente_url) {
+              <a [href]="form.dni_frente_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
+              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" />
             } @else {
               <label class="dropzone dropzone-compacta">
-                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniSeleccionado($event)" [disabled]="subiendoDni()" hidden />
-                <span>{{ subiendoDni() ? 'Subiendo...' : 'Subir foto del DNI' }}</span>
+                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+                <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
+              </label>
+            }
+          </div>
+          <div class="campo">
+            <label>DNI (reverso)</label>
+            @if (form.dni_reverso_url) {
+              <a [href]="form.dni_reverso_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
+              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" />
+            } @else {
+              <label class="dropzone dropzone-compacta">
+                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+                <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
               </label>
             }
           </div>

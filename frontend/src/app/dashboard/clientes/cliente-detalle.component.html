@@ -35,8 +35,15 @@
               <div><span>Segundo contacto</span><strong>{{ cliente()!.segundo_contacto_nombre }} ({{ cliente()!.segundo_contacto_telefono }})</strong></div>
             }
           </div>
-          @if (cliente()!.dni_url) {
-            <a [href]="cliente()!.dni_url" target="_blank" class="link-doc">Ver documento de identidad</a>
+          @if (cliente()!.dni_frente_url || cliente()!.dni_reverso_url) {
+            <div class="fila-docs-dni">
+              @if (cliente()!.dni_frente_url) {
+                <a [href]="cliente()!.dni_frente_url" target="_blank" class="link-doc">Ver DNI (frente)</a>
+              }
+              @if (cliente()!.dni_reverso_url) {
+                <a [href]="cliente()!.dni_reverso_url" target="_blank" class="link-doc">Ver DNI (reverso)</a>
+              }
+            </div>
           }
         </div>
 

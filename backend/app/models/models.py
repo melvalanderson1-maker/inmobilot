@@ -357,7 +357,8 @@ class Cliente(Base):
     correo = Column(String(200))
     telefono = Column(String(20))
     direccion = Column(String(250))
-    dni_url = Column(String(300))
+    dni_frente_url = Column(String(300))
+    dni_reverso_url = Column(String(300))
     fecha_nacimiento = Column(Date)
     estado_civil = Column(String(20))  # soltero | casado | viudo | divorciado
     segundo_contacto_nombre = Column(String(150))

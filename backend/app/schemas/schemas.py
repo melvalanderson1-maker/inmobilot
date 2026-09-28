@@ -282,7 +282,8 @@ class ClienteCreate(BaseModel):
     correo: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    dni_url: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None  # soltero | casado | viudo | divorciado
     segundo_contacto_nombre: Optional[str] = None
@@ -307,7 +308,8 @@ class ClienteUpdate(BaseModel):
     correo: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    dni_url: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None
     segundo_contacto_nombre: Optional[str] = None
@@ -329,7 +331,8 @@ class ClienteOut(ORMBase):
     correo: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
-    dni_url: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None
     segundo_contacto_nombre: Optional[str] = None

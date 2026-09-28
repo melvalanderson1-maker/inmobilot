@@ -76,6 +76,30 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./dashboard/separaciones/separacion-detalle.component').then((c) => c.SeparacionDetalleComponent),
       },
+      {
+        path: 'clientes',
+        canActivate: [moduloGuard('clientes')],
+        loadComponent: () =>
+          import('./dashboard/clientes/clientes-list.component').then((c) => c.ClientesListComponent),
+      },
+      {
+        path: 'clientes/nuevo',
+        canActivate: [moduloGuard('clientes')],
+        loadComponent: () =>
+          import('./dashboard/clientes/cliente-form.component').then((c) => c.ClienteFormComponent),
+      },
+      {
+        path: 'clientes/:id/editar',
+        canActivate: [moduloGuard('clientes')],
+        loadComponent: () =>
+          import('./dashboard/clientes/cliente-form.component').then((c) => c.ClienteFormComponent),
+      },
+      {
+        path: 'clientes/:id',
+        canActivate: [moduloGuard('clientes')],
+        loadComponent: () =>
+          import('./dashboard/clientes/cliente-detalle.component').then((c) => c.ClienteDetalleComponent),
+      },
       // Pendiente: pagos, documentos (ver README)
     ],
   },

@@ -1,0 +1,72 @@
+<div class="detalle-page">
+  @if (cargando()) {
+    <div class="estado-carga">Cargando...</div>
+  } @else if (!cliente()) {
+    <div class="estado-vacio">No se encontró el cliente</div>
+  } @else {
+    <div class="page-header">
+      <div>
+        <button class="btn-volver" (click)="volver()">← Clientes</button>
+        <h1>{{ nombreCompleto() }}</h1>
+        <span class="chip chip-tipo">{{ cliente()!.tipo_persona === 'juridica' ? 'Persona jurídica' : 'Persona natural' }}</span>
+      </div>
+      <button class="btn-primary" (click)="editar()">Editar</button>
+    </div>
+
+    <div class="detalle-grid">
+      <div class="col-principal">
+        <div class="card">
+          <h3>Datos</h3>
+          <div class="detalle-datos">
+            @if (cliente()!.tipo_persona === 'juridica') {
+              <div><span>RUC</span><strong>{{ cliente()!.ruc }}</strong></div>
+              <div><span>Representante legal</span><strong>{{ cliente()!.representante_legal || '—' }}</strong></div>
+            } @else {
+              <div><span>Documento</span><strong>{{ cliente()!.tipo_documento }} {{ cliente()!.numero_documento }}</strong></div>
+              <div><span>Estado civil</span><strong>{{ cliente()!.estado_civil || 'Sin indicar' }}</strong></div>
+              @if (cliente()!.fecha_nacimiento) {
+                <div><span>Fecha de nacimiento</span><strong>{{ cliente()!.fecha_nacimiento }}</strong></div>
+              }
+            }
+            <div><span>Teléfono</span><strong>{{ cliente()!.telefono || '—' }}</strong></div>
+            <div><span>Correo</span><strong>{{ cliente()!.correo || '—' }}</strong></div>
+            <div class="ancho"><span>Dirección</span><strong>{{ cliente()!.direccion || '—' }}</strong></div>
+            @if (cliente()!.segundo_contacto_nombre) {
+              <div><span>Segundo contacto</span><strong>{{ cliente()!.segundo_contacto_nombre }} ({{ cliente()!.segundo_contacto_telefono }})</strong></div>
+            }
+          </div>
+          @if (cliente()!.dni_url) {
+            <a [href]="cliente()!.dni_url" target="_blank" class="link-doc">Ver documento de identidad</a>
+          }
+        </div>
+
+        @if (cliente()!.conyuge) {
+          <div class="card">
+            <h3>Cónyuge</h3>
+            <p><strong>{{ cliente()!.conyuge!.nombres }} {{ cliente()!.conyuge!.apellidos }}</strong></p>
+            <p class="dato-secundario">{{ cliente()!.conyuge!.numero_documento }} · {{ cliente()!.conyuge!.telefono || 'sin teléfono' }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="col-historial">
+        <div class="card">
+          <h3>Separaciones</h3>
+          @if (cliente()!.separaciones.length === 0) {
+            <p class="dato-secundario">Este cliente aún no tiene separaciones registradas.</p>
+          } @else {
+            @for (sep of cliente()!.separaciones; track sep.id) {
+              <div class="fila-sep" (click)="irASeparacion(sep.id)">
+                <div>
+                  <strong>{{ sep.lote_codigo || 'Lote' }}</strong>
+                  <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstadoSep(sep.estado) }}</span>
+                </div>
+                <span class="dato-secundario">S/ {{ sep.importe | number:'1.2-2' }} · {{ sep.created_at | date:'dd/MM/yyyy' }}</span>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>

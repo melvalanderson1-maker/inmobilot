@@ -258,7 +258,23 @@ class LotePublicoOut(ORMBase):
 
 # ------------------------------------------------------------- CLIENTES ---
 
+class ClienteConyugeIn(BaseModel):
+    nombres: str
+    apellidos: str
+    numero_documento: str
+    telefono: Optional[str] = None
+
+
+class ClienteConyugeOut(ORMBase):
+    id: int
+    nombres: str
+    apellidos: str
+    numero_documento: str
+    telefono: Optional[str] = None
+
+
 class ClienteCreate(BaseModel):
+    tipo_persona: str = "natural"  # natural | juridica
     tipo_documento: str = "DNI"
     numero_documento: str
     nombres: str
@@ -266,10 +282,46 @@ class ClienteCreate(BaseModel):
     correo: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
+    dni_url: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    estado_civil: Optional[str] = None  # soltero | casado | viudo | divorciado
+    segundo_contacto_nombre: Optional[str] = None
+    segundo_contacto_telefono: Optional[str] = None
+    ruc: Optional[str] = None
+    razon_social: Optional[str] = None
+    representante_legal: Optional[str] = None
+    conyuge: Optional[ClienteConyugeIn] = None
+
+    @model_validator(mode="after")
+    def _validar_segun_tipo(self):
+        if self.tipo_persona == "juridica":
+            if not self.ruc or not self.razon_social or not self.representante_legal:
+                raise ValueError("Persona jurídica requiere RUC, razón social y representante legal")
+        else:
+            if self.estado_civil == "casado" and not self.conyuge:
+                raise ValueError("Si el estado civil es casado, los datos del cónyuge son obligatorios")
+        return self
+
+
+class ClienteUpdate(BaseModel):
+    correo: Optional[EmailStr] = None
+    telefono: Optional[str] = None
+    direccion: Optional[str] = None
+    dni_url: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    estado_civil: Optional[str] = None
+    segundo_contacto_nombre: Optional[str] = None
+    segundo_contacto_telefono: Optional[str] = None
+    ruc: Optional[str] = None
+    razon_social: Optional[str] = None
+    representante_legal: Optional[str] = None
+    activo: Optional[bool] = None
+    conyuge: Optional[ClienteConyugeIn] = None
 
 
 class ClienteOut(ORMBase):
     id: int
+    tipo_persona: str
     tipo_documento: str
     numero_documento: str
     nombres: str
@@ -277,6 +329,30 @@ class ClienteOut(ORMBase):
     correo: Optional[str] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None
+    dni_url: Optional[str] = None
+    fecha_nacimiento: Optional[date] = None
+    estado_civil: Optional[str] = None
+    segundo_contacto_nombre: Optional[str] = None
+    segundo_contacto_telefono: Optional[str] = None
+    ruc: Optional[str] = None
+    razon_social: Optional[str] = None
+    representante_legal: Optional[str] = None
+    activo: bool
+    created_at: datetime
+    conyuge: Optional[ClienteConyugeOut] = None
+
+
+class ClienteHistorialSeparacionOut(ORMBase):
+    id: int
+    id_proyecto: int
+    estado: EstadoSeparacionEnum
+    importe: Decimal
+    created_at: datetime
+    lote_codigo: Optional[str] = None
+
+
+class ClienteDetalleOut(ClienteOut):
+    separaciones: list[ClienteHistorialSeparacionOut] = []
 
 
 # ------------------------------------------------------------ CONTRATOS ---

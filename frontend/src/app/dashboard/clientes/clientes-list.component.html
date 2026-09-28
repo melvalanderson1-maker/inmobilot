@@ -1,0 +1,74 @@
+<div class="clientes-page">
+  <div class="page-header">
+    <div>
+      <h1>Clientes</h1>
+      <p class="subtitle">Personas y empresas que han separado o comprado un lote</p>
+    </div>
+    <button class="btn-primary" (click)="irANuevo()">
+      <span>+</span> Nuevo cliente
+    </button>
+  </div>
+
+  <div class="filtros-bar">
+    <input
+      type="text"
+      class="filtro-busqueda"
+      placeholder="Buscar por nombre, documento, razón social o teléfono..."
+      [(ngModel)]="busqueda"
+      (keyup.enter)="cargar()"
+    />
+    <select class="filtro-select" [(ngModel)]="filtroTipo" (ngModelChange)="cargar()">
+      <option value="todos">Todos</option>
+      <option value="natural">Persona natural</option>
+      <option value="juridica">Persona jurídica</option>
+    </select>
+    <button class="btn-secundario" (click)="cargar()">Buscar</button>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando clientes...</div>
+  } @else if (clientes().length === 0) {
+    <div class="estado-vacio">
+      <p>No se encontraron clientes.</p>
+      <button class="btn-primary" (click)="irANuevo()">Crear el primero</button>
+    </div>
+  } @else {
+    <div class="tabla-card tabla-card-scroll vista-tabla">
+      <table class="tabla-clientes">
+        <thead>
+          <tr>
+            <th>Nombre / Razón social</th>
+            <th>Documento</th>
+            <th>Teléfono</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of clientes(); track c.id) {
+            <tr (click)="irADetalle(c)">
+              <td>{{ nombreCompleto(c) }}</td>
+              <td>{{ c.tipo_persona === 'juridica' ? c.ruc : c.numero_documento }}</td>
+              <td>{{ c.telefono || '—' }}</td>
+              <td><span class="chip chip-tipo">{{ c.tipo_persona === 'juridica' ? 'Jurídica' : 'Natural' }}</span></td>
+              <td><span class="chip" [class.chip-activo]="c.activo" [class.chip-inactivo]="!c.activo">{{ c.activo ? 'Activo' : 'Inactivo' }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="vista-cards">
+      @for (c of clientes(); track c.id) {
+        <div class="cliente-card" (click)="irADetalle(c)">
+          <div class="cliente-card-top">
+            <strong>{{ nombreCompleto(c) }}</strong>
+            <span class="chip chip-tipo">{{ c.tipo_persona === 'juridica' ? 'Jurídica' : 'Natural' }}</span>
+          </div>
+          <p class="cliente-card-doc">{{ c.tipo_persona === 'juridica' ? ('RUC ' + c.ruc) : c.numero_documento }}</p>
+          <p class="cliente-card-doc">{{ c.telefono || 'Sin teléfono' }}</p>
+        </div>
+      }
+    </div>
+  }
+</div>

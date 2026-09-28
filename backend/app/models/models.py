@@ -349,6 +349,7 @@ class Cliente(Base):
 
     id = Column(Integer, primary_key=True)
     id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    tipo_persona = Column(String(20), nullable=False, default="natural")  # natural | juridica
     tipo_documento = Column(String(10), default="DNI")
     numero_documento = Column(String(20), nullable=False)
     nombres = Column(String(150), nullable=False)
@@ -356,9 +357,33 @@ class Cliente(Base):
     correo = Column(String(200))
     telefono = Column(String(20))
     direccion = Column(String(250))
+    dni_url = Column(String(300))
+    fecha_nacimiento = Column(Date)
+    estado_civil = Column(String(20))  # soltero | casado | viudo | divorciado
+    segundo_contacto_nombre = Column(String(150))
+    segundo_contacto_telefono = Column(String(20))
+    ruc = Column(String(20))
+    razon_social = Column(String(200))
+    representante_legal = Column(String(150))
+    activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (UniqueConstraint("id_empresa", "numero_documento", name="uq_cliente_empresa_doc"),)
+
+    conyuge = relationship("ClienteConyuge", back_populates="cliente", uselist=False)
+
+
+class ClienteConyuge(Base):
+    __tablename__ = "cliente_conyuge"
+
+    id = Column(Integer, primary_key=True)
+    id_cliente = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False, unique=True)
+    nombres = Column(String(150), nullable=False)
+    apellidos = Column(String(150), nullable=False)
+    numero_documento = Column(String(20), nullable=False)
+    telefono = Column(String(20))
+
+    cliente = relationship("Cliente", back_populates="conyuge")
 
 
 class Contrato(Base):

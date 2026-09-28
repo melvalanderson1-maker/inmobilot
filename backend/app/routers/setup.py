@@ -20,6 +20,7 @@ MODULOS_BASE = {
     "reportes": ("Reportes", "/reportes"),
     "usuarios": ("Usuarios", "/usuarios"),
     "separaciones": ("Separaciones", "/separaciones"),
+    "clientes": ("Clientes", "/clientes"),
 }
 
 
@@ -29,7 +30,7 @@ ROLES_EXTRA = {
     "ejecutivo_ventas": {
         "nombre": "Ejecutivo de Ventas",
         "descripcion": "Gestiona lotes y leads de sus proyectos asignados",
-        "modulos": ["proyectos", "lotes", "contratos", "pagos", "leads", "documentos", "reportes", "separaciones"],
+        "modulos": ["proyectos", "lotes", "contratos", "pagos", "leads", "documentos", "reportes", "separaciones", "clientes"],
     },
     "comisionista": {
         "nombre": "Agente Comisionista",
@@ -49,9 +50,10 @@ ROLES_EXTRA = {
     "contabilidad": {
         "nombre": "Contabilidad",
         "descripcion": "Consulta cobranza y reportes",
-        "modulos": ["separaciones"],
+        "modulos": ["separaciones", "clientes"],
     },
 }
+
 
 class CrearAdminInicial(BaseModel):
     clave_bootstrap: str
@@ -150,21 +152,23 @@ def crear_admin_inicial(payload: CrearAdminInicial, db: Session = Depends(get_db
                 db.add(m.RolModulo(id_rol=rol.id, id_modulo=modulo.id))
     db.flush()
 
-    # 4c. Módulo separaciones para roles que ya existen (gerencia, supervisor).
-    modulo_sep = db.query(m.Modulo).filter(m.Modulo.clave == "separaciones").first()
-    if modulo_sep:
+    # 4c. Módulos nuevos para roles que ya existían antes de estos módulos (gerencia, supervisor).
+    for clave_mod_extra in ("separaciones", "clientes"):
+        modulo_extra = db.query(m.Modulo).filter(m.Modulo.clave == clave_mod_extra).first()
+        if not modulo_extra:
+            continue
         for clave_rol in ("gerencia", "supervisor"):
             rol_existente = db.query(m.Rol).filter(m.Rol.clave == clave_rol).first()
             if not rol_existente:
                 continue
             ya_vinculado = (
                 db.query(m.RolModulo)
-                .filter(m.RolModulo.id_rol == rol_existente.id, m.RolModulo.id_modulo == modulo_sep.id)
+                .filter(m.RolModulo.id_rol == rol_existente.id, m.RolModulo.id_modulo == modulo_extra.id)
                 .first()
             )
             if not ya_vinculado:
-                db.add(m.RolModulo(id_rol=rol_existente.id, id_modulo=modulo_sep.id))
-        db.flush()
+                db.add(m.RolModulo(id_rol=rol_existente.id, id_modulo=modulo_extra.id))
+    db.flush()
 
     # 5. Usuario admin
     admin = m.Usuario(

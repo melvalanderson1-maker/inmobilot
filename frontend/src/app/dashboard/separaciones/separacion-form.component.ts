@@ -7,7 +7,7 @@ import { ApiService } from '../../core/services/api.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Cliente, ClienteCreate, FormaPago, Lote } from '../../core/models';
+import { Cliente, FormaPago, Lote } from '../../core/models';
 
 @Component({
   selector: 'app-separacion-form',
@@ -25,17 +25,7 @@ export class SeparacionFormComponent implements OnInit {
   documentoBusqueda = '';
   buscandoCliente = signal(false);
   clienteEncontrado = signal<Cliente | null>(null);
-  mostrarFormClienteNuevo = signal(false);
-  clienteNuevo: ClienteCreate = {
-    tipo_documento: 'DNI',
-    numero_documento: '',
-    nombres: '',
-    apellidos: '',
-    correo: '',
-    telefono: '',
-    direccion: '',
-  };
-  creandoCliente = signal(false);
+  clienteNoEncontrado = signal(false);
 
   form = {
     id_lote: null as number | null,
@@ -68,6 +58,15 @@ export class SeparacionFormComponent implements OnInit {
       const id = Number(params['id_proyecto']);
       this.idProyecto = id || null;
       if (this.idProyecto) this.cargarLotesLibres();
+
+      // Volvemos desde "crear cliente nuevo" con el cliente ya creado
+      const idCliente = Number(params['id_cliente']);
+      if (idCliente) {
+        this.clienteService.obtener(idCliente).subscribe((cliente) => {
+          this.clienteEncontrado.set(cliente);
+          this.clienteNoEncontrado.set(false);
+        });
+      }
     });
   }
 
@@ -86,7 +85,7 @@ export class SeparacionFormComponent implements OnInit {
     if (!doc) return;
     this.buscandoCliente.set(true);
     this.clienteEncontrado.set(null);
-    this.mostrarFormClienteNuevo.set(false);
+    this.clienteNoEncontrado.set(false);
 
     this.clienteService.buscarPorDocumento(doc).subscribe({
       next: (cliente) => {
@@ -94,16 +93,7 @@ export class SeparacionFormComponent implements OnInit {
         if (cliente) {
           this.clienteEncontrado.set(cliente);
         } else {
-          this.mostrarFormClienteNuevo.set(true);
-          this.clienteNuevo = {
-            tipo_documento: 'DNI',
-            numero_documento: doc,
-            nombres: '',
-            apellidos: '',
-            correo: '',
-            telefono: '',
-            direccion: '',
-          };
+          this.clienteNoEncontrado.set(true);
         }
       },
       error: () => {
@@ -113,32 +103,19 @@ export class SeparacionFormComponent implements OnInit {
     });
   }
 
-  crearClienteNuevo(): void {
-    if (!this.clienteNuevo.nombres || !this.clienteNuevo.apellidos || !this.clienteNuevo.telefono || !this.clienteNuevo.direccion) {
-      this.toastService.error('Nombres, apellidos, teléfono y dirección son obligatorios');
-      return;
-    }
-    this.creandoCliente.set(true);
-    const payload: ClienteCreate = {
-      ...this.clienteNuevo,
-      correo: this.clienteNuevo.correo?.trim() || undefined,
-    };
-    this.clienteService.crear(payload).subscribe({
-      next: (cliente) => {
-        this.creandoCliente.set(false);
-        this.clienteEncontrado.set(cliente);
-        this.mostrarFormClienteNuevo.set(false);
-      },
-      error: (err) => {
-        this.creandoCliente.set(false);
-        this.toastService.error(err?.error?.detail ?? 'No se pudo crear el cliente');
+  irACrearCliente(): void {
+    this.router.navigate(['/dashboard/clientes/nuevo'], {
+      queryParams: {
+        documento: this.documentoBusqueda.trim(),
+        returnTo: '/dashboard/separaciones/nueva',
+        id_proyecto: this.idProyecto,
       },
     });
   }
 
   cambiarCliente(): void {
     this.clienteEncontrado.set(null);
-    this.mostrarFormClienteNuevo.set(false);
+    this.clienteNoEncontrado.set(false);
     this.documentoBusqueda = '';
   }
 

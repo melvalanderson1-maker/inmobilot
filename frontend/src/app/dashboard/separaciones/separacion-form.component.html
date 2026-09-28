@@ -21,32 +21,11 @@
         </button>
       </div>
 
-      @if (mostrarFormClienteNuevo()) {
-        <div class="form-grid">
-          <div class="campo">
-            <label>Nombres</label>
-            <input type="text" [(ngModel)]="clienteNuevo.nombres" />
-          </div>
-          <div class="campo">
-            <label>Apellidos</label>
-            <input type="text" [(ngModel)]="clienteNuevo.apellidos" />
-          </div>
-          <div class="campo">
-            <label>Teléfono</label>
-            <input type="text" [(ngModel)]="clienteNuevo.telefono" />
-          </div>
-          <div class="campo">
-            <label>Dirección</label>
-            <input type="text" [(ngModel)]="clienteNuevo.direccion" />
-          </div>
-          <div class="campo">
-            <label>Correo (opcional)</label>
-            <input type="email" [(ngModel)]="clienteNuevo.correo" />
-          </div>
+      @if (clienteNoEncontrado()) {
+        <div class="aviso-no-encontrado">
+          <p>No hay ningún cliente registrado con ese documento.</p>
+          <button class="btn-primary" (click)="irACrearCliente()">Crear cliente nuevo</button>
         </div>
-        <button class="btn-primary" (click)="crearClienteNuevo()" [disabled]="creandoCliente()">
-          {{ creandoCliente() ? 'Creando...' : 'Crear cliente' }}
-        </button>
       }
     } @else {
       <div class="cliente-encontrado">

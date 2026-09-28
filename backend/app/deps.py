@@ -112,8 +112,9 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "aprobar_devolucion": {"admin", "gerencia"},
     "convertir_separacion": _EJECUTIVOS,
     "liberar_lote": {"admin", "gerencia", "supervisor"},
+    "ver_clientes": _EJECUTIVOS | {"contabilidad"},
+    "editar_cliente": _EJECUTIVOS,
 }
-
 
 def require_permiso(accion: str):
     """Factory de dependencia: exige que el rol del usuario pueda ejecutar la acción."""

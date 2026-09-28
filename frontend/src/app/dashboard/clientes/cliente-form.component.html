@@ -1,0 +1,166 @@
+<div class="form-page">
+  <div class="page-header">
+    <h1>{{ esEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</h1>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando...</div>
+  } @else {
+    @if (error()) {
+      <div class="mensaje-error">{{ error() }}</div>
+    }
+
+    <div class="form-card">
+      <h3>Tipo de cliente</h3>
+      <div class="tipo-switch">
+        <button
+          type="button"
+          class="tipo-btn"
+          [class.activo]="form.tipo_persona === 'natural'"
+          [disabled]="esEdicion"
+          (click)="form.tipo_persona = 'natural'"
+        >
+          Persona natural
+        </button>
+        <button
+          type="button"
+          class="tipo-btn"
+          [class.activo]="form.tipo_persona === 'juridica'"
+          [disabled]="esEdicion"
+          (click)="form.tipo_persona = 'juridica'"
+        >
+          Persona jurídica
+        </button>
+      </div>
+    </div>
+
+    @if (form.tipo_persona === 'natural') {
+      <div class="form-card">
+        <h3>Datos personales</h3>
+        <div class="form-grid">
+          <div class="campo">
+            <label>Tipo de documento</label>
+            <select [(ngModel)]="form.tipo_documento" [disabled]="esEdicion">
+              <option value="DNI">DNI</option>
+              <option value="CE">Carné de extranjería</option>
+              <option value="PASAPORTE">Pasaporte</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Número de documento</label>
+            <input type="text" [(ngModel)]="form.numero_documento" [disabled]="esEdicion" />
+          </div>
+          <div class="campo">
+            <label>Nombres</label>
+            <input type="text" [(ngModel)]="form.nombres" [disabled]="esEdicion" />
+          </div>
+          <div class="campo">
+            <label>Apellidos</label>
+            <input type="text" [(ngModel)]="form.apellidos" [disabled]="esEdicion" />
+          </div>
+          <div class="campo">
+            <label>Fecha de nacimiento</label>
+            <input type="date" [(ngModel)]="form.fecha_nacimiento" />
+          </div>
+          <div class="campo">
+            <label>Estado civil</label>
+            <select [(ngModel)]="form.estado_civil">
+              <option value="">Sin indicar</option>
+              <option value="soltero">Soltero(a)</option>
+              <option value="casado">Casado(a)</option>
+              <option value="viudo">Viudo(a)</option>
+              <option value="divorciado">Divorciado(a)</option>
+            </select>
+          </div>
+          <div class="campo campo-span-2">
+            <label>DNI (foto)</label>
+            @if (form.dni_url) {
+              <a [href]="form.dni_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
+              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniSeleccionado($event)" [disabled]="subiendoDni()" />
+            } @else {
+              <label class="dropzone dropzone-compacta">
+                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniSeleccionado($event)" [disabled]="subiendoDni()" hidden />
+                <span>{{ subiendoDni() ? 'Subiendo...' : 'Subir foto del DNI' }}</span>
+              </label>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (esCasado) {
+        <div class="form-card">
+          <h3>Datos del cónyuge</h3>
+          <div class="form-grid">
+            <div class="campo">
+              <label>Nombres</label>
+              <input type="text" [(ngModel)]="conyuge.nombres" />
+            </div>
+            <div class="campo">
+              <label>Apellidos</label>
+              <input type="text" [(ngModel)]="conyuge.apellidos" />
+            </div>
+            <div class="campo">
+              <label>Documento</label>
+              <input type="text" [(ngModel)]="conyuge.numero_documento" />
+            </div>
+            <div class="campo">
+              <label>Teléfono</label>
+              <input type="text" [(ngModel)]="conyuge.telefono" />
+            </div>
+          </div>
+        </div>
+      }
+    } @else {
+      <div class="form-card">
+        <h3>Datos de la empresa</h3>
+        <div class="form-grid">
+          <div class="campo">
+            <label>RUC</label>
+            <input type="text" [(ngModel)]="form.ruc" [disabled]="esEdicion" />
+          </div>
+          <div class="campo">
+            <label>Razón social</label>
+            <input type="text" [(ngModel)]="form.razon_social" [disabled]="esEdicion" />
+          </div>
+          <div class="campo campo-span-2">
+            <label>Representante legal</label>
+            <input type="text" [(ngModel)]="form.representante_legal" />
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="form-card">
+      <h3>Contacto</h3>
+      <div class="form-grid">
+        <div class="campo">
+          <label>Teléfono</label>
+          <input type="text" [(ngModel)]="form.telefono" />
+        </div>
+        <div class="campo">
+          <label>Correo (opcional)</label>
+          <input type="email" [(ngModel)]="form.correo" />
+        </div>
+        <div class="campo campo-span-2">
+          <label>Dirección</label>
+          <input type="text" [(ngModel)]="form.direccion" />
+        </div>
+        <div class="campo">
+          <label>Segundo contacto — nombre</label>
+          <input type="text" [(ngModel)]="form.segundo_contacto_nombre" />
+        </div>
+        <div class="campo">
+          <label>Segundo contacto — teléfono</label>
+          <input type="text" [(ngModel)]="form.segundo_contacto_telefono" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-acciones">
+      <button class="btn-secundario" (click)="cancelar()">Cancelar</button>
+      <button class="btn-primary" (click)="guardar()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear cliente') }}
+      </button>
+    </div>
+  }
+</div>

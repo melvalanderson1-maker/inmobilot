@@ -239,7 +239,26 @@ export type EstadoContrato = 'vigente' | 'cancelado' | 'moroso' | 'anulado';
 export type EstadoCuota = 'pendiente' | 'pagada' | 'vencida' | 'parcial';
 export type RolClienteContrato = 'titular' | 'conyuge' | 'copropietario';
 
+export type TipoPersona = 'natural' | 'juridica';
+export type EstadoCivil = 'soltero' | 'casado' | 'viudo' | 'divorciado';
+
+export interface ClienteConyugeIn {
+  nombres: string;
+  apellidos: string;
+  numero_documento: string;
+  telefono?: string;
+}
+
+export interface ClienteConyugeOut {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  numero_documento: string;
+  telefono?: string;
+}
+
 export interface ClienteCreate {
+  tipo_persona: TipoPersona;
   tipo_documento: string;
   numero_documento: string;
   nombres: string;
@@ -247,6 +266,31 @@ export interface ClienteCreate {
   correo?: string;
   telefono?: string;
   direccion?: string;
+  dni_url?: string;
+  fecha_nacimiento?: string;
+  estado_civil?: EstadoCivil;
+  segundo_contacto_nombre?: string;
+  segundo_contacto_telefono?: string;
+  ruc?: string;
+  razon_social?: string;
+  representante_legal?: string;
+  conyuge?: ClienteConyugeIn;
+}
+
+export interface ClienteUpdate {
+  correo?: string;
+  telefono?: string;
+  direccion?: string;
+  dni_url?: string;
+  fecha_nacimiento?: string;
+  estado_civil?: EstadoCivil;
+  segundo_contacto_nombre?: string;
+  segundo_contacto_telefono?: string;
+  ruc?: string;
+  razon_social?: string;
+  representante_legal?: string;
+  activo?: boolean;
+  conyuge?: ClienteConyugeIn;
 }
 
 export interface ContratoClienteIn {
@@ -362,6 +406,7 @@ export type EstadoSeparacion =
 
 export interface Cliente {
   id: number;
+  tipo_persona: TipoPersona;
   tipo_documento: string;
   numero_documento: string;
   nombres: string;
@@ -369,6 +414,30 @@ export interface Cliente {
   correo?: string;
   telefono?: string;
   direccion?: string;
+  dni_url?: string;
+  fecha_nacimiento?: string;
+  estado_civil?: EstadoCivil;
+  segundo_contacto_nombre?: string;
+  segundo_contacto_telefono?: string;
+  ruc?: string;
+  razon_social?: string;
+  representante_legal?: string;
+  activo: boolean;
+  created_at: string;
+  conyuge?: ClienteConyugeOut;
+}
+
+export interface ClienteHistorialSeparacion {
+  id: number;
+  id_proyecto: number;
+  estado: EstadoSeparacion;
+  importe: number;
+  created_at: string;
+  lote_codigo?: string;
+}
+
+export interface ClienteDetalle extends Cliente {
+  separaciones: ClienteHistorialSeparacion[];
 }
 
 export interface ComprobanteCreate {

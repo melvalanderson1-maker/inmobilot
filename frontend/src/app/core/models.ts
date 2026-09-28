@@ -258,7 +258,7 @@ export interface ClienteConyugeOut {
 }
 
 export interface ClienteCreate {
-  tipo_persona: TipoPersona;
+  tipo_persona?: TipoPersona;
   tipo_documento: string;
   numero_documento: string;
   nombres: string;

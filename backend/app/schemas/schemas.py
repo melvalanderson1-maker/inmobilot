@@ -2,11 +2,12 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.models.models import (
     EstadoLoteEnum, FormaPagoEnum, EstadoContratoEnum, RolClienteContratoEnum,
     EstadoCuotaEnum, TipoDocumentoEnum, EstadoLeadEnum, OrigenLeadEnum,
+    EstadoSeparacionEnum,
 )
 
 
@@ -275,6 +276,7 @@ class ClienteOut(ORMBase):
     apellidos: str
     correo: Optional[str] = None
     telefono: Optional[str] = None
+    direccion: Optional[str] = None
 
 
 # ------------------------------------------------------------ CONTRATOS ---
@@ -513,3 +515,130 @@ class UsuarioOut(ORMBase):
             created_at=usuario.created_at,
             proyectos=[p.id for p in usuario.proyectos],
         )
+
+
+# ---------------------------------------------------------- SEPARACIONES --
+
+class SeparacionCreate(BaseModel):
+    id_lote: int
+    id_cliente: int
+    fecha_inicio: date
+    fecha_vencimiento: date
+    importe: Decimal = Field(gt=0)
+    motivo: Optional[str] = None
+    tipo_pago: Optional[FormaPagoEnum] = None
+    notas: Optional[str] = None
+    dni_frente_url: str
+    dni_reverso_url: str
+    voucher_url: str
+    proforma_url: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _validar_fechas(self):
+        if self.fecha_vencimiento < self.fecha_inicio:
+            raise ValueError("La fecha de vencimiento no puede ser anterior a la fecha inicial")
+        return self
+
+
+class SeparacionUpdate(BaseModel):
+    fecha_vencimiento: Optional[date] = None
+    tipo_pago: Optional[FormaPagoEnum] = None
+    notas: Optional[str] = None
+    agenda_fecha: Optional[datetime] = None
+    proforma_url: Optional[str] = None
+    contrato_url: Optional[str] = None
+    contrato_firmado_url: Optional[str] = None
+
+
+class SeparacionRechazo(BaseModel):
+    motivo: str
+
+
+class ComprobanteCreate(BaseModel):
+    tipo: str  # boleta | factura | recibo
+    numero: str
+    archivo_url: str
+
+
+class ComprobanteOut(ORMBase):
+    id: int
+    tipo: str
+    numero: str
+    archivo_url: str
+    created_at: datetime
+
+
+class DevolucionCreate(BaseModel):
+    monto: Decimal = Field(gt=0)
+    sustento: str
+
+
+class DevolucionResolver(BaseModel):
+    aprobar: bool
+    respuesta: Optional[str] = None
+
+
+class DevolucionOut(ORMBase):
+    id: int
+    monto: Decimal
+    sustento: str
+    estado: str
+    fecha_solicitud: Optional[date] = None
+    fecha_resolucion: Optional[datetime] = None
+    respuesta: Optional[str] = None
+
+
+class SeparacionClienteOut(ORMBase):
+    id: int
+    numero_documento: str
+    nombres: str
+    apellidos: str
+    telefono: Optional[str] = None
+
+
+class SeparacionLoteOut(ORMBase):
+    id: int
+    codigo: str
+    ubicacion_lote: Optional[str] = None
+    area_m2: Decimal
+    partida_registral: Optional[str] = None
+    precio_total_contado: Optional[Decimal] = None
+    estado: EstadoLoteEnum
+
+
+class SeparacionOut(ORMBase):
+    id: int
+    id_proyecto: int
+    id_lote: int
+    id_cliente: int
+    id_ejecutivo: int
+    fecha_inicio: date
+    fecha_vencimiento: date
+    importe: Decimal
+    motivo: Optional[str] = None
+    tipo_pago: Optional[FormaPagoEnum] = None
+    notas: Optional[str] = None
+    dni_frente_url: str
+    dni_reverso_url: str
+    voucher_url: str
+    proforma_url: Optional[str] = None
+    contrato_url: Optional[str] = None
+    contrato_firmado_url: Optional[str] = None
+    estado: EstadoSeparacionEnum
+    motivo_rechazo: Optional[str] = None
+    agenda_fecha: Optional[datetime] = None
+    fecha_conversion: Optional[date] = None
+    created_at: datetime
+    cliente: Optional[SeparacionClienteOut] = None
+    lote: Optional[SeparacionLoteOut] = None
+    ejecutivo_nombre: Optional[str] = None
+    validado_por_nombre: Optional[str] = None
+    comprobantes: list[ComprobanteOut] = []
+    devoluciones: list[DevolucionOut] = []
+
+    @staticmethod
+    def desde_separacion(s) -> "SeparacionOut":
+        data = SeparacionOut.model_validate(s)
+        data.ejecutivo_nombre = s.ejecutivo.nombre if s.ejecutivo else None
+        data.validado_por_nombre = s.validador.nombre if s.validador else None
+        return data

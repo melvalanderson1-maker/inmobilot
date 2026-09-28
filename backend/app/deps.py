@@ -96,3 +96,34 @@ def get_ids_proyectos_usuario(db: Session, usuario: m.Usuario) -> list[int] | No
         .all()
     )
     return [f[0] for f in filas]
+
+
+# Permisos por ACCIÓN (más finos que require_modulo).
+# "admin" siempre puede todo.
+_EJECUTIVOS = {"admin", "gerencia", "supervisor", "ejecutivo_ventas"}
+
+PERMISOS_ACCION: dict[str, set[str]] = {
+    "ver_separaciones": _EJECUTIVOS | {"caja", "facturacion", "contabilidad"},
+    "crear_separacion": _EJECUTIVOS,
+    "editar_separacion": _EJECUTIVOS,
+    "validar_voucher": {"admin", "caja"},
+    "emitir_comprobante": {"admin", "facturacion"},
+    "solicitar_devolucion": _EJECUTIVOS,
+    "aprobar_devolucion": {"admin", "gerencia"},
+    "convertir_separacion": _EJECUTIVOS,
+}
+
+
+def require_permiso(accion: str):
+    """Factory de dependencia: exige que el rol del usuario pueda ejecutar la acción."""
+
+    def _checker(usuario: m.Usuario = Depends(get_current_user)) -> m.Usuario:
+        permitidos = PERMISOS_ACCION.get(accion, set())
+        if usuario.rol.clave not in permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Tu rol no puede realizar la acción '{accion}'",
+            )
+        return usuario
+
+    return _checker

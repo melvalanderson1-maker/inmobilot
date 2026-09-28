@@ -73,6 +73,17 @@ class OrigenLeadEnum(str, enum.Enum):
     otro = "otro"
 
 
+class EstadoSeparacionEnum(str, enum.Enum):
+    pendiente_caja = "pendiente_caja"
+    pendiente_facturacion = "pendiente_facturacion"
+    vigente = "vigente"
+    vencida = "vencida"
+    convertida = "convertida"
+    devolucion_pendiente = "devolucion_pendiente"
+    devuelta = "devuelta"
+    rechazada = "rechazada"
+
+
 # =========================================================================
 # 1. TENANT / SAAS
 # =========================================================================
@@ -556,3 +567,84 @@ class MetaVenta(Base):
     meta_monto = Column(Numeric(12, 2))
 
     __table_args__ = (UniqueConstraint("id_usuario", "id_proyecto", "periodo", name="uq_meta_usuario_proyecto_periodo"),)
+
+# =========================================================================
+# 12. SEPARACIONES
+# =========================================================================
+
+class Separacion(Base):
+    __tablename__ = "separaciones"
+
+    id = Column(Integer, primary_key=True)
+    id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    id_proyecto = Column(Integer, ForeignKey("proyectos.id"), nullable=False)
+    id_lote = Column(Integer, ForeignKey("lotes.id"), nullable=False)
+    id_cliente = Column(Integer, ForeignKey("clientes.id"), nullable=False)
+    id_ejecutivo = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    fecha_inicio = Column(Date, nullable=False)
+    fecha_vencimiento = Column(Date, nullable=False)
+    importe = Column(Numeric(12, 2), nullable=False)
+    motivo = Column(String(300))
+    tipo_pago = Column(SAEnum(FormaPagoEnum, name="forma_pago_enum"))
+    notas = Column(String(500))
+    dni_frente_url = Column(String(300), nullable=False)
+    dni_reverso_url = Column(String(300), nullable=False)
+    voucher_url = Column(String(300), nullable=False)
+    proforma_url = Column(String(300))
+    contrato_url = Column(String(300))
+    contrato_firmado_url = Column(String(300))
+    estado = Column(
+        SAEnum(EstadoSeparacionEnum, name="estado_separacion_enum"),
+        nullable=False, default=EstadoSeparacionEnum.pendiente_caja,
+    )
+    validado_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_validacion = Column(DateTime)
+    motivo_rechazo = Column(String(300))
+    agenda_fecha = Column(DateTime)
+    fecha_conversion = Column(Date)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_separaciones_estado", "id_proyecto", "estado"),
+        Index("idx_separaciones_lote", "id_lote"),
+    )
+
+    cliente = relationship("Cliente")
+    lote = relationship("Lote")
+    ejecutivo = relationship("Usuario", foreign_keys=[id_ejecutivo])
+    validador = relationship("Usuario", foreign_keys=[validado_por])
+    comprobantes = relationship("ComprobantePago", back_populates="separacion")
+    devoluciones = relationship("Devolucion", back_populates="separacion")
+
+
+class ComprobantePago(Base):
+    __tablename__ = "comprobantes_pago"
+
+    id = Column(Integer, primary_key=True)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"))
+    tipo = Column(String(30), nullable=False)
+    numero = Column(String(50), nullable=False)
+    archivo_url = Column(String(300), nullable=False)
+    emitido_por = Column(Integer, ForeignKey("usuarios.id"))
+    created_at = Column(DateTime, server_default=func.now())
+
+    separacion = relationship("Separacion", back_populates="comprobantes")
+
+
+class Devolucion(Base):
+    __tablename__ = "devoluciones"
+
+    id = Column(Integer, primary_key=True)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=False)
+    monto = Column(Numeric(12, 2), nullable=False)
+    sustento = Column(String(500), nullable=False)
+    solicitado_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_solicitud = Column(Date, server_default=func.current_date())
+    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente | aprobada | rechazada
+    resuelto_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_resolucion = Column(DateTime)
+    respuesta = Column(String(300))
+    created_at = Column(DateTime, server_default=func.now())
+
+    separacion = relationship("Separacion", back_populates="devoluciones")

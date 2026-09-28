@@ -54,4 +54,14 @@ export class AuthService {
     if (this.usuarioSignal()?.rol.clave === 'admin') return true;
     return this.modulosClaves().has(clave);
   }
+
+  private readonly ORDEN_MODULOS = [
+    'lotes', 'proyectos', 'separaciones', 'clientes', 'contratos', 'leads', 'usuarios',
+  ];
+
+  primerModuloDisponible(): string | null {
+    if (this.usuarioSignal()?.rol.clave === 'admin') return 'lotes';
+    const claves = this.modulosClaves();
+    return this.ORDEN_MODULOS.find((c) => claves.has(c)) ?? null;
+  }
 }

@@ -19,7 +19,12 @@ export const moduloGuard = (claveModulo: string): CanActivateFn => {
 
     if (auth.tieneModulo(claveModulo)) return true;
 
-    router.navigate(['/dashboard']);
+    const destino = auth.primerModuloDisponible();
+    if (destino && destino !== claveModulo) {
+      router.navigate(['/dashboard', destino]);
+    } else {
+      auth.logout();
+    }
     return false;
   };
 };

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
 import { moduloGuard } from './core/guards/modulo.guard';
+import { homeRedirectGuard } from './core/guards/home-redirect.guard';
 
 export const routes: Routes = [
   {
@@ -27,7 +28,7 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./dashboard/shell/shell.component').then((c) => c.ShellComponent),
     children: [
-      { path: '', redirectTo: 'lotes', pathMatch: 'full' },
+      { path: '', canActivate: [homeRedirectGuard], redirectTo: 'lotes', pathMatch: 'full' },
       {
         path: 'proyectos',
         canActivate: [moduloGuard('proyectos')],

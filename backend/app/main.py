@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.sockets import socket_app
 
 
-from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup
+from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones
 
 DOCS_HABILITADOS = settings.ENV != "production"
 
@@ -38,6 +38,8 @@ app.include_router(usuarios.router)
 app.include_router(uploads.router)
 app.include_router(config_publico.router)
 app.include_router(setup.router)
+app.include_router(clientes.router)
+app.include_router(separaciones.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 

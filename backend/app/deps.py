@@ -111,6 +111,7 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "solicitar_devolucion": _EJECUTIVOS,
     "aprobar_devolucion": {"admin", "gerencia"},
     "convertir_separacion": _EJECUTIVOS,
+    "liberar_lote": {"admin", "gerencia", "supervisor"},
 }
 
 

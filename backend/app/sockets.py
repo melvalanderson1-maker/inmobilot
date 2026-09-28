@@ -112,3 +112,11 @@ async def notificar_nuevo_contrato(contrato_dict: dict, id_proyecto: int, id_emp
 async def notificar_pago_registrado(id_contrato: int, id_proyecto: int, id_empresa: int):
     await emitir_evento("contrato:pago_registrado", {"id_contrato": id_contrato}, room=f"proyecto:{id_proyecto}")
     await emitir_evento("notificacion:nueva", {"id_contrato": id_contrato}, room=f"empresa:{id_empresa}")
+
+
+async def notificar_separacion(evento: str, separacion_dict: dict, id_proyecto: int, notificaciones: list[dict]):
+    """Evento de separación a la sala del proyecto (solo datos mínimos, sin DNI ni montos)
+    + notificación privada a cada destinatario (sala usuario:{id})."""
+    await emitir_evento(evento, separacion_dict, room=f"proyecto:{id_proyecto}")
+    for notif in notificaciones:
+        await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")

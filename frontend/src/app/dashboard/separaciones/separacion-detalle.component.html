@@ -29,6 +29,9 @@
             <div><span>Fecha inicial</span><strong>{{ separacion()!.fecha_inicio }}</strong></div>
             <div><span>Vencimiento</span><strong>{{ separacion()!.fecha_vencimiento }}</strong></div>
             <div><span>Ejecutivo</span><strong>{{ separacion()!.ejecutivo_nombre || '—' }}</strong></div>
+            @if (separacion()!.agenda_fecha) {
+              <div><span>Agendamiento</span><strong>{{ separacion()!.agenda_fecha | date:'dd/MM/yyyy HH:mm' }}</strong></div>
+            }
             @if (separacion()!.motivo) {
               <div class="ancho"><span>Motivo</span><strong>{{ separacion()!.motivo }}</strong></div>
             }
@@ -44,10 +47,48 @@
             <a [href]="separacion()!.dni_frente_url" target="_blank">DNI frente</a>
             <a [href]="separacion()!.dni_reverso_url" target="_blank">DNI reverso</a>
             <a [href]="separacion()!.voucher_url" target="_blank">Voucher</a>
-            @if (separacion()!.proforma_url) {
-              <a [href]="separacion()!.proforma_url!" target="_blank">Proforma</a>
-            }
           </div>
+
+          <div class="doc-accion-fila">
+            <span>Proforma de separación</span>
+            <div class="doc-accion-botones">
+              @if (separacion()!.proforma_url) {
+                <a [href]="separacion()!.proforma_url!" target="_blank" class="btn-secundario btn-doc">Descargar</a>
+              }
+              <button class="btn-secundario btn-doc" (click)="generarProforma()" [disabled]="generandoProforma()">
+                {{ generandoProforma() ? 'Generando...' : (separacion()!.proforma_url ? 'Regenerar' : 'Generar') }}
+              </button>
+            </div>
+          </div>
+
+          <div class="doc-accion-fila">
+            <span>Contrato de separación</span>
+            <div class="doc-accion-botones">
+              @if (separacion()!.contrato_url) {
+                <a [href]="separacion()!.contrato_url!" target="_blank" class="btn-secundario btn-doc">Ver</a>
+              }
+              <label class="btn-secundario btn-doc">
+                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoSeleccionado($event)" [disabled]="subiendoContrato()" hidden />
+                {{ subiendoContrato() ? 'Subiendo...' : (separacion()!.contrato_url ? 'Reemplazar' : 'Subir') }}
+              </label>
+            </div>
+          </div>
+
+          <div class="doc-accion-fila">
+            <span>Contrato firmado</span>
+            <div class="doc-accion-botones">
+              @if (separacion()!.contrato_firmado_url) {
+                <a [href]="separacion()!.contrato_firmado_url!" target="_blank" class="btn-secundario btn-doc">Ver</a>
+              }
+              <label class="btn-secundario btn-doc">
+                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoFirmadoSeleccionado($event)" [disabled]="subiendoContratoFirmado()" hidden />
+                {{ subiendoContratoFirmado() ? 'Subiendo...' : (separacion()!.contrato_firmado_url ? 'Reemplazar' : 'Subir') }}
+              </label>
+            </div>
+          </div>
+          @if (!separacion()!.contrato_firmado_url) {
+            <small class="ayuda-doc">Sin el contrato firmado no se puede convertir esta separación en venta.</small>
+          }
         </div>
 
         @if (separacion()!.comprobantes.length > 0) {
@@ -91,6 +132,10 @@
       <div class="col-acciones">
         <div class="card">
           <h3>Acciones</h3>
+
+          @if (puedeEditar()) {
+            <button class="btn-secundario btn-bloque" (click)="abrirEditar()" [disabled]="procesando()">Editar / agendamiento</button>
+          }
 
           @if (puedeValidar()) {
             <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
@@ -216,6 +261,40 @@
       <div class="modal-footer">
         <button class="btn-peligro" (click)="resolverDevolucion(false)" [disabled]="procesando()">Rechazar</button>
         <button class="btn-primary" (click)="resolverDevolucion(true)" [disabled]="procesando()">Aprobar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (mostrarEditar()) {
+  <div class="modal-overlay" (click)="mostrarEditar.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h2>Editar separación</h2></div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Fecha de vencimiento</label>
+          <input type="date" [(ngModel)]="editarForm.fecha_vencimiento" />
+        </div>
+        <div class="campo">
+          <label>Tipo de pago previsto</label>
+          <select [(ngModel)]="editarForm.tipo_pago">
+            <option [ngValue]="null">Sin definir</option>
+            <option value="contado">Contado</option>
+            <option value="credito">Crédito</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Agendamiento (depósito o firma de contrato)</label>
+          <input type="datetime-local" [(ngModel)]="editarForm.agenda_fecha" />
+        </div>
+        <div class="campo">
+          <label>Notas</label>
+          <textarea rows="3" [(ngModel)]="editarForm.notas"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secundario" (click)="mostrarEditar.set(false)">Cancelar</button>
+        <button class="btn-primary" (click)="guardarEdicion()" [disabled]="procesando()">Guardar</button>
       </div>
     </div>
   </div>

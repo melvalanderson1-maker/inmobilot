@@ -490,6 +490,7 @@ export interface SeparacionCreate {
   dni_reverso_url: string;
   voucher_url: string;
   proforma_url?: string;
+  agenda_fecha?: string;
 }
 
 export interface SeparacionUpdate {

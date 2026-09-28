@@ -7,7 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Separacion } from '../../core/models';
+import { FormaPago, Separacion } from '../../core/models';
 
 @Component({
   selector: 'app-separacion-detalle',
@@ -34,6 +34,13 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   mostrarResolverDevolucion = signal(false);
   respuestaDevolucion = '';
+
+  mostrarEditar = signal(false);
+  editarForm = { fecha_vencimiento: '', tipo_pago: null as FormaPago | null, notas: '', agenda_fecha: '' };
+
+  subiendoContrato = signal(false);
+  subiendoContratoFirmado = signal(false);
+  generandoProforma = signal(false);
 
   constructor(
     private auth: AuthService,
@@ -277,6 +284,119 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.procesando.set(false);
         this.toastService.error(err?.error?.detail ?? 'No se pudo liberar el lote');
+      },
+    });
+  }
+
+  puedeEditar(): boolean {
+    const sep = this.separacion();
+    return !!sep && !['convertida', 'devuelta', 'rechazada'].includes(sep.estado);
+  }
+
+  abrirEditar(): void {
+    const sep = this.separacion();
+    if (!sep) return;
+    this.editarForm = {
+      fecha_vencimiento: sep.fecha_vencimiento,
+      tipo_pago: sep.tipo_pago ?? null,
+      notas: sep.notas ?? '',
+      agenda_fecha: sep.agenda_fecha ? sep.agenda_fecha.slice(0, 16) : '',
+    };
+    this.mostrarEditar.set(true);
+  }
+
+  guardarEdicion(): void {
+    this.procesando.set(true);
+    this.separacionService
+      .actualizar(this.idSeparacion, {
+        fecha_vencimiento: this.editarForm.fecha_vencimiento || undefined,
+        tipo_pago: this.editarForm.tipo_pago || undefined,
+        notas: this.editarForm.notas || undefined,
+        agenda_fecha: this.editarForm.agenda_fecha ? new Date(this.editarForm.agenda_fecha).toISOString() : undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.procesando.set(false);
+          this.mostrarEditar.set(false);
+          this.toastService.exito('Separación actualizada');
+          this.cargar();
+        },
+        error: (err) => {
+          this.procesando.set(false);
+          this.toastService.error(err?.error?.detail ?? 'No se pudo actualizar');
+        },
+      });
+  }
+
+  onContratoSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoContrato.set(true);
+    this.separacionService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.separacionService.actualizar(this.idSeparacion, { contrato_url: res.url }).subscribe({
+          next: () => {
+            this.subiendoContrato.set(false);
+            this.toastService.exito('Contrato de separación subido');
+            this.cargar();
+          },
+          error: (err) => {
+            this.subiendoContrato.set(false);
+            this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el contrato');
+          },
+        });
+      },
+      error: (err) => {
+        this.subiendoContrato.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+    input.value = '';
+  }
+
+  onContratoFirmadoSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoContratoFirmado.set(true);
+    this.separacionService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.separacionService.actualizar(this.idSeparacion, { contrato_firmado_url: res.url }).subscribe({
+          next: () => {
+            this.subiendoContratoFirmado.set(false);
+            this.toastService.exito('Contrato firmado subido. Ya puedes convertir la separación en venta.');
+            this.cargar();
+          },
+          error: (err) => {
+            this.subiendoContratoFirmado.set(false);
+            this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el contrato firmado');
+          },
+        });
+      },
+      error: (err) => {
+        this.subiendoContratoFirmado.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+    input.value = '';
+  }
+
+  generarProforma(): void {
+    this.generandoProforma.set(true);
+    this.separacionService.generarProforma(this.idSeparacion).subscribe({
+      next: () => {
+        this.generandoProforma.set(false);
+        this.toastService.exito('Proforma generada');
+        this.cargar();
+      },
+      error: (err) => {
+        this.generandoProforma.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo generar la proforma');
       },
     });
   }

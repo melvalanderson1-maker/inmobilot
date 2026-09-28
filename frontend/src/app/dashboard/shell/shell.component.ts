@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
@@ -27,7 +27,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   constructor(
     public auth: AuthService,
     private api: ApiService,
-    private socket: SocketService
+    private socket: SocketService,
+    private router: Router
   ) {}
 
   get modulos() {
@@ -99,10 +100,17 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   marcarLeido(n: Notificacion): void {
-    if (n.leido) return;
-    this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
-      this.cargarNotificaciones();
-    });
+    if (!n.leido) {
+      this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
+        this.cargarNotificaciones();
+      });
+    }
+
+    const idSeparacion = n.data?.['id_separacion'] as number | undefined;
+    if (idSeparacion) {
+      this.panelNotifAbierto.set(false);
+      this.router.navigate(['/dashboard/separaciones', idSeparacion]);
+    }
   }
 
   abrirModalLogout(): void {

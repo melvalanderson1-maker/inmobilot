@@ -1,14 +1,25 @@
 """Lógica de negocio del módulo de separaciones."""
+import io
+import os
+import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.pdfgen import canvas
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.core.config import settings
 from app.deps import get_ids_proyectos_usuario
 from app.models import models as m
 from app.schemas import schemas as s
 
 E = m.EstadoSeparacionEnum
+
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
+DIR_PROFORMAS = os.path.join(_BASE_DIR, "static", "proformas")
+os.makedirs(DIR_PROFORMAS, exist_ok=True)
 
 ESTADOS_ACTIVOS = (
     E.pendiente_caja,
@@ -212,3 +223,78 @@ def marcar_vencidas(db: Session, id_empresa: int, id_proyecto: int) -> None:
             {"id_separacion": sep.id, "id_proyecto": id_proyecto, "id_lote": sep.id_lote, "estado": "vencida"},
         )
     db.commit()
+
+
+
+# --------------------------------------------------------------- proforma --
+
+def generar_pdf_proforma(sep: m.Separacion) -> bytes:
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    ancho, alto = A4
+    y = alto - 3 * cm
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(2 * cm, y, "PROFORMA DE SEPARACIÓN DE LOTE")
+    y -= 1.1 * cm
+    c.setFont("Helvetica", 10)
+    c.drawString(2 * cm, y, f"N° Separación: {sep.id}")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Fecha: {sep.fecha_inicio:%d/%m/%Y}")
+    y -= 1 * cm
+
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(2 * cm, y, "Datos del cliente")
+    y -= 0.7 * cm
+    c.setFont("Helvetica", 10)
+    cliente = sep.cliente
+    nombre = cliente.razon_social if cliente.tipo_persona == "juridica" else f"{cliente.nombres} {cliente.apellidos}"
+    doc = cliente.ruc if cliente.tipo_persona == "juridica" else cliente.numero_documento
+    c.drawString(2 * cm, y, f"Cliente: {nombre}")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Documento: {doc or '-'}")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Teléfono: {cliente.telefono or '-'}")
+    y -= 1 * cm
+
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(2 * cm, y, "Datos del lote")
+    y -= 0.7 * cm
+    c.setFont("Helvetica", 10)
+    lote = sep.lote
+    c.drawString(2 * cm, y, f"Lote: {lote.codigo}")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Área: {lote.area_m2} m²")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Partida registral: {lote.partida_registral or '-'}")
+    y -= 1 * cm
+
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(2 * cm, y, "Detalle de la separación")
+    y -= 0.7 * cm
+    c.setFont("Helvetica", 10)
+    c.drawString(2 * cm, y, f"Importe separado: S/ {sep.importe:,.2f}")
+    y -= 0.6 * cm
+    c.drawString(2 * cm, y, f"Vencimiento: {sep.fecha_vencimiento:%d/%m/%Y}")
+    if sep.tipo_pago:
+        y -= 0.6 * cm
+        c.drawString(2 * cm, y, f"Tipo de pago previsto: {sep.tipo_pago.value}")
+    if sep.agenda_fecha:
+        y -= 0.6 * cm
+        c.drawString(2 * cm, y, f"Agendamiento: {sep.agenda_fecha:%d/%m/%Y %H:%M}")
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer.read()
+
+
+def guardar_proforma_pdf(id_separacion: int, contenido: bytes) -> str:
+    nombre = f"proforma_{id_separacion}_{uuid.uuid4().hex[:8]}.pdf"
+    ruta = os.path.join(DIR_PROFORMAS, nombre)
+    with open(ruta, "wb") as f:
+        f.write(contenido)
+    ruta_relativa = f"/static/proformas/{nombre}"
+    if settings.PUBLIC_URL_BASE:
+        return f"{settings.PUBLIC_URL_BASE}{ruta_relativa}"
+    return ruta_relativa

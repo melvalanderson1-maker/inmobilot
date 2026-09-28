@@ -611,6 +611,7 @@ class SeparacionCreate(BaseModel):
     dni_reverso_url: str
     voucher_url: str
     proforma_url: Optional[str] = None
+    agenda_fecha: Optional[datetime] = None
 
     @model_validator(mode="after")
     def _validar_fechas(self):

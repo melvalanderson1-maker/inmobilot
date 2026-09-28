@@ -56,6 +56,10 @@ export interface LoteUpdate {
 export class LoteService {
   constructor(private api: ApiService) {}
 
+  obtener(idLote: number) {
+    return this.api.get<Lote>(`/lotes/${idLote}`);
+  }
+
   crear(payload: LoteCreate) {
     return this.api.post<Lote>('/lotes', payload);
   }

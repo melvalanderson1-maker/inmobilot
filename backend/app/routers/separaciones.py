@@ -309,9 +309,31 @@ async def convertir_separacion(
     sep = svc.cargar_separacion(db, id_separacion, usuario)
     if sep.estado != E.vigente:
         raise _conflicto("Solo una separación vigente puede convertirse en compra")
+    if not sep.contrato_firmado_url:
+        raise _conflicto("Debes subir el contrato de separación firmado antes de convertir la separación en venta")
 
     sep.estado = E.convertida
     sep.fecha_conversion = fecha_conversion or svc.hoy_peru()
+    db.commit()
+
+    await _emitir(db, sep, usuario, [])
+    return _detalle(db, id_separacion, usuario)
+
+
+# --------------------------------------------------------------- proforma --
+
+@router.post("/{id_separacion}/proforma", response_model=s.SeparacionOut)
+async def generar_proforma(
+    id_separacion: int,
+    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
+    db: Session = Depends(get_db),
+):
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if sep.estado in svc.ESTADOS_CERRADOS:
+        raise _conflicto("La separación ya está cerrada, no se puede generar la proforma")
+
+    pdf_bytes = svc.generar_pdf_proforma(sep)
+    sep.proforma_url = svc.guardar_proforma_pdf(sep.id, pdf_bytes)
     db.commit()
 
     await _emitir(db, sep, usuario, [])

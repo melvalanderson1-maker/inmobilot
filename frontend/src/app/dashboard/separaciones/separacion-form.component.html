@@ -42,9 +42,9 @@
     <h3>2. Lote y separación</h3>
 
     <div class="form-grid">
-      <div class="campo">
+      <div class="campo campo-span-2">
         <label>Lote libre</label>
-        <select [(ngModel)]="form.id_lote">
+        <select [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
           <option [ngValue]="null" disabled>Selecciona un lote</option>
           @for (l of lotesLibres(); track l.id) {
             <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
@@ -52,6 +52,24 @@
         </select>
         @if (lotesLibres().length === 0) {
           <small class="ayuda">No hay lotes libres en este proyecto.</small>
+        }
+
+        @if (loteSeleccionado()) {
+          <div class="lote-detalle-panel">
+            <div class="lote-detalle-fila"><span>Manzana</span><strong>{{ nombreManzana(loteSeleccionado()!) }}</strong></div>
+            <div class="lote-detalle-fila"><span>Lote</span><strong>{{ loteSeleccionado()!.codigo }}</strong></div>
+            <div class="lote-detalle-fila"><span>N° Partida</span><strong>{{ loteSeleccionado()!.partida_registral || 'Sin registrar' }}</strong></div>
+            <div class="lote-detalle-fila"><span>Área</span><strong>{{ loteSeleccionado()!.area_m2 }} m²</strong></div>
+            @if (loteSeleccionado()!.perimetro) {
+              <div class="lote-detalle-fila"><span>Perímetro</span><strong>{{ loteSeleccionado()!.perimetro }} m</strong></div>
+            }
+            @if (loteSeleccionado()!.frontis) {
+              <div class="lote-detalle-fila"><span>Frontis</span><strong>{{ loteSeleccionado()!.frontis }}</strong></div>
+            }
+            @if (loteSeleccionado()!.sunarp_url) {
+              <a [href]="loteSeleccionado()!.sunarp_url!" target="_blank" class="link-doc-lote">Ver documento de partida registral</a>
+            }
+          </div>
         }
       </div>
       <div class="campo">
@@ -73,6 +91,10 @@
           <option value="contado">Contado</option>
           <option value="credito">Crédito</option>
         </select>
+      </div>
+      <div class="campo">
+        <label>Agendamiento (depósito o firma) — opcional</label>
+        <input type="datetime-local" [(ngModel)]="form.agenda_fecha" />
       </div>
       <div class="campo campo-span-2">
         <label>Motivo</label>

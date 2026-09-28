@@ -7,7 +7,7 @@ import { ApiService } from '../../core/services/api.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Cliente, FormaPago, Lote } from '../../core/models';
+import { Cliente, FormaPago, Lote, Manzana } from '../../core/models';
 
 @Component({
   selector: 'app-separacion-form',
@@ -19,6 +19,8 @@ import { Cliente, FormaPago, Lote } from '../../core/models';
 export class SeparacionFormComponent implements OnInit {
   idProyecto: number | null = null;
   lotesLibres = signal<Lote[]>([]);
+  manzanas = signal<Manzana[]>([]);
+  loteSeleccionado = signal<Lote | null>(null);
   guardando = signal(false);
   error = signal<string | null>(null);
 
@@ -35,6 +37,7 @@ export class SeparacionFormComponent implements OnInit {
     motivo: '',
     tipo_pago: null as FormaPago | null,
     notas: '',
+    agenda_fecha: '',
   };
 
   subiendoDniFrente = signal(false);
@@ -80,6 +83,16 @@ export class SeparacionFormComponent implements OnInit {
     this.api.get<Lote[]>('/lotes', { id_proyecto: this.idProyecto }).subscribe((res) => {
       this.lotesLibres.set(res.filter((l) => l.estado === 'libre'));
     });
+    this.api.get<Manzana[]>(`/proyectos/${this.idProyecto}/manzanas`).subscribe((res) => this.manzanas.set(res));
+  }
+
+  onLoteSeleccionado(): void {
+    this.loteSeleccionado.set(this.lotesLibres().find((l) => l.id === this.form.id_lote) ?? null);
+  }
+
+  nombreManzana(lote: Lote): string {
+    const manzana = this.manzanas().find((m) => m.id === lote.id_manzana);
+    return manzana ? manzana.nombre : '—';
   }
 
   buscarCliente(): void {
@@ -214,6 +227,7 @@ export class SeparacionFormComponent implements OnInit {
         motivo: this.form.motivo || undefined,
         tipo_pago: this.form.tipo_pago || undefined,
         notas: this.form.notas || undefined,
+        agenda_fecha: this.form.agenda_fecha ? new Date(this.form.agenda_fecha).toISOString() : undefined,
         dni_frente_url: this.dniFrenteUrl,
         dni_reverso_url: this.dniReversoUrl,
         voucher_url: this.voucherUrl,

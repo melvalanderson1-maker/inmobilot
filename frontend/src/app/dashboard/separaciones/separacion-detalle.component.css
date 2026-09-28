@@ -119,3 +119,8 @@
   .detalle-grid { grid-template-columns: 1fr; }
   .col-acciones { position: static; }
 }
+
+.doc-accion-fila { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #e2e8f0; padding-top: 0.6rem; font-size: 0.83rem; color: #334155; }
+.doc-accion-botones { display: flex; gap: 0.4rem; }
+.btn-doc { padding: 0.4rem 0.7rem; font-size: 0.78rem; cursor: pointer; }
+.ayuda-doc { color: #b45309; font-size: 0.76rem; }

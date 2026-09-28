@@ -1,0 +1,41 @@
+.sep-page { padding: 0; background: #f8fafc; min-height: 100%; width: 100%; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.3rem; }
+.page-header h1 { margin: 0; font-size: 1.6rem; font-weight: 700; color: #0f172a; }
+.subtitle { margin: 0.3rem 0 0; color: #64748b; font-size: 0.92rem; }
+.btn-primary { background: #1d4ed8; color: white; border: none; padding: 0.65rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.btn-primary:hover { background: #1e40af; }
+.filtros-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; background: #fff; border: 1px solid #e1e6ed; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+.selector-proyecto { display: flex; align-items: center; gap: 0.6rem; }
+.selector-proyecto label { font-size: 0.85rem; color: #475569; font-weight: 500; }
+.selector-proyecto select { background: white; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.5rem 0.8rem; color: #0f172a; font-size: 0.9rem; }
+.filtros-contador { margin-left: auto; font-size: 12px; color: #8993a2; }
+.estado-carga, .estado-vacio { text-align: center; padding: 3.5rem 1rem; color: #64748b; background: white; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+.tabla-card { background: #fff; border: 1px solid #e6e9f0; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06); }
+.tabla-card-scroll { overflow-x: auto; }
+.tabla-sep { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 640px; }
+.tabla-sep thead th { text-align: left; padding: 0.85rem; font-size: 0.68rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+.tabla-sep tbody td { padding: 0.75rem 0.85rem; font-size: 0.84rem; color: #334155; border-bottom: 1px solid #f1f5f9; }
+.tabla-sep tbody tr { cursor: pointer; transition: background 0.12s ease; }
+.tabla-sep tbody tr:hover { background: #eef2ff; }
+.chip { display: inline-block; padding: 0.22rem 0.65rem; border-radius: 999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+.chip-pendiente_caja { background: #fef3c7; color: #b45309; }
+.chip-pendiente_facturacion { background: #fef3c7; color: #b45309; }
+.chip-vigente { background: #ecfdf5; color: #059669; }
+.chip-vencida { background: #fef2f2; color: #dc2626; }
+.chip-convertida { background: #eff6ff; color: #1d4ed8; }
+.chip-devolucion_pendiente { background: #fdf2f8; color: #be185d; }
+.chip-devuelta { background: #f1f5f9; color: #475569; }
+.chip-rechazada { background: #fef2f2; color: #dc2626; }
+
+.vista-cards { display: none; }
+.sep-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; }
+.sep-card-top { display: flex; justify-content: space-between; align-items: center; }
+.sep-card-cliente { margin: 0; font-size: 0.85rem; color: #475569; }
+.sep-card-datos { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; }
+
+@media (max-width: 720px) {
+  .vista-tabla { display: none; }
+  .vista-cards { display: flex; flex-direction: column; gap: 12px; }
+  .page-header { flex-direction: column; gap: 0.8rem; }
+  .page-header .btn-primary { align-self: stretch; justify-content: center; }
+}

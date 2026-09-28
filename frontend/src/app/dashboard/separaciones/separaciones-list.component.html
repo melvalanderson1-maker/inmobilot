@@ -1,0 +1,86 @@
+<div class="sep-page">
+  <div class="page-header">
+    <div>
+      <h1>Separaciones</h1>
+      <p class="subtitle">Sigue el estado de cada separación, desde el voucher hasta el comprobante</p>
+    </div>
+    <button class="btn-primary" (click)="irANueva()">
+      <span>+</span> Nueva separación
+    </button>
+  </div>
+
+  <div class="filtros-bar">
+    <div class="selector-proyecto">
+      <label>Proyecto</label>
+      <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+        @for (p of proyectos(); track p.id) {
+          <option [value]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="selector-proyecto">
+      <label>Estado</label>
+      <select [(ngModel)]="filtroEstado" (ngModelChange)="cambiarFiltro()">
+        <option value="todos">Todos</option>
+        @for (e of estados; track e.valor) {
+          <option [value]="e.valor">{{ e.etiqueta }}</option>
+        }
+      </select>
+    </div>
+
+    <span class="filtros-contador">{{ separaciones().length }} separaciones</span>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga">Cargando separaciones...</div>
+  } @else if (separaciones().length === 0) {
+    <div class="estado-vacio">
+      <p>No hay separaciones que coincidan con este filtro.</p>
+      <button class="btn-primary" (click)="irANueva()">Crear la primera</button>
+    </div>
+  } @else {
+    <div class="tabla-card tabla-card-scroll vista-tabla">
+      <table class="tabla-sep">
+        <thead>
+          <tr>
+            <th>Lote</th>
+            <th>Cliente</th>
+            <th>Importe</th>
+            <th>Vencimiento</th>
+            <th>Ejecutivo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sep of separaciones(); track sep.id) {
+            <tr (click)="irADetalle(sep)">
+              <td>{{ sep.lote?.codigo || '—' }}</td>
+              <td>{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : '—' }}</td>
+              <td>S/ {{ sep.importe | number:'1.2-2' }}</td>
+              <td>{{ sep.fecha_vencimiento }}</td>
+              <td>{{ sep.ejecutivo_nombre || '—' }}</td>
+              <td><span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="vista-cards">
+      @for (sep of separaciones(); track sep.id) {
+        <div class="sep-card" (click)="irADetalle(sep)">
+          <div class="sep-card-top">
+            <strong>{{ sep.lote?.codigo || '—' }}</strong>
+            <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
+          </div>
+          <p class="sep-card-cliente">{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : 'Sin cliente' }}</p>
+          <div class="sep-card-datos">
+            <span>S/ {{ sep.importe | number:'1.2-2' }}</span>
+            <span>Vence: {{ sep.fecha_vencimiento }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

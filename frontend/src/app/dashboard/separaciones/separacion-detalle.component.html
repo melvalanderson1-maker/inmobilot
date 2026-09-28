@@ -1,0 +1,222 @@
+<div class="detalle-page">
+  @if (cargando()) {
+    <div class="estado-carga">Cargando...</div>
+  } @else if (!separacion()) {
+    <div class="estado-vacio">No se encontró la separación</div>
+  } @else {
+    <div class="page-header">
+      <div>
+        <button class="btn-volver" (click)="volver()">← Separaciones</button>
+        <h1>Lote {{ separacion()!.lote?.codigo || '—' }}</h1>
+        <span class="chip chip-grande" [ngClass]="'chip-' + separacion()!.estado">
+          {{ etiquetaEstado(separacion()!.estado) }}
+        </span>
+      </div>
+    </div>
+
+    <div class="detalle-grid">
+      <div class="col-principal">
+        <div class="card">
+          <h3>Cliente</h3>
+          <p><strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong></p>
+          <p class="dato-secundario">{{ separacion()!.cliente?.numero_documento }} · {{ separacion()!.cliente?.telefono || 'sin teléfono' }}</p>
+        </div>
+
+        <div class="card">
+          <h3>Detalle de la separación</h3>
+          <div class="detalle-datos">
+            <div><span>Importe</span><strong>S/ {{ separacion()!.importe | number:'1.2-2' }}</strong></div>
+            <div><span>Fecha inicial</span><strong>{{ separacion()!.fecha_inicio }}</strong></div>
+            <div><span>Vencimiento</span><strong>{{ separacion()!.fecha_vencimiento }}</strong></div>
+            <div><span>Ejecutivo</span><strong>{{ separacion()!.ejecutivo_nombre || '—' }}</strong></div>
+            @if (separacion()!.motivo) {
+              <div class="ancho"><span>Motivo</span><strong>{{ separacion()!.motivo }}</strong></div>
+            }
+            @if (separacion()!.notas) {
+              <div class="ancho"><span>Notas</span><strong>{{ separacion()!.notas }}</strong></div>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Documentos</h3>
+          <div class="docs-lista">
+            <a [href]="separacion()!.dni_frente_url" target="_blank">DNI frente</a>
+            <a [href]="separacion()!.dni_reverso_url" target="_blank">DNI reverso</a>
+            <a [href]="separacion()!.voucher_url" target="_blank">Voucher</a>
+            @if (separacion()!.proforma_url) {
+              <a [href]="separacion()!.proforma_url!" target="_blank">Proforma</a>
+            }
+          </div>
+        </div>
+
+        @if (separacion()!.comprobantes.length > 0) {
+          <div class="card">
+            <h3>Comprobantes</h3>
+            @for (c of separacion()!.comprobantes; track c.id) {
+              <div class="fila-comprobante">
+                <span>{{ c.tipo | titlecase }} {{ c.numero }}</span>
+                <a [href]="c.archivo_url" target="_blank">Ver archivo</a>
+              </div>
+            }
+          </div>
+        }
+
+        @if (separacion()!.devoluciones.length > 0) {
+          <div class="card">
+            <h3>Devoluciones</h3>
+            @for (d of separacion()!.devoluciones; track d.id) {
+              <div class="fila-devolucion">
+                <div>
+                  <strong>S/ {{ d.monto | number:'1.2-2' }}</strong>
+                  <span class="chip" [ngClass]="'chip-' + d.estado">{{ d.estado }}</span>
+                </div>
+                <p class="dato-secundario">{{ d.sustento }}</p>
+                @if (d.respuesta) {
+                  <p class="dato-secundario">Respuesta: {{ d.respuesta }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        @if (separacion()!.motivo_rechazo) {
+          <div class="card card-alerta">
+            <h3>Motivo de rechazo</h3>
+            <p>{{ separacion()!.motivo_rechazo }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="col-acciones">
+        <div class="card">
+          <h3>Acciones</h3>
+
+          @if (puedeValidar()) {
+            <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
+            <button class="btn-peligro btn-bloque" (click)="abrirRechazo()" [disabled]="procesando()">Rechazar</button>
+          }
+
+          @if (puedeSubirComprobante()) {
+            <button class="btn-primary btn-bloque" (click)="abrirComprobante()" [disabled]="procesando()">Subir comprobante</button>
+          }
+
+          @if (puedeConvertir()) {
+            <button class="btn-primary btn-bloque" (click)="convertir()" [disabled]="procesando()">Convertir a venta</button>
+          }
+
+          @if (puedeSolicitarDevolucion()) {
+            <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
+          }
+
+          @if (puedeResolverDevolucion()) {
+            <button class="btn-primary btn-bloque" (click)="abrirResolverDevolucion()" [disabled]="procesando()">Resolver devolución</button>
+          }
+
+          @if (puedeLiberar()) {
+            <button class="btn-secundario btn-bloque" (click)="liberar()" [disabled]="procesando()">Confirmar liberación del lote</button>
+          }
+
+          @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar()) {
+            <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+@if (mostrarRechazo()) {
+  <div class="modal-overlay" (click)="mostrarRechazo.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h2>Rechazar separación</h2></div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Motivo</label>
+          <textarea rows="3" [(ngModel)]="motivoRechazo"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secundario" (click)="mostrarRechazo.set(false)">Cancelar</button>
+        <button class="btn-peligro" (click)="confirmarRechazo()" [disabled]="procesando()">Rechazar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (mostrarComprobante()) {
+  <div class="modal-overlay" (click)="mostrarComprobante.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h2>Subir comprobante</h2></div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Tipo</label>
+          <select [(ngModel)]="comprobanteForm.tipo">
+            <option value="boleta">Boleta</option>
+            <option value="factura">Factura</option>
+            <option value="recibo">Recibo</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Número</label>
+          <input type="text" [(ngModel)]="comprobanteForm.numero" placeholder="B001-00123" />
+        </div>
+        <div class="campo">
+          <label>Archivo</label>
+          @if (comprobanteForm.archivo_url) {
+            <span class="doc-ok">Archivo subido ✓</span>
+          } @else {
+            <label class="dropzone dropzone-compacta">
+              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoComprobante($event)" [disabled]="subiendoArchivoComprobante()" hidden />
+              <span>{{ subiendoArchivoComprobante() ? 'Subiendo...' : 'Subir archivo' }}</span>
+            </label>
+          }
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secundario" (click)="mostrarComprobante.set(false)">Cancelar</button>
+        <button class="btn-primary" (click)="confirmarComprobante()" [disabled]="procesando()">Guardar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (mostrarDevolucion()) {
+  <div class="modal-overlay" (click)="mostrarDevolucion.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h2>Solicitar devolución</h2></div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Monto</label>
+          <input type="number" [(ngModel)]="devolucionForm.monto" />
+        </div>
+        <div class="campo">
+          <label>Sustento</label>
+          <textarea rows="3" [(ngModel)]="devolucionForm.sustento"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secundario" (click)="mostrarDevolucion.set(false)">Cancelar</button>
+        <button class="btn-primary" (click)="confirmarDevolucion()" [disabled]="procesando()">Solicitar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (mostrarResolverDevolucion()) {
+  <div class="modal-overlay" (click)="mostrarResolverDevolucion.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header"><h2>Resolver devolución</h2></div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Respuesta (opcional)</label>
+          <textarea rows="3" [(ngModel)]="respuestaDevolucion"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-peligro" (click)="resolverDevolucion(false)" [disabled]="procesando()">Rechazar</button>
+        <button class="btn-primary" (click)="resolverDevolucion(true)" [disabled]="procesando()">Aprobar</button>
+      </div>
+    </div>
+  </div>
+}

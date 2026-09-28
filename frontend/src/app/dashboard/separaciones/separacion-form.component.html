@@ -1,0 +1,155 @@
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <h1>Nueva separación</h1>
+      <p class="subtitle">Registra al cliente, el lote y los documentos del voucher</p>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="mensaje-error">{{ error() }}</div>
+  }
+
+  <div class="form-card">
+    <h3>1. Cliente</h3>
+
+    @if (!clienteEncontrado()) {
+      <div class="fila-busqueda">
+        <input type="text" placeholder="Número de documento (DNI)" [(ngModel)]="documentoBusqueda" (keyup.enter)="buscarCliente()" />
+        <button class="btn-secundario" (click)="buscarCliente()" [disabled]="buscandoCliente()">
+          {{ buscandoCliente() ? 'Buscando...' : 'Buscar' }}
+        </button>
+      </div>
+
+      @if (mostrarFormClienteNuevo()) {
+        <div class="form-grid">
+          <div class="campo">
+            <label>Nombres</label>
+            <input type="text" [(ngModel)]="clienteNuevo.nombres" />
+          </div>
+          <div class="campo">
+            <label>Apellidos</label>
+            <input type="text" [(ngModel)]="clienteNuevo.apellidos" />
+          </div>
+          <div class="campo">
+            <label>Teléfono</label>
+            <input type="text" [(ngModel)]="clienteNuevo.telefono" />
+          </div>
+          <div class="campo">
+            <label>Dirección</label>
+            <input type="text" [(ngModel)]="clienteNuevo.direccion" />
+          </div>
+          <div class="campo">
+            <label>Correo (opcional)</label>
+            <input type="email" [(ngModel)]="clienteNuevo.correo" />
+          </div>
+        </div>
+        <button class="btn-primary" (click)="crearClienteNuevo()" [disabled]="creandoCliente()">
+          {{ creandoCliente() ? 'Creando...' : 'Crear cliente' }}
+        </button>
+      }
+    } @else {
+      <div class="cliente-encontrado">
+        <div>
+          <strong>{{ clienteEncontrado()!.nombres }} {{ clienteEncontrado()!.apellidos }}</strong>
+          <span>{{ clienteEncontrado()!.tipo_documento }} {{ clienteEncontrado()!.numero_documento }}</span>
+        </div>
+        <button class="btn-secundario" (click)="cambiarCliente()">Cambiar</button>
+      </div>
+    }
+  </div>
+
+  <div class="form-card">
+    <h3>2. Lote y separación</h3>
+
+    <div class="form-grid">
+      <div class="campo">
+        <label>Lote libre</label>
+        <select [(ngModel)]="form.id_lote">
+          <option [ngValue]="null" disabled>Selecciona un lote</option>
+          @for (l of lotesLibres(); track l.id) {
+            <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
+          }
+        </select>
+        @if (lotesLibres().length === 0) {
+          <small class="ayuda">No hay lotes libres en este proyecto.</small>
+        }
+      </div>
+      <div class="campo">
+        <label>Importe (S/)</label>
+        <input type="number" [(ngModel)]="form.importe" />
+      </div>
+      <div class="campo">
+        <label>Fecha inicial</label>
+        <input type="date" [(ngModel)]="form.fecha_inicio" />
+      </div>
+      <div class="campo">
+        <label>Fecha de vencimiento</label>
+        <input type="date" [(ngModel)]="form.fecha_vencimiento" />
+      </div>
+      <div class="campo">
+        <label>Tipo de pago previsto</label>
+        <select [(ngModel)]="form.tipo_pago">
+          <option [ngValue]="null">Sin definir</option>
+          <option value="contado">Contado</option>
+          <option value="credito">Crédito</option>
+        </select>
+      </div>
+      <div class="campo campo-span-2">
+        <label>Motivo</label>
+        <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: cliente reservó en visita al proyecto" />
+      </div>
+      <div class="campo campo-span-2">
+        <label>Notas</label>
+        <textarea rows="2" [(ngModel)]="form.notas"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>3. Documentos</h3>
+
+    <div class="docs-grid">
+      <div class="doc-item">
+        <label>DNI (frente)</label>
+        @if (dniFrenteUrl) {
+          <a [href]="dniFrenteUrl" target="_blank" class="doc-ok">Archivo subido ✓</a>
+        } @else {
+          <label class="dropzone dropzone-compacta">
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+            <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
+          </label>
+        }
+      </div>
+      <div class="doc-item">
+        <label>DNI (reverso)</label>
+        @if (dniReversoUrl) {
+          <a [href]="dniReversoUrl" target="_blank" class="doc-ok">Archivo subido ✓</a>
+        } @else {
+          <label class="dropzone dropzone-compacta">
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+            <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
+          </label>
+        }
+      </div>
+      <div class="doc-item">
+        <label>Voucher de pago</label>
+        @if (voucherUrl) {
+          <a [href]="voucherUrl" target="_blank" class="doc-ok">Archivo subido ✓</a>
+        } @else {
+          <label class="dropzone dropzone-compacta">
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onVoucherSeleccionado($event)" [disabled]="subiendoVoucher()" hidden />
+            <span>{{ subiendoVoucher() ? 'Subiendo...' : 'Subir voucher' }}</span>
+          </label>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="form-acciones">
+    <button class="btn-secundario" (click)="cancelar()">Cancelar</button>
+    <button class="btn-primary" (click)="guardar()" [disabled]="guardando()">
+      {{ guardando() ? 'Guardando...' : 'Registrar separación' }}
+    </button>
+  </div>
+</div>

@@ -58,7 +58,25 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./dashboard/contratos/contratos-list.component').then((c) => c.ContratosListComponent),
       },
-      // Pendiente: contratos, pagos, documentos (ver README)
+      {
+        path: 'separaciones',
+        canActivate: [moduloGuard('separaciones')],
+        loadComponent: () =>
+          import('./dashboard/separaciones/separaciones-list.component').then((c) => c.SeparacionesListComponent),
+      },
+      {
+        path: 'separaciones/nueva',
+        canActivate: [moduloGuard('separaciones')],
+        loadComponent: () =>
+          import('./dashboard/separaciones/separacion-form.component').then((c) => c.SeparacionFormComponent),
+      },
+      {
+        path: 'separaciones/:id',
+        canActivate: [moduloGuard('separaciones')],
+        loadComponent: () =>
+          import('./dashboard/separaciones/separacion-detalle.component').then((c) => c.SeparacionDetalleComponent),
+      },
+      // Pendiente: pagos, documentos (ver README)
     ],
   },
 

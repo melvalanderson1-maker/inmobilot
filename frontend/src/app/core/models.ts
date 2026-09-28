@@ -346,3 +346,135 @@ export interface Pago {
   numero_operacion?: string;
   comprobante_url?: string;
 }
+
+
+// --------------------------------------------------------- SEPARACIONES --
+
+export type EstadoSeparacion =
+  | 'pendiente_caja'
+  | 'pendiente_facturacion'
+  | 'vigente'
+  | 'vencida'
+  | 'convertida'
+  | 'devolucion_pendiente'
+  | 'devuelta'
+  | 'rechazada';
+
+export interface Cliente {
+  id: number;
+  tipo_documento: string;
+  numero_documento: string;
+  nombres: string;
+  apellidos: string;
+  correo?: string;
+  telefono?: string;
+  direccion?: string;
+}
+
+export interface ComprobanteCreate {
+  tipo: string;
+  numero: string;
+  archivo_url: string;
+}
+
+export interface Comprobante {
+  id: number;
+  tipo: string;
+  numero: string;
+  archivo_url: string;
+  created_at: string;
+}
+
+export interface DevolucionCreate {
+  monto: number;
+  sustento: string;
+}
+
+export interface DevolucionResolver {
+  aprobar: boolean;
+  respuesta?: string;
+}
+
+export interface Devolucion {
+  id: number;
+  monto: number;
+  sustento: string;
+  estado: string;
+  fecha_solicitud?: string;
+  fecha_resolucion?: string;
+  respuesta?: string;
+}
+
+export interface SeparacionCreate {
+  id_lote: number;
+  id_cliente: number;
+  fecha_inicio: string;
+  fecha_vencimiento: string;
+  importe: number;
+  motivo?: string;
+  tipo_pago?: FormaPago;
+  notas?: string;
+  dni_frente_url: string;
+  dni_reverso_url: string;
+  voucher_url: string;
+  proforma_url?: string;
+}
+
+export interface SeparacionUpdate {
+  fecha_vencimiento?: string;
+  tipo_pago?: FormaPago;
+  notas?: string;
+  agenda_fecha?: string;
+  proforma_url?: string;
+  contrato_url?: string;
+  contrato_firmado_url?: string;
+}
+
+export interface SeparacionClienteInfo {
+  id: number;
+  numero_documento: string;
+  nombres: string;
+  apellidos: string;
+  telefono?: string;
+}
+
+export interface SeparacionLoteInfo {
+  id: number;
+  codigo: string;
+  ubicacion_lote?: string;
+  area_m2: number;
+  partida_registral?: string;
+  precio_total_contado?: number;
+  estado: EstadoLote;
+}
+
+export interface Separacion {
+  id: number;
+  id_proyecto: number;
+  id_lote: number;
+  id_cliente: number;
+  id_ejecutivo: number;
+  fecha_inicio: string;
+  fecha_vencimiento: string;
+  importe: number;
+  motivo?: string;
+  tipo_pago?: FormaPago;
+  notas?: string;
+  dni_frente_url: string;
+  dni_reverso_url: string;
+  voucher_url: string;
+  proforma_url?: string;
+  contrato_url?: string;
+  contrato_firmado_url?: string;
+  estado: EstadoSeparacion;
+  motivo_rechazo?: string;
+  agenda_fecha?: string;
+  fecha_conversion?: string;
+  created_at: string;
+  cliente?: SeparacionClienteInfo;
+  lote?: SeparacionLoteInfo;
+  ejecutivo_nombre?: string;
+  validado_por_nombre?: string;
+  comprobantes: Comprobante[];
+  devoluciones: Devolucion[];
+}

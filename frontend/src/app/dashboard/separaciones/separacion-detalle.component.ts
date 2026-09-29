@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -10,6 +11,13 @@ import { ToastService } from '../../core/services/toast.service';
 import { FormaPago, Separacion } from '../../core/models';
 
 
+type TabDocClave = 'proforma' | 'contrato' | 'contrato_firmado' | 'dni_frente' | 'dni_reverso' | 'voucher';
+
+interface DocTab {
+  clave: TabDocClave;
+  etiqueta: string;
+  url: string | null;
+}
 
 @Component({
   selector: 'app-separacion-detalle',
@@ -44,13 +52,51 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   subiendoContratoFirmado = signal(false);
   generandoProforma = signal(false);
 
+
+
+    tabActiva = signal<TabDocClave>('proforma');
+
+  documentos = computed<DocTab[]>(() => {
+    const s = this.separacion();
+    return [
+      { clave: 'proforma',         etiqueta: 'Proforma',          url: s?.proforma_url ?? null },
+      { clave: 'contrato',         etiqueta: 'Contrato',          url: s?.contrato_url ?? null },
+      { clave: 'contrato_firmado', etiqueta: 'Contrato firmado',  url: s?.contrato_firmado_url ?? null },
+      { clave: 'dni_frente',       etiqueta: 'DNI frente',        url: s?.dni_frente_url ?? null },
+      { clave: 'dni_reverso',      etiqueta: 'DNI reverso',       url: s?.dni_reverso_url ?? null },
+      { clave: 'voucher',          etiqueta: 'Voucher',           url: s?.voucher_url ?? null },
+    ];
+  });
+
+  docsDisponibles = computed(() => this.documentos().filter((d) => !!d.url).length);
+
+  docActivo = computed(() => this.documentos().find((d) => d.clave === this.tabActiva())!);
+
+  esImagen = computed(() => /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(this.docActivo().url ?? ''));
+
+  nombreDoc = computed(() => {
+    const url = this.docActivo().url;
+    if (!url) return 'Sin archivo';
+    try {
+      return decodeURIComponent(url.split('?')[0].split('/').pop() || 'documento');
+    } catch {
+      return 'documento';
+    }
+  });
+
+  urlSegura = computed<SafeResourceUrl | null>(() => {
+    const url = this.docActivo().url;
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+  });
+
   constructor(
     private auth: AuthService,
     private socket: SocketService,
     private separacionService: SeparacionService,
     private toastService: ToastService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -415,5 +461,19 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       rechazada: 'Rechazada',
     };
     return mapa[estado] ?? estado;
+  }
+
+
+
+   mensajeVacio(clave: TabDocClave): string {
+    const mapa: Record<TabDocClave, string> = {
+      proforma: 'La proforma aún no se ha generado. Usa el botón "Generar".',
+      contrato: 'El contrato de separación aún no se ha subido.',
+      contrato_firmado: 'El contrato firmado aún no se ha subido.',
+      dni_frente: 'No hay foto del DNI (frente).',
+      dni_reverso: 'No hay foto del DNI (reverso).',
+      voucher: 'No hay voucher adjunto.',
+    };
+    return mapa[clave];
   }
 }

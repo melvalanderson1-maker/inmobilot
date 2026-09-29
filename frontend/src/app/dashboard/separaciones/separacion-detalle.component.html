@@ -1,28 +1,49 @@
 <div class="detalle-page">
   @if (cargando()) {
-    <div class="estado-carga">Cargando...</div>
+    <div class="estado-carga">
+      <span class="spinner"></span>
+      Cargando separación...
+    </div>
   } @else if (!separacion()) {
     <div class="estado-vacio">No se encontró la separación</div>
   } @else {
-    <div class="page-header">
-      <div>
-        <button class="btn-volver" (click)="volver()">← Separaciones</button>
-        <h1>Lote {{ separacion()!.lote?.codigo || '—' }}</h1>
-        <span class="chip chip-grande" [ngClass]="'chip-' + separacion()!.estado">
-          {{ etiquetaEstado(separacion()!.estado) }}
-        </span>
+    <header class="page-header">
+      <button class="btn-volver" (click)="volver()">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg>
+        Separaciones
+      </button>
+      <div class="header-fila">
+        <div class="header-titulo">
+          <h1>Lote {{ separacion()!.lote?.codigo || '—' }}</h1>
+          <span class="chip chip-grande" [ngClass]="'chip-' + separacion()!.estado">
+            <span class="chip-punto"></span>
+            {{ etiquetaEstado(separacion()!.estado) }}
+          </span>
+        </div>
+        <div class="header-importe">
+          <span>Importe separado</span>
+          <strong>S/ {{ separacion()!.importe | number:'1.2-2' }}</strong>
+        </div>
       </div>
-    </div>
+    </header>
 
     <div class="detalle-grid">
       <div class="col-principal">
-        <div class="card">
-          <h3>Cliente</h3>
-          <p><strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong></p>
-          <p class="dato-secundario">{{ separacion()!.cliente?.numero_documento }} · {{ separacion()!.cliente?.telefono || 'sin teléfono' }}</p>
-        </div>
 
-        <div class="card">
+        <section class="card">
+          <h3>Cliente</h3>
+          <div class="cliente-fila">
+            <div class="avatar">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</div>
+            <div class="cliente-datos">
+              <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
+              <span class="dato-secundario">
+                Doc. {{ separacion()!.cliente?.numero_documento }} · {{ separacion()!.cliente?.telefono || 'sin teléfono' }}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
           <h3>Detalle de la separación</h3>
           <div class="detalle-datos">
             <div><span>Importe</span><strong>S/ {{ separacion()!.importe | number:'1.2-2' }}</strong></div>
@@ -39,18 +60,33 @@
               <div class="ancho"><span>Notas</span><strong>{{ separacion()!.notas }}</strong></div>
             }
           </div>
-        </div>
+        </section>
 
-        <div class="card">
+        <section class="card">
           <h3>Documentos</h3>
+
           <div class="docs-lista">
-            <a [href]="separacion()!.dni_frente_url" target="_blank">DNI frente</a>
-            <a [href]="separacion()!.dni_reverso_url" target="_blank">DNI reverso</a>
-            <a [href]="separacion()!.voucher_url" target="_blank">Voucher</a>
+            <a class="doc-tile" [href]="separacion()!.dni_frente_url" target="_blank">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16c.7-1.5 2-2 3-2s2.3.5 3 2"/></svg>
+              <span>DNI frente</span>
+            </a>
+            <a class="doc-tile" [href]="separacion()!.dni_reverso_url" target="_blank">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h6"/></svg>
+              <span>DNI reverso</span>
+            </a>
+            <a class="doc-tile" [href]="separacion()!.voucher_url" target="_blank">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+              <span>Voucher</span>
+            </a>
           </div>
 
           <div class="doc-accion-fila">
-            <span>Proforma de separación</span>
+            <div class="doc-accion-info">
+              <span class="doc-accion-titulo">Proforma de separación</span>
+              <span class="doc-estado" [class.doc-estado-ok]="!!separacion()!.proforma_url">
+                {{ separacion()!.proforma_url ? 'Generada' : 'Sin generar' }}
+              </span>
+            </div>
             <div class="doc-accion-botones">
               @if (separacion()!.proforma_url) {
                 <a [href]="separacion()!.proforma_url!" target="_blank" class="btn-secundario btn-doc">Descargar</a>
@@ -62,12 +98,17 @@
           </div>
 
           <div class="doc-accion-fila">
-            <span>Contrato de separación</span>
+            <div class="doc-accion-info">
+              <span class="doc-accion-titulo">Contrato de separación</span>
+              <span class="doc-estado" [class.doc-estado-ok]="!!separacion()!.contrato_url">
+                {{ separacion()!.contrato_url ? 'Subido' : 'Pendiente' }}
+              </span>
+            </div>
             <div class="doc-accion-botones">
               @if (separacion()!.contrato_url) {
                 <a [href]="separacion()!.contrato_url!" target="_blank" class="btn-secundario btn-doc">Ver</a>
               }
-              <label class="btn-secundario btn-doc">
+              <label class="btn-secundario btn-doc" [class.btn-deshabilitado]="subiendoContrato()">
                 <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoSeleccionado($event)" [disabled]="subiendoContrato()" hidden />
                 {{ subiendoContrato() ? 'Subiendo...' : (separacion()!.contrato_url ? 'Reemplazar' : 'Subir') }}
               </label>
@@ -75,12 +116,17 @@
           </div>
 
           <div class="doc-accion-fila">
-            <span>Contrato firmado</span>
+            <div class="doc-accion-info">
+              <span class="doc-accion-titulo">Contrato firmado</span>
+              <span class="doc-estado" [class.doc-estado-ok]="!!separacion()!.contrato_firmado_url">
+                {{ separacion()!.contrato_firmado_url ? 'Subido' : 'Pendiente' }}
+              </span>
+            </div>
             <div class="doc-accion-botones">
               @if (separacion()!.contrato_firmado_url) {
                 <a [href]="separacion()!.contrato_firmado_url!" target="_blank" class="btn-secundario btn-doc">Ver</a>
               }
-              <label class="btn-secundario btn-doc">
+              <label class="btn-secundario btn-doc" [class.btn-deshabilitado]="subiendoContratoFirmado()">
                 <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoFirmadoSeleccionado($event)" [disabled]="subiendoContratoFirmado()" hidden />
                 {{ subiendoContratoFirmado() ? 'Subiendo...' : (separacion()!.contrato_firmado_url ? 'Reemplazar' : 'Subir') }}
               </label>
@@ -89,26 +135,26 @@
           @if (!separacion()!.contrato_firmado_url) {
             <small class="ayuda-doc">Sin el contrato firmado no se puede convertir esta separación en venta.</small>
           }
-        </div>
+        </section>
 
         @if (separacion()!.comprobantes.length > 0) {
-          <div class="card">
+          <section class="card">
             <h3>Comprobantes</h3>
             @for (c of separacion()!.comprobantes; track c.id) {
               <div class="fila-comprobante">
-                <span>{{ c.tipo | titlecase }} {{ c.numero }}</span>
+                <span class="comprobante-nombre">{{ c.tipo | titlecase }} {{ c.numero }}</span>
                 <a [href]="c.archivo_url" target="_blank">Ver archivo</a>
               </div>
             }
-          </div>
+          </section>
         }
 
         @if (separacion()!.devoluciones.length > 0) {
-          <div class="card">
+          <section class="card">
             <h3>Devoluciones</h3>
             @for (d of separacion()!.devoluciones; track d.id) {
               <div class="fila-devolucion">
-                <div>
+                <div class="devolucion-cabecera">
                   <strong>S/ {{ d.monto | number:'1.2-2' }}</strong>
                   <span class="chip" [ngClass]="'chip-' + d.estado">{{ d.estado }}</span>
                 </div>
@@ -118,24 +164,20 @@
                 }
               </div>
             }
-          </div>
+          </section>
         }
 
         @if (separacion()!.motivo_rechazo) {
-          <div class="card card-alerta">
+          <section class="card card-alerta">
             <h3>Motivo de rechazo</h3>
-            <p>{{ separacion()!.motivo_rechazo }}</p>
-          </div>
+            <p class="texto-alerta">{{ separacion()!.motivo_rechazo }}</p>
+          </section>
         }
       </div>
 
-      <div class="col-acciones">
-        <div class="card">
+      <aside class="col-acciones">
+        <section class="card">
           <h3>Acciones</h3>
-
-          @if (puedeEditar()) {
-            <button class="btn-secundario btn-bloque" (click)="abrirEditar()" [disabled]="procesando()">Editar / agendamiento</button>
-          }
 
           @if (puedeValidar()) {
             <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
@@ -150,10 +192,6 @@
             <button class="btn-primary btn-bloque" (click)="convertir()" [disabled]="procesando()">Convertir a venta</button>
           }
 
-          @if (puedeSolicitarDevolucion()) {
-            <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
-          }
-
           @if (puedeResolverDevolucion()) {
             <button class="btn-primary btn-bloque" (click)="abrirResolverDevolucion()" [disabled]="procesando()">Resolver devolución</button>
           }
@@ -162,11 +200,19 @@
             <button class="btn-secundario btn-bloque" (click)="liberar()" [disabled]="procesando()">Confirmar liberación del lote</button>
           }
 
+          @if (puedeEditar()) {
+            <button class="btn-secundario btn-bloque" (click)="abrirEditar()" [disabled]="procesando()">Editar / agendamiento</button>
+          }
+
+          @if (puedeSolicitarDevolucion()) {
+            <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
+          }
+
           @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar()) {
             <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
           }
-        </div>
-      </div>
+        </section>
+      </aside>
     </div>
   }
 </div>
@@ -174,16 +220,19 @@
 @if (mostrarRechazo()) {
   <div class="modal-overlay" (click)="mostrarRechazo.set(false)">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header"><h2>Rechazar separación</h2></div>
+      <div class="modal-header">
+        <h2>Rechazar separación</h2>
+        <button class="modal-cerrar" type="button" (click)="mostrarRechazo.set(false)" aria-label="Cerrar">×</button>
+      </div>
       <div class="modal-body">
         <div class="campo">
           <label>Motivo</label>
-          <textarea rows="3" [(ngModel)]="motivoRechazo"></textarea>
+          <textarea rows="3" [(ngModel)]="motivoRechazo" placeholder="Explica por qué se rechaza"></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secundario" (click)="mostrarRechazo.set(false)">Cancelar</button>
-        <button class="btn-peligro" (click)="confirmarRechazo()" [disabled]="procesando()">Rechazar</button>
+        <button class="btn-peligro-solido" (click)="confirmarRechazo()" [disabled]="procesando()">Rechazar</button>
       </div>
     </div>
   </div>
@@ -192,7 +241,10 @@
 @if (mostrarComprobante()) {
   <div class="modal-overlay" (click)="mostrarComprobante.set(false)">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header"><h2>Subir comprobante</h2></div>
+      <div class="modal-header">
+        <h2>Subir comprobante</h2>
+        <button class="modal-cerrar" type="button" (click)="mostrarComprobante.set(false)" aria-label="Cerrar">×</button>
+      </div>
       <div class="modal-body">
         <div class="campo">
           <label>Tipo</label>
@@ -213,7 +265,7 @@
           } @else {
             <label class="dropzone dropzone-compacta">
               <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoComprobante($event)" [disabled]="subiendoArchivoComprobante()" hidden />
-              <span>{{ subiendoArchivoComprobante() ? 'Subiendo...' : 'Subir archivo' }}</span>
+              <span>{{ subiendoArchivoComprobante() ? 'Subiendo...' : 'Subir archivo (JPG, PNG o PDF)' }}</span>
             </label>
           }
         </div>
@@ -229,15 +281,18 @@
 @if (mostrarDevolucion()) {
   <div class="modal-overlay" (click)="mostrarDevolucion.set(false)">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header"><h2>Solicitar devolución</h2></div>
+      <div class="modal-header">
+        <h2>Solicitar devolución</h2>
+        <button class="modal-cerrar" type="button" (click)="mostrarDevolucion.set(false)" aria-label="Cerrar">×</button>
+      </div>
       <div class="modal-body">
         <div class="campo">
-          <label>Monto</label>
+          <label>Monto (S/)</label>
           <input type="number" [(ngModel)]="devolucionForm.monto" />
         </div>
         <div class="campo">
           <label>Sustento</label>
-          <textarea rows="3" [(ngModel)]="devolucionForm.sustento"></textarea>
+          <textarea rows="3" [(ngModel)]="devolucionForm.sustento" placeholder="Motivo de la devolución"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -251,7 +306,10 @@
 @if (mostrarResolverDevolucion()) {
   <div class="modal-overlay" (click)="mostrarResolverDevolucion.set(false)">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header"><h2>Resolver devolución</h2></div>
+      <div class="modal-header">
+        <h2>Resolver devolución</h2>
+        <button class="modal-cerrar" type="button" (click)="mostrarResolverDevolucion.set(false)" aria-label="Cerrar">×</button>
+      </div>
       <div class="modal-body">
         <div class="campo">
           <label>Respuesta (opcional)</label>
@@ -269,7 +327,10 @@
 @if (mostrarEditar()) {
   <div class="modal-overlay" (click)="mostrarEditar.set(false)">
     <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header"><h2>Editar separación</h2></div>
+      <div class="modal-header">
+        <h2>Editar separación</h2>
+        <button class="modal-cerrar" type="button" (click)="mostrarEditar.set(false)" aria-label="Cerrar">×</button>
+      </div>
       <div class="modal-body">
         <div class="campo">
           <label>Fecha de vencimiento</label>

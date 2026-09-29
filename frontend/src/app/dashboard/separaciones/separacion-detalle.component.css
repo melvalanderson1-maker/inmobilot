@@ -52,10 +52,10 @@
 .chip-pendiente { background: var(--ambar-suave); color: var(--ambar); }
 .chip-aprobada { background: var(--verde-suave); color: var(--verde); }
 
-/* Layout */
-.detalle-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 1.4rem; align-items: start; }
-.col-principal { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
-.col-acciones { position: sticky; top: 1rem; }
+/* Layout principal: matriz 1 x 2 (visor ancho + panel lateral angosto) */
+.detalle-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.2rem; align-items: start; }
+.col-visor { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.col-lateral { position: sticky; top: 1rem; min-width: 0; }
 
 /* Tarjetas */
 .card { background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 1.2rem 1.4rem; display: flex; flex-direction: column; gap: 0.8rem; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
@@ -65,18 +65,31 @@
 .texto-alerta { margin: 0; font-size: 0.9rem; }
 .dato-secundario { margin: 0; font-size: 0.82rem; color: var(--texto-suave); }
 
-/* Cliente */
-.cliente-fila { display: flex; align-items: center; gap: 0.9rem; }
-.avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--azul-suave); color: var(--azul); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; }
-.cliente-datos { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.cliente-datos strong { color: var(--tinta); font-size: 1rem; }
+/* Panel lateral: Cliente + Detalle + Acciones en una sola tarjeta */
+.panel { padding: 0; gap: 0; overflow: hidden; }
+.panel-bloque { padding: 1.15rem 1.3rem; display: flex; flex-direction: column; gap: 0.85rem; }
+.panel-bloque + .panel-bloque { border-top: 1px solid var(--linea); }
+.panel-acciones { background: var(--fondo); gap: 0.55rem; }
+.panel-acciones h3 { margin-bottom: 0.25rem; }
 
-/* Datos de la separación */
-.detalle-datos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem 1.2rem; }
-.detalle-datos div { display: flex; flex-direction: column; gap: 0.2rem; padding: 0.65rem 0.8rem; background: var(--fondo); border-radius: 10px; }
-.detalle-datos .ancho { grid-column: span 2; }
-.detalle-datos span { font-size: 0.74rem; color: var(--texto-suave); font-weight: 500; }
-.detalle-datos strong { font-size: 0.92rem; color: var(--tinta); font-weight: 600; overflow-wrap: anywhere; }
+/* Cliente */
+.cliente-fila { display: flex; align-items: center; gap: 0.85rem; }
+.avatar { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--azul-suave); color: var(--azul); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; }
+.cliente-datos { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.cliente-datos strong { color: var(--tinta); font-size: 0.95rem; line-height: 1.25; overflow-wrap: anywhere; }
+.dato-linea { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--texto-suave); }
+.dato-linea svg { flex: none; color: #94a3b8; }
+
+/* Datos de la separación (lista compacta) */
+.dato-lista { margin: 0; display: flex; flex-direction: column; }
+.dato-item { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px dashed var(--linea); }
+.dato-item:first-child { padding-top: 0; }
+.dato-item:last-child { border-bottom: none; padding-bottom: 0; }
+.dato-item dt { font-size: 0.8rem; color: var(--texto-suave); font-weight: 500; flex: none; }
+.dato-item dd { margin: 0; font-size: 0.88rem; color: var(--tinta); font-weight: 600; text-align: right; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.dato-destacado dd { font-size: 1.05rem; color: var(--azul); }
+.dato-ancho { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+.dato-ancho dd { text-align: left; font-weight: 500; }
 
 /* Documentos — visor con pestañas */
 .card-visor { gap: 1rem; }
@@ -97,14 +110,15 @@
 .visor-barra { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.65rem 1rem; background: var(--fondo); border-bottom: 1px solid var(--linea); flex-wrap: wrap; }
 .visor-archivo { display: flex; align-items: center; gap: 0.5rem; min-width: 0; color: var(--texto-suave); font-size: 0.85rem; font-weight: 500; }
 .visor-archivo svg { flex: none; }
-.visor-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
+.visor-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; }
 .visor-acciones { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
 .btn-doc { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.78rem; text-decoration: none; border-radius: 8px; cursor: pointer; }
 .btn-doc.btn-primary { padding: 0.45rem 0.85rem; }
 .btn-deshabilitado { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
 
-.visor-lienzo { height: 560px; background: #e2e8f0; position: relative; }
+/* Lienzo alto: aprovecha la pantalla para que el panel lateral y el visor queden equilibrados */
+.visor-lienzo { height: clamp(600px, 80vh, 860px); background: #e2e8f0; position: relative; }
 .visor-frame { width: 100%; height: 100%; border: none; background: #fff; display: block; }
 .visor-imagen { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; overflow: auto; background: #f1f5f9; }
 .visor-imagen img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15); background: #fff; }
@@ -115,6 +129,7 @@
 
 .ayuda-doc { display: flex; align-items: center; gap: 0.5rem; color: var(--ambar); font-size: 0.78rem; background: var(--ambar-suave); padding: 0.6rem 0.8rem; border-radius: 8px; }
 .ayuda-doc svg { flex: none; }
+
 /* Comprobantes y devoluciones */
 .fila-comprobante, .fila-devolucion { border-top: 1px solid var(--linea); padding-top: 0.7rem; display: flex; flex-direction: column; gap: 0.3rem; }
 .fila-comprobante { flex-direction: row; justify-content: space-between; align-items: center; }
@@ -134,7 +149,7 @@
 .btn-peligro-solido { background: var(--rojo); color: #fff; border: none; padding: 0.65rem 1.2rem; border-radius: 9px; cursor: pointer; font-weight: 600; }
 .btn-peligro-solido:hover { background: #b91c1c; }
 button:disabled { opacity: 0.6; cursor: not-allowed; }
-.btn-primary:focus-visible, .btn-secundario:focus-visible, .btn-peligro:focus-visible, .btn-peligro-solido:focus-visible, .btn-volver:focus-visible, .doc-tile:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+.btn-primary:focus-visible, .btn-secundario:focus-visible, .btn-peligro:focus-visible, .btn-peligro-solido:focus-visible, .btn-volver:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
 
 /* Modales */
 .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; animation: aparecer 0.15s ease; }
@@ -159,19 +174,20 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .doc-ok { display: inline-block; padding: 0.5rem 0.8rem; border-radius: 8px; background: var(--verde-suave); color: var(--verde); font-weight: 600; font-size: 0.82rem; }
 
 /* Responsive */
+@media (max-width: 1100px) {
+  .detalle-grid { grid-template-columns: minmax(0, 1fr) 300px; }
+}
 @media (max-width: 900px) {
   .detalle-grid { grid-template-columns: 1fr; }
-  .col-acciones { position: static; order: -1; }
+  .col-lateral { position: static; order: -1; }
   .header-importe { align-items: flex-start; }
+  .visor-lienzo { height: 560px; }
 }
 @media (max-width: 560px) {
-  .detalle-datos { grid-template-columns: 1fr; }
-  .detalle-datos .ancho { grid-column: auto; }
   .page-header h1 { font-size: 1.4rem; }
   .visor-lienzo { height: 420px; }
   .visor-tab { padding: 0.8rem 0.9rem; }
   .visor-nombre { max-width: 180px; }
-
 }
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay, .modal, .spinner { animation: none; }

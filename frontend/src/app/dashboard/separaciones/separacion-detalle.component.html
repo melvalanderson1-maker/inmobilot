@@ -28,152 +28,122 @@
     </header>
 
     <div class="detalle-grid">
-      <div class="col-principal">
 
-        <section class="card">
-          <h3>Cliente</h3>
-          <div class="cliente-fila">
-            <div class="avatar">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</div>
-            <div class="cliente-datos">
-              <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
-              <span class="dato-secundario">
-                Doc. {{ separacion()!.cliente?.numero_documento }} · {{ separacion()!.cliente?.telefono || 'sin teléfono' }}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section class="card">
-          <h3>Detalle de la separación</h3>
-          <div class="detalle-datos">
-            <div><span>Importe</span><strong>S/ {{ separacion()!.importe | number:'1.2-2' }}</strong></div>
-            <div><span>Fecha inicial</span><strong>{{ separacion()!.fecha_inicio }}</strong></div>
-            <div><span>Vencimiento</span><strong>{{ separacion()!.fecha_vencimiento }}</strong></div>
-            <div><span>Ejecutivo</span><strong>{{ separacion()!.ejecutivo_nombre || '—' }}</strong></div>
-            @if (separacion()!.agenda_fecha) {
-              <div><span>Agendamiento</span><strong>{{ separacion()!.agenda_fecha | date:'dd/MM/yyyy HH:mm' }}</strong></div>
-            }
-            @if (separacion()!.motivo) {
-              <div class="ancho"><span>Motivo</span><strong>{{ separacion()!.motivo }}</strong></div>
-            }
-            @if (separacion()!.notas) {
-              <div class="ancho"><span>Notas</span><strong>{{ separacion()!.notas }}</strong></div>
-            }
-          </div>
-        </section>
+      <!-- ============ COLUMNA 1: DOCUMENTOS ============ -->
+      <div class="col-visor">
 
         <section class="card card-visor">
-        <div class="visor-cabecera">
+          <div class="visor-cabecera">
             <h3>Documentos</h3>
             <span class="visor-progreso">{{ docsDisponibles() }} de 6 disponibles</span>
-        </div>
+          </div>
 
-        <div class="visor">
+          <div class="visor">
             <!-- PESTAÑAS -->
             <div class="visor-tabs" role="tablist">
-            @for (d of documentos(); track d.clave) {
+              @for (d of documentos(); track d.clave) {
                 <button
-                type="button"
-                role="tab"
-                class="visor-tab"
-                [class.activa]="tabActiva() === d.clave"
-                [attr.aria-selected]="tabActiva() === d.clave"
-                (click)="tabActiva.set(d.clave)"
+                  type="button"
+                  role="tab"
+                  class="visor-tab"
+                  [class.activa]="tabActiva() === d.clave"
+                  [attr.aria-selected]="tabActiva() === d.clave"
+                  (click)="tabActiva.set(d.clave)"
                 >
-                @switch (d.clave) {
+                  @switch (d.clave) {
                     @case ('proforma') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
                     }
                     @case ('contrato') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 12h6M9 16h6"/></svg>
                     }
                     @case ('contrato_firmado') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                     }
                     @case ('dni_frente') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16c.7-1.5 2-2 3-2s2.3.5 3 2"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16c.7-1.5 2-2 3-2s2.3.5 3 2"/></svg>
                     }
                     @case ('dni_reverso') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h6"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 10h10M7 14h6"/></svg>
                     }
                     @case ('voucher') {
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
                     }
-                }
-                <span class="tab-texto">{{ d.etiqueta }}</span>
-                <i class="tab-estado" [class.ok]="!!d.url" [attr.title]="d.url ? 'Disponible' : 'Pendiente'"></i>
+                  }
+                  <span class="tab-texto">{{ d.etiqueta }}</span>
+                  <i class="tab-estado" [class.ok]="!!d.url" [attr.title]="d.url ? 'Disponible' : 'Pendiente'"></i>
                 </button>
-            }
+              }
             </div>
 
             <!-- BARRA DEL ARCHIVO + ACCIONES -->
             <div class="visor-barra">
-            <div class="visor-archivo">
+              <div class="visor-archivo">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
                 <span class="visor-nombre" [attr.title]="nombreDoc()">{{ nombreDoc() }}</span>
-            </div>
+              </div>
 
-            <div class="visor-acciones">
+              <div class="visor-acciones">
                 @if (docActivo().url) {
-                <a [href]="docActivo().url!" target="_blank" rel="noopener" class="btn-secundario btn-doc">
+                  <a [href]="docActivo().url!" target="_blank" rel="noopener" class="btn-secundario btn-doc">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
                     Abrir
-                </a>
+                  </a>
                 }
 
                 @switch (tabActiva()) {
-                @case ('proforma') {
+                  @case ('proforma') {
                     <button type="button" class="btn-primary btn-doc" (click)="generarProforma()" [disabled]="generandoProforma()">
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
-                    {{ generandoProforma() ? 'Generando...' : (docActivo().url ? 'Regenerar' : 'Generar') }}
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+                      {{ generandoProforma() ? 'Generando...' : (docActivo().url ? 'Regenerar' : 'Generar') }}
                     </button>
-                }
-                @case ('contrato') {
+                  }
+                  @case ('contrato') {
                     <label class="btn-primary btn-doc" [class.btn-deshabilitado]="subiendoContrato()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoSeleccionado($event)" [disabled]="subiendoContrato()" hidden />
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
-                    {{ subiendoContrato() ? 'Subiendo...' : (docActivo().url ? 'Reemplazar' : 'Subir') }}
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoSeleccionado($event)" [disabled]="subiendoContrato()" hidden />
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+                      {{ subiendoContrato() ? 'Subiendo...' : (docActivo().url ? 'Reemplazar' : 'Subir') }}
                     </label>
-                }
-                @case ('contrato_firmado') {
+                  }
+                  @case ('contrato_firmado') {
                     <label class="btn-primary btn-doc" [class.btn-deshabilitado]="subiendoContratoFirmado()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoFirmadoSeleccionado($event)" [disabled]="subiendoContratoFirmado()" hidden />
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
-                    {{ subiendoContratoFirmado() ? 'Subiendo...' : (docActivo().url ? 'Reemplazar' : 'Subir') }}
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onContratoFirmadoSeleccionado($event)" [disabled]="subiendoContratoFirmado()" hidden />
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+                      {{ subiendoContratoFirmado() ? 'Subiendo...' : (docActivo().url ? 'Reemplazar' : 'Subir') }}
                     </label>
+                  }
                 }
-                }
-            </div>
+              </div>
             </div>
 
             <!-- LIENZO DE VISTA PREVIA -->
             <div class="visor-lienzo">
-            @if (docActivo().url) {
+              @if (docActivo().url) {
                 @if (esImagen()) {
-                <div class="visor-imagen">
+                  <div class="visor-imagen">
                     <img [src]="docActivo().url!" [alt]="docActivo().etiqueta" />
-                </div>
+                  </div>
                 } @else {
-                <iframe class="visor-frame" [src]="urlSegura()!" [title]="docActivo().etiqueta"></iframe>
+                  <iframe class="visor-frame" [src]="urlSegura()!" [title]="docActivo().etiqueta"></iframe>
                 }
-            } @else {
+              } @else {
                 <div class="visor-vacio">
-                <div class="visor-vacio-icono">
+                  <div class="visor-vacio-icono">
                     <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                  </div>
+                  <strong>{{ docActivo().etiqueta }}</strong>
+                  <span>{{ mensajeVacio(docActivo().clave) }}</span>
                 </div>
-                <strong>{{ docActivo().etiqueta }}</strong>
-                <span>{{ mensajeVacio(docActivo().clave) }}</span>
-                </div>
-            }
+              }
             </div>
-        </div>
+          </div>
 
-        @if (!separacion()!.contrato_firmado_url) {
+          @if (!separacion()!.contrato_firmado_url) {
             <small class="ayuda-doc">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-            Sin el contrato firmado no se puede convertir esta separación en venta.
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+              Sin el contrato firmado no se puede convertir esta separación en venta.
             </small>
-        }
+          }
         </section>
 
         @if (separacion()!.comprobantes.length > 0) {
@@ -214,42 +184,108 @@
         }
       </div>
 
-      <aside class="col-acciones">
-        <section class="card">
-          <h3>Acciones</h3>
+      <!-- ============ COLUMNA 2: PANEL LATERAL (Cliente + Detalle + Acciones) ============ -->
+      <aside class="col-lateral">
+        <section class="card panel">
 
-          @if (puedeValidar()) {
-            <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
-            <button class="btn-peligro btn-bloque" (click)="abrirRechazo()" [disabled]="procesando()">Rechazar</button>
-          }
+          <!-- Cliente -->
+          <div class="panel-bloque">
+            <h3>Cliente</h3>
+            <div class="cliente-fila">
+              <div class="avatar">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</div>
+              <div class="cliente-datos">
+                <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
+                <span class="dato-linea">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4"/></svg>
+                  {{ separacion()!.cliente?.numero_documento }}
+                </span>
+                <span class="dato-linea">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>
+                  {{ separacion()!.cliente?.telefono || 'Sin teléfono' }}
+                </span>
+              </div>
+            </div>
+          </div>
 
-          @if (puedeSubirComprobante()) {
-            <button class="btn-primary btn-bloque" (click)="abrirComprobante()" [disabled]="procesando()">Subir comprobante</button>
-          }
+          <!-- Detalle -->
+          <div class="panel-bloque">
+            <h3>Detalle de la separación</h3>
+            <dl class="dato-lista">
+              <div class="dato-item dato-destacado">
+                <dt>Importe</dt>
+                <dd>S/ {{ separacion()!.importe | number:'1.2-2' }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Fecha inicial</dt>
+                <dd>{{ separacion()!.fecha_inicio }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Vencimiento</dt>
+                <dd>{{ separacion()!.fecha_vencimiento }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Ejecutivo</dt>
+                <dd>{{ separacion()!.ejecutivo_nombre || '—' }}</dd>
+              </div>
+              @if (separacion()!.agenda_fecha) {
+                <div class="dato-item">
+                  <dt>Agendamiento</dt>
+                  <dd>{{ separacion()!.agenda_fecha | date:'dd/MM/yyyy HH:mm' }}</dd>
+                </div>
+              }
+              @if (separacion()!.motivo) {
+                <div class="dato-item dato-ancho">
+                  <dt>Motivo</dt>
+                  <dd>{{ separacion()!.motivo }}</dd>
+                </div>
+              }
+              @if (separacion()!.notas) {
+                <div class="dato-item dato-ancho">
+                  <dt>Notas</dt>
+                  <dd>{{ separacion()!.notas }}</dd>
+                </div>
+              }
+            </dl>
+          </div>
 
-          @if (puedeConvertir()) {
-            <button class="btn-primary btn-bloque" (click)="convertir()" [disabled]="procesando()">Convertir a venta</button>
-          }
+          <!-- Acciones -->
+          <div class="panel-bloque panel-acciones">
+            <h3>Acciones</h3>
 
-          @if (puedeResolverDevolucion()) {
-            <button class="btn-primary btn-bloque" (click)="abrirResolverDevolucion()" [disabled]="procesando()">Resolver devolución</button>
-          }
+            @if (puedeValidar()) {
+              <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
+              <button class="btn-peligro btn-bloque" (click)="abrirRechazo()" [disabled]="procesando()">Rechazar</button>
+            }
 
-          @if (puedeLiberar()) {
-            <button class="btn-secundario btn-bloque" (click)="liberar()" [disabled]="procesando()">Confirmar liberación del lote</button>
-          }
+            @if (puedeSubirComprobante()) {
+              <button class="btn-primary btn-bloque" (click)="abrirComprobante()" [disabled]="procesando()">Subir comprobante</button>
+            }
 
-          @if (puedeEditar()) {
-            <button class="btn-secundario btn-bloque" (click)="abrirEditar()" [disabled]="procesando()">Editar / agendamiento</button>
-          }
+            @if (puedeConvertir()) {
+              <button class="btn-primary btn-bloque" (click)="convertir()" [disabled]="procesando()">Convertir a venta</button>
+            }
 
-          @if (puedeSolicitarDevolucion()) {
-            <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
-          }
+            @if (puedeResolverDevolucion()) {
+              <button class="btn-primary btn-bloque" (click)="abrirResolverDevolucion()" [disabled]="procesando()">Resolver devolución</button>
+            }
 
-          @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar()) {
-            <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
-          }
+            @if (puedeLiberar()) {
+              <button class="btn-secundario btn-bloque" (click)="liberar()" [disabled]="procesando()">Confirmar liberación del lote</button>
+            }
+
+            @if (puedeEditar()) {
+              <button class="btn-secundario btn-bloque" (click)="abrirEditar()" [disabled]="procesando()">Editar / agendamiento</button>
+            }
+
+            @if (puedeSolicitarDevolucion()) {
+              <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
+            }
+
+            @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar()) {
+              <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
+            }
+          </div>
+
         </section>
       </aside>
     </div>

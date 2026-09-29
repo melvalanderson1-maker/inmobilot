@@ -1,178 +1,420 @@
 <div class="form-page">
-  <div class="page-header">
-    <h1>{{ esEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</h1>
+  <!-- HERO -->
+  <div class="hero">
+    <span class="coin c1"></span>
+    <span class="coin c2"></span>
+    <span class="coin c3"></span>
+    <span class="coin c4"></span>
+    <span class="coin c5"></span>
+    <span class="dollar d1">$</span>
+    <span class="dollar d2">$</span>
+    <span class="dollar d3">$</span>
+
+    <div class="hero-text">
+      <h1>{{ esEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</h1>
+      <p>{{ esEdicion ? 'Actualiza los datos de contacto y los documentos del cliente.' : 'Registra los datos, el contacto y los documentos del cliente.' }}</p>
+    </div>
+
+    <div class="hero-badge">
+      <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
   </div>
 
   @if (cargando()) {
-    <div class="estado-carga">Cargando...</div>
+    <div class="estado-carga">
+      <span class="spinner spinner-blue"></span>
+      <span>Cargando cliente...</span>
+    </div>
   } @else {
     @if (error()) {
-      <div class="mensaje-error">{{ error() }}</div>
+      <div class="mensaje-error" role="alert">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <span>{{ error() }}</span>
+      </div>
     }
 
-    <div class="form-card">
-      <h3>Tipo de cliente</h3>
-      <div class="tipo-switch">
-        <button
-          type="button"
-          class="tipo-btn"
-          [class.activo]="form.tipo_persona === 'natural'"
-          [disabled]="esEdicion"
-          (click)="form.tipo_persona = 'natural'"
-        >
-          Persona natural
-        </button>
-        <button
-          type="button"
-          class="tipo-btn"
-          [class.activo]="form.tipo_persona === 'juridica'"
-          [disabled]="esEdicion"
-          (click)="form.tipo_persona = 'juridica'"
-        >
-          Persona jurídica
-        </button>
-      </div>
-    </div>
-
-    @if (form.tipo_persona === 'natural') {
-      <div class="form-card">
-        <h3>Datos personales</h3>
-        <div class="form-grid">
-          <div class="campo">
-            <label>Tipo de documento</label>
-            <select [(ngModel)]="form.tipo_documento" [disabled]="esEdicion">
-              <option value="DNI">DNI</option>
-              <option value="CE">Carné de extranjería</option>
-              <option value="PASAPORTE">Pasaporte</option>
-            </select>
-          </div>
-          <div class="campo">
-            <label>Número de documento</label>
-            <input type="text" [(ngModel)]="form.numero_documento" [disabled]="esEdicion" />
-          </div>
-          <div class="campo">
-            <label>Nombres</label>
-            <input type="text" [(ngModel)]="form.nombres" [disabled]="esEdicion" />
-          </div>
-          <div class="campo">
-            <label>Apellidos</label>
-            <input type="text" [(ngModel)]="form.apellidos" [disabled]="esEdicion" />
-          </div>
-          <div class="campo">
-            <label>Fecha de nacimiento</label>
-            <input type="date" [(ngModel)]="form.fecha_nacimiento" />
-          </div>
-          <div class="campo">
-            <label>Estado civil</label>
-            <select [(ngModel)]="form.estado_civil">
-              <option value="">Sin indicar</option>
-              <option value="soltero">Soltero(a)</option>
-              <option value="casado">Casado(a)</option>
-              <option value="viudo">Viudo(a)</option>
-              <option value="divorciado">Divorciado(a)</option>
-            </select>
-          </div>
-          <div class="campo">
-            <label>DNI (frente)</label>
-            @if (form.dni_frente_url) {
-              <a [href]="form.dni_frente_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
-              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" />
-            } @else {
-              <label class="dropzone dropzone-compacta">
-                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
-                <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
-              </label>
+    <div class="layout">
+      <!-- COLUMNA PRINCIPAL -->
+      <div class="col-main">
+        <!-- TIPO DE CLIENTE -->
+        <section class="card">
+          <header class="card-head">
+            <div class="card-title">
+              <span class="icon-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </span>
+              <h3>Tipo de cliente</h3>
+            </div>
+            @if (esEdicion) {
+              <span class="hint">El tipo no se puede cambiar al editar</span>
             }
-          </div>
-          <div class="campo">
-            <label>DNI (reverso)</label>
-            @if (form.dni_reverso_url) {
-              <a [href]="form.dni_reverso_url" target="_blank" class="doc-ok">Archivo subido ✓ (cambiar)</a>
-              <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" />
-            } @else {
-              <label class="dropzone dropzone-compacta">
-                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
-                <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
-              </label>
-            }
-          </div>
-        </div>
-      </div>
+          </header>
 
-      @if (esCasado) {
-        <div class="form-card">
-          <h3>Datos del cónyuge</h3>
+          <div class="tipo-switch">
+            <button type="button" class="tipo-btn" [class.activo]="form.tipo_persona === 'natural'" [disabled]="esEdicion" (click)="form.tipo_persona = 'natural'">
+              <span class="tipo-ico">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+              </span>
+              <span class="tipo-txt">
+                <b>Persona natural</b>
+                <small>Cliente individual con DNI, CE o pasaporte</small>
+              </span>
+            </button>
+            <button type="button" class="tipo-btn" [class.activo]="form.tipo_persona === 'juridica'" [disabled]="esEdicion" (click)="form.tipo_persona = 'juridica'">
+              <span class="tipo-ico">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="2" width="16" height="20" rx="2" /><line x1="9" y1="7" x2="9.01" y2="7" /><line x1="15" y1="7" x2="15.01" y2="7" />
+                  <line x1="9" y1="12" x2="9.01" y2="12" /><line x1="15" y1="12" x2="15.01" y2="12" /><path d="M10 22v-4h4v4" />
+                </svg>
+              </span>
+              <span class="tipo-txt">
+                <b>Persona jurídica</b>
+                <small>Empresa con RUC y representante legal</small>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        @if (form.tipo_persona === 'natural') {
+          <!-- DATOS PERSONALES -->
+          <section class="card">
+            <header class="card-head">
+              <div class="card-title">
+                <span class="icon-badge">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="11" r="2.2" /><path d="M14 9h4M14 13h4M6.5 16c.6-1.2 1.6-1.8 2.5-1.8s1.9.6 2.5 1.8" />
+                  </svg>
+                </span>
+                <h3>Datos personales</h3>
+              </div>
+            </header>
+
+            <div class="form-grid">
+              <div class="campo">
+                <label>Tipo de documento</label>
+                <div class="select-wrap">
+                  <select [(ngModel)]="form.tipo_documento" [disabled]="esEdicion">
+                    <option value="DNI">DNI</option>
+                    <option value="CE">Carné de extranjería</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                  </select>
+                </div>
+              </div>
+              <div class="campo">
+                <label>Número de documento</label>
+                <input type="text" [(ngModel)]="form.numero_documento" [disabled]="esEdicion" placeholder="Ej: 12345678" />
+              </div>
+              <div class="campo">
+                <label>Nombres</label>
+                <input type="text" [(ngModel)]="form.nombres" [disabled]="esEdicion" placeholder="Nombres" />
+              </div>
+              <div class="campo">
+                <label>Apellidos</label>
+                <input type="text" [(ngModel)]="form.apellidos" [disabled]="esEdicion" placeholder="Apellidos" />
+              </div>
+              <div class="campo">
+                <label>Fecha de nacimiento</label>
+                <input type="date" [(ngModel)]="form.fecha_nacimiento" />
+              </div>
+              <div class="campo">
+                <label>Estado civil</label>
+                <div class="select-wrap">
+                  <select [(ngModel)]="form.estado_civil">
+                    <option value="">Sin indicar</option>
+                    <option value="soltero">Soltero(a)</option>
+                    <option value="casado">Casado(a)</option>
+                    <option value="viudo">Viudo(a)</option>
+                    <option value="divorciado">Divorciado(a)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- CÓNYUGE -->
+          @if (esCasado) {
+            <section class="card">
+              <header class="card-head">
+                <div class="card-title">
+                  <span class="icon-badge">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </span>
+                  <h3>Datos del cónyuge</h3>
+                </div>
+                <span class="hint">Obligatorio si el estado civil es casado</span>
+              </header>
+
+              <div class="form-grid">
+                <div class="campo">
+                  <label>Nombres</label>
+                  <input type="text" [(ngModel)]="conyuge.nombres" placeholder="Nombres" />
+                </div>
+                <div class="campo">
+                  <label>Apellidos</label>
+                  <input type="text" [(ngModel)]="conyuge.apellidos" placeholder="Apellidos" />
+                </div>
+                <div class="campo">
+                  <label>Documento</label>
+                  <input type="text" [(ngModel)]="conyuge.numero_documento" placeholder="N° de documento" />
+                </div>
+                <div class="campo">
+                  <label>Teléfono <em>· opcional</em></label>
+                  <input type="text" [(ngModel)]="conyuge.telefono" placeholder="9XX XXX XXX" />
+                </div>
+              </div>
+            </section>
+          }
+
+          <!-- DOCUMENTOS -->
+          <section class="card">
+            <header class="card-head">
+              <div class="card-title">
+                <span class="icon-badge">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                  </svg>
+                </span>
+                <h3>Documentos</h3>
+              </div>
+              <span class="hint">JPG, PNG o PDF</span>
+            </header>
+
+            <div class="docs-grid">
+              <!-- DNI frente -->
+              <div class="doc-item">
+                <label class="doc-label">DNI (frente)</label>
+                @if (form.dni_frente_url) {
+                  <a [href]="form.dni_frente_url" target="_blank" class="doc-ok">
+                    <span class="doc-check">✓</span>
+                    <span>Archivo subido</span>
+                    <small>Ver archivo ↗</small>
+                  </a>
+                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniFrente()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+                    @if (subiendoDniFrente()) { <span class="spinner"></span> }
+                    {{ subiendoDniFrente() ? 'Subiendo...' : 'Cambiar archivo' }}
+                  </label>
+                } @else {
+                  <label class="dropzone" [class.dropzone-loading]="subiendoDniFrente()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+                    @if (subiendoDniFrente()) {
+                      <span class="spinner spinner-blue"></span>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    }
+                    <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
+                  </label>
+                }
+              </div>
+
+              <!-- DNI reverso -->
+              <div class="doc-item">
+                <label class="doc-label">DNI (reverso)</label>
+                @if (form.dni_reverso_url) {
+                  <a [href]="form.dni_reverso_url" target="_blank" class="doc-ok">
+                    <span class="doc-check">✓</span>
+                    <span>Archivo subido</span>
+                    <small>Ver archivo ↗</small>
+                  </a>
+                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniReverso()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+                    @if (subiendoDniReverso()) { <span class="spinner"></span> }
+                    {{ subiendoDniReverso() ? 'Subiendo...' : 'Cambiar archivo' }}
+                  </label>
+                } @else {
+                  <label class="dropzone" [class.dropzone-loading]="subiendoDniReverso()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+                    @if (subiendoDniReverso()) {
+                      <span class="spinner spinner-blue"></span>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    }
+                    <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
+                  </label>
+                }
+              </div>
+            </div>
+          </section>
+        } @else {
+          <!-- DATOS DE LA EMPRESA -->
+          <section class="card">
+            <header class="card-head">
+              <div class="card-title">
+                <span class="icon-badge">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" /><line x1="9" y1="7" x2="9.01" y2="7" /><line x1="15" y1="7" x2="15.01" y2="7" />
+                    <line x1="9" y1="12" x2="9.01" y2="12" /><line x1="15" y1="12" x2="15.01" y2="12" /><path d="M10 22v-4h4v4" />
+                  </svg>
+                </span>
+                <h3>Datos de la empresa</h3>
+              </div>
+            </header>
+
+            <div class="form-grid">
+              <div class="campo">
+                <label>RUC</label>
+                <input type="text" [(ngModel)]="form.ruc" [disabled]="esEdicion" placeholder="11 dígitos" />
+              </div>
+              <div class="campo">
+                <label>Razón social</label>
+                <input type="text" [(ngModel)]="form.razon_social" [disabled]="esEdicion" placeholder="Nombre de la empresa" />
+              </div>
+              <div class="campo campo-span-2">
+                <label>Representante legal</label>
+                <input type="text" [(ngModel)]="form.representante_legal" placeholder="Nombre completo del representante" />
+              </div>
+            </div>
+          </section>
+        }
+
+        <!-- CONTACTO -->
+        <section class="card">
+          <header class="card-head">
+            <div class="card-title">
+              <span class="icon-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </span>
+              <h3>Contacto</h3>
+            </div>
+          </header>
+
           <div class="form-grid">
             <div class="campo">
-              <label>Nombres</label>
-              <input type="text" [(ngModel)]="conyuge.nombres" />
-            </div>
-            <div class="campo">
-              <label>Apellidos</label>
-              <input type="text" [(ngModel)]="conyuge.apellidos" />
-            </div>
-            <div class="campo">
-              <label>Documento</label>
-              <input type="text" [(ngModel)]="conyuge.numero_documento" />
-            </div>
-            <div class="campo">
               <label>Teléfono</label>
-              <input type="text" [(ngModel)]="conyuge.telefono" />
+              <input type="text" [(ngModel)]="form.telefono" placeholder="9XX XXX XXX" />
+            </div>
+            <div class="campo">
+              <label>Correo <em>· opcional</em></label>
+              <input type="email" [(ngModel)]="form.correo" placeholder="correo@ejemplo.com" />
+            </div>
+            <div class="campo campo-span-2">
+              <label>Dirección</label>
+              <input type="text" [(ngModel)]="form.direccion" placeholder="Calle, número, distrito" />
+            </div>
+            <div class="campo">
+              <label>Segundo contacto — nombre <em>· opcional</em></label>
+              <input type="text" [(ngModel)]="form.segundo_contacto_nombre" placeholder="Nombre" />
+            </div>
+            <div class="campo">
+              <label>Segundo contacto — teléfono <em>· opcional</em></label>
+              <input type="text" [(ngModel)]="form.segundo_contacto_telefono" placeholder="9XX XXX XXX" />
             </div>
           </div>
-        </div>
-      }
-    } @else {
-      <div class="form-card">
-        <h3>Datos de la empresa</h3>
-        <div class="form-grid">
-          <div class="campo">
-            <label>RUC</label>
-            <input type="text" [(ngModel)]="form.ruc" [disabled]="esEdicion" />
-          </div>
-          <div class="campo">
-            <label>Razón social</label>
-            <input type="text" [(ngModel)]="form.razon_social" [disabled]="esEdicion" />
-          </div>
-          <div class="campo campo-span-2">
-            <label>Representante legal</label>
-            <input type="text" [(ngModel)]="form.representante_legal" />
-          </div>
-        </div>
+        </section>
       </div>
-    }
 
-    <div class="form-card">
-      <h3>Contacto</h3>
-      <div class="form-grid">
-        <div class="campo">
-          <label>Teléfono</label>
-          <input type="text" [(ngModel)]="form.telefono" />
-        </div>
-        <div class="campo">
-          <label>Correo (opcional)</label>
-          <input type="email" [(ngModel)]="form.correo" />
-        </div>
-        <div class="campo campo-span-2">
-          <label>Dirección</label>
-          <input type="text" [(ngModel)]="form.direccion" />
-        </div>
-        <div class="campo">
-          <label>Segundo contacto — nombre</label>
-          <input type="text" [(ngModel)]="form.segundo_contacto_nombre" />
-        </div>
-        <div class="campo">
-          <label>Segundo contacto — teléfono</label>
-          <input type="text" [(ngModel)]="form.segundo_contacto_telefono" />
-        </div>
-      </div>
-    </div>
+      <!-- COLUMNA LATERAL: RESUMEN -->
+      <aside class="col-side">
+        <div class="card card-resumen">
+          <h3 class="resumen-title">Resumen</h3>
 
-    <div class="form-acciones">
-      <button class="btn-secundario" (click)="cancelar()">Cancelar</button>
-      <button class="btn-primary" (click)="guardar()" [disabled]="guardando()">
-        {{ guardando() ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear cliente') }}
-      </button>
+          <div class="resumen-tipo">
+            <span class="resumen-ico">
+              @if (form.tipo_persona === 'natural') {
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="2" width="16" height="20" rx="2" /><line x1="9" y1="7" x2="9.01" y2="7" /><line x1="15" y1="7" x2="15.01" y2="7" />
+                  <line x1="9" y1="12" x2="9.01" y2="12" /><line x1="15" y1="12" x2="15.01" y2="12" /><path d="M10 22v-4h4v4" />
+                </svg>
+              }
+            </span>
+            <strong>{{ form.tipo_persona === 'natural' ? 'Persona natural' : 'Persona jurídica' }}</strong>
+          </div>
+
+          <button class="btn btn-primary btn-block" (click)="guardar()" [disabled]="guardando()">
+            @if (guardando()) { <span class="spinner"></span> }
+            {{ guardando() ? 'Guardando...' : (esEdicion ? 'Guardar cambios' : 'Crear cliente') }}
+          </button>
+          <button class="btn btn-outline btn-block" (click)="cancelar()">Cancelar</button>
+
+          <div class="resumen-sep"></div>
+
+          <ul class="checklist">
+            @if (form.tipo_persona === 'natural') {
+              <li [class.ok]="form.numero_documento">
+                <span class="dot">@if (form.numero_documento) { ✓ }</span>
+                <div>
+                  <small>{{ form.tipo_documento }}</small>
+                  <b>{{ form.numero_documento || 'Pendiente' }}</b>
+                </div>
+              </li>
+              <li [class.ok]="form.nombres && form.apellidos">
+                <span class="dot">@if (form.nombres && form.apellidos) { ✓ }</span>
+                <div>
+                  <small>Nombre</small>
+                  <b>{{ (form.nombres && form.apellidos) ? form.nombres + ' ' + form.apellidos : 'Pendiente' }}</b>
+                </div>
+              </li>
+              @if (esCasado) {
+                <li [class.ok]="conyuge.nombres && conyuge.apellidos && conyuge.numero_documento">
+                  <span class="dot">@if (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento) { ✓ }</span>
+                  <div>
+                    <small>Cónyuge</small>
+                    <b>{{ (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento) ? conyuge.nombres + ' ' + conyuge.apellidos : 'Pendiente' }}</b>
+                  </div>
+                </li>
+              }
+            } @else {
+              <li [class.ok]="form.ruc">
+                <span class="dot">@if (form.ruc) { ✓ }</span>
+                <div>
+                  <small>RUC</small>
+                  <b>{{ form.ruc || 'Pendiente' }}</b>
+                </div>
+              </li>
+              <li [class.ok]="form.razon_social">
+                <span class="dot">@if (form.razon_social) { ✓ }</span>
+                <div>
+                  <small>Razón social</small>
+                  <b>{{ form.razon_social || 'Pendiente' }}</b>
+                </div>
+              </li>
+              <li [class.ok]="form.representante_legal">
+                <span class="dot">@if (form.representante_legal) { ✓ }</span>
+                <div>
+                  <small>Representante</small>
+                  <b>{{ form.representante_legal || 'Pendiente' }}</b>
+                </div>
+              </li>
+            }
+            <li [class.ok]="form.telefono">
+              <span class="dot">@if (form.telefono) { ✓ }</span>
+              <div>
+                <small>Teléfono</small>
+                <b>{{ form.telefono || 'Pendiente' }}</b>
+              </div>
+            </li>
+            <li [class.ok]="form.direccion">
+              <span class="dot">@if (form.direccion) { ✓ }</span>
+              <div>
+                <small>Dirección</small>
+                <b>{{ form.direccion || 'Pendiente' }}</b>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </aside>
     </div>
   }
 </div>

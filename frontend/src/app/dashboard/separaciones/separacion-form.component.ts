@@ -23,6 +23,7 @@ export class SeparacionFormComponent implements OnInit {
   loteSeleccionado = signal<Lote | null>(null);
   guardando = signal(false);
   error = signal<string | null>(null);
+  intentoGuardar = signal(false);
 
   documentoBusqueda = '';
   buscandoCliente = signal(false);
@@ -192,25 +193,17 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   guardar(): void {
+    this.intentoGuardar.set(true);
     const cliente = this.clienteEncontrado();
-    if (!cliente) {
-      this.error.set('Busca o crea el cliente antes de continuar');
-      return;
-    }
-    if (!this.form.id_lote) {
-      this.error.set('Selecciona el lote');
-      return;
-    }
-    if (!this.form.fecha_vencimiento) {
-      this.error.set('Indica la fecha de vencimiento de la separación');
-      return;
-    }
-    if (!this.form.importe || this.form.importe <= 0) {
-      this.error.set('Indica el importe separado');
-      return;
-    }
-    if (!this.dniFrenteUrl || !this.dniReversoUrl || !this.voucherUrl) {
-      this.error.set('Sube el DNI (ambas caras) y el voucher antes de guardar');
+    if (
+      this.mensajeFaltante() ||
+      !cliente ||
+      !this.form.id_lote ||
+      !this.form.importe ||
+      !this.dniFrenteUrl ||
+      !this.dniReversoUrl ||
+      !this.voucherUrl
+    ) {
       return;
     }
 
@@ -245,6 +238,17 @@ export class SeparacionFormComponent implements OnInit {
           this.toastService.error(mensaje);
         },
       });
+  }
+
+  mensajeFaltante(): string | null {
+    if (!this.clienteEncontrado()) return 'Busca o crea el cliente antes de continuar';
+    if (!this.form.id_lote) return 'Selecciona el lote';
+    if (!this.form.fecha_vencimiento) return 'Indica la fecha de vencimiento de la separación';
+    if (!this.form.importe || this.form.importe <= 0) return 'Indica el importe separado';
+    if (!this.dniFrenteUrl || !this.dniReversoUrl || !this.voucherUrl) {
+      return 'Sube el DNI (ambas caras) y el voucher antes de guardar';
+    }
+    return null;
   }
 
   cancelar(): void {

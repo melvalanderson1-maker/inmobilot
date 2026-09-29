@@ -23,12 +23,12 @@
     </div>
   </div>
 
-  @if (error()) {
+  @if ((intentoGuardar() && mensajeFaltante()) || error()) {
     <div class="mensaje-error" role="alert">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
       </svg>
-      <span>{{ error() }}</span>
+      <span>{{ (intentoGuardar() && mensajeFaltante()) || error() }}</span>
     </div>
   }
 
@@ -93,20 +93,23 @@
           </div>
         </header>
 
-        <div class="form-grid">
-          <div class="campo campo-span-2">
-            <label>Lote libre</label>
-            <div class="select-wrap">
-              <select [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
-                <option [ngValue]="null" disabled>Selecciona un lote</option>
-                @for (l of lotesLibres(); track l.id) {
-                  <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
-                }
-              </select>
+        <div class="sep-grid">
+          <!-- COLUMNA IZQUIERDA: LOTE -->
+          <div class="sep-col">
+            <div class="campo">
+              <label>Lote libre</label>
+              <div class="select-wrap">
+                <select [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
+                  <option [ngValue]="null" disabled>Selecciona un lote</option>
+                  @for (l of lotesLibres(); track l.id) {
+                    <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
+                  }
+                </select>
+              </div>
+              @if (lotesLibres().length === 0) {
+                <small class="ayuda ayuda-warn">No hay lotes libres en este proyecto.</small>
+              }
             </div>
-            @if (lotesLibres().length === 0) {
-              <small class="ayuda ayuda-warn">No hay lotes libres en este proyecto.</small>
-            }
 
             @if (loteSeleccionado()) {
               <div class="lote-detalle-panel">
@@ -126,58 +129,63 @@
                   </a>
                 }
               </div>
+            } @else {
+              <div class="lote-vacio">Selecciona un lote para ver sus datos aquí</div>
             }
           </div>
 
-          <div class="campo">
-            <label>Importe</label>
-            <div class="input-prefix">
-              <span>S/</span>
-              <input type="number" [(ngModel)]="form.importe" placeholder="0.00" />
+          <!-- COLUMNA DERECHA: DATOS DE LA SEPARACIÓN -->
+          <div class="sep-col sep-col-form">
+            <div class="campo campo-span-2">
+              <label>Importe</label>
+              <div class="input-prefix">
+                <span>S/</span>
+                <input type="number" [(ngModel)]="form.importe" placeholder="0.00" />
+              </div>
             </div>
-          </div>
 
-          <div class="campo">
-            <label>Tipo de pago previsto</label>
-            <div class="segmented">
-              <label class="seg-item">
-                <input type="radio" name="tipo_pago" [value]="null" [(ngModel)]="form.tipo_pago" />
-                <span>Sin definir</span>
-              </label>
-              <label class="seg-item">
-                <input type="radio" name="tipo_pago" value="contado" [(ngModel)]="form.tipo_pago" />
-                <span>Contado</span>
-              </label>
-              <label class="seg-item">
-                <input type="radio" name="tipo_pago" value="credito" [(ngModel)]="form.tipo_pago" />
-                <span>Crédito</span>
-              </label>
+            <div class="campo campo-span-2">
+              <label>Tipo de pago previsto</label>
+              <div class="segmented">
+                <label class="seg-item">
+                  <input type="radio" name="tipo_pago" [value]="null" [(ngModel)]="form.tipo_pago" />
+                  <span>Sin definir</span>
+                </label>
+                <label class="seg-item">
+                  <input type="radio" name="tipo_pago" value="contado" [(ngModel)]="form.tipo_pago" />
+                  <span>Contado</span>
+                </label>
+                <label class="seg-item">
+                  <input type="radio" name="tipo_pago" value="credito" [(ngModel)]="form.tipo_pago" />
+                  <span>Crédito</span>
+                </label>
+              </div>
             </div>
-          </div>
 
-          <div class="campo">
-            <label>Fecha inicial</label>
-            <input type="date" [(ngModel)]="form.fecha_inicio" />
-          </div>
+            <div class="campo">
+              <label>Fecha inicial</label>
+              <input type="date" [(ngModel)]="form.fecha_inicio" />
+            </div>
 
-          <div class="campo">
-            <label>Fecha de vencimiento</label>
-            <input type="date" [(ngModel)]="form.fecha_vencimiento" />
-          </div>
+            <div class="campo">
+              <label>Fecha de vencimiento</label>
+              <input type="date" [(ngModel)]="form.fecha_vencimiento" />
+            </div>
 
-          <div class="campo campo-span-2">
-            <label>Agendamiento (depósito o firma) <em>· opcional</em></label>
-            <input type="datetime-local" [(ngModel)]="form.agenda_fecha" />
-          </div>
+            <div class="campo campo-span-2">
+              <label>Agendamiento (depósito o firma) <em>· opcional</em></label>
+              <input type="datetime-local" [(ngModel)]="form.agenda_fecha" />
+            </div>
 
-          <div class="campo campo-span-2">
-            <label>Motivo</label>
-            <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: cliente reservó en visita al proyecto" />
-          </div>
+            <div class="campo campo-span-2">
+              <label>Motivo</label>
+              <input type="text" [(ngModel)]="form.motivo" placeholder="Ej: cliente reservó en visita al proyecto" />
+            </div>
 
-          <div class="campo campo-span-2">
-            <label>Notas</label>
-            <textarea rows="3" [(ngModel)]="form.notas" placeholder="Observaciones adicionales..."></textarea>
+            <div class="campo campo-span-2">
+              <label>Notas</label>
+              <textarea rows="2" [(ngModel)]="form.notas" placeholder="Observaciones adicionales..."></textarea>
+            </div>
           </div>
         </div>
       </section>

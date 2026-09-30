@@ -263,6 +263,8 @@ class ClienteConyugeIn(BaseModel):
     apellidos: str
     numero_documento: str
     telefono: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
 
 
 class ClienteConyugeOut(ORMBase):
@@ -271,6 +273,8 @@ class ClienteConyugeOut(ORMBase):
     apellidos: str
     numero_documento: str
     telefono: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
 
 
 class ClienteCreate(BaseModel):
@@ -298,9 +302,11 @@ class ClienteCreate(BaseModel):
         if self.tipo_persona == "juridica":
             if not self.ruc or not self.razon_social or not self.representante_legal:
                 raise ValueError("Persona jurídica requiere RUC, razón social y representante legal")
-        else:
-            if self.estado_civil == "casado" and not self.conyuge:
+        if self.estado_civil == "casado":
+            if not self.conyuge:
                 raise ValueError("Si el estado civil es casado, los datos del cónyuge son obligatorios")
+            if not self.conyuge.dni_frente_url or not self.conyuge.dni_reverso_url:
+                raise ValueError("Debes subir el DNI (frente y reverso) del cónyuge")
         return self
 
 

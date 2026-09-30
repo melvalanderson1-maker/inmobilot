@@ -383,6 +383,8 @@ class ClienteConyuge(Base):
     apellidos = Column(String(150), nullable=False)
     numero_documento = Column(String(20), nullable=False)
     telefono = Column(String(20))
+    dni_frente_url = Column(String(300))
+    dni_reverso_url = Column(String(300))
 
     cliente = relationship("Cliente", back_populates="conyuge")
 

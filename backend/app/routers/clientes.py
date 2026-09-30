@@ -20,6 +20,8 @@ def _aplicar_conyuge(db: Session, cliente: m.Cliente, datos_conyuge: Optional[s.
         existente.apellidos = datos_conyuge.apellidos.strip()
         existente.numero_documento = datos_conyuge.numero_documento.strip()
         existente.telefono = datos_conyuge.telefono
+        existente.dni_frente_url = datos_conyuge.dni_frente_url
+        existente.dni_reverso_url = datos_conyuge.dni_reverso_url
     else:
         db.add(m.ClienteConyuge(
             id_cliente=cliente.id,
@@ -27,6 +29,8 @@ def _aplicar_conyuge(db: Session, cliente: m.Cliente, datos_conyuge: Optional[s.
             apellidos=datos_conyuge.apellidos.strip(),
             numero_documento=datos_conyuge.numero_documento.strip(),
             telefono=datos_conyuge.telefono,
+            dni_frente_url=datos_conyuge.dni_frente_url,
+            dni_reverso_url=datos_conyuge.dni_reverso_url,
         ))
 
 

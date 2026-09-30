@@ -226,6 +226,11 @@ export class ClienteFormComponent implements OnInit {
         return 'El DNI debe tener 8 dígitos';
       }
     }
+    if (!this.form.dni_frente_url || !this.form.dni_reverso_url) {
+      return this.form.tipo_persona === 'natural'
+        ? 'Sube el DNI (frente y reverso) del cliente'
+        : 'Sube el DNI (frente y reverso) del representante legal';
+    }
     if (this.esCasado) {
       if (!this.conyuge.nombres.trim() || !this.conyuge.apellidos.trim() || !this.conyuge.numero_documento.trim()) {
         return 'Si el estado civil es casado, completa los datos del cónyuge';

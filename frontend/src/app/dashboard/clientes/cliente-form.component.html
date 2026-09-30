@@ -143,80 +143,6 @@
 
 
 
-          <!-- DOCUMENTOS -->
-          <section class="card">
-            <header class="card-head">
-              <div class="card-title">
-                <span class="icon-badge">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                  </svg>
-                </span>
-                <h3>Documentos</h3>
-              </div>
-              <span class="hint">JPG, PNG o PDF</span>
-            </header>
-
-            <div class="docs-grid">
-              <!-- DNI frente -->
-              <div class="doc-item">
-                <label class="doc-label">DNI (frente)</label>
-                @if (form.dni_frente_url) {
-                  <a [href]="form.dni_frente_url" target="_blank" class="doc-ok">
-                    <span class="doc-check">✓</span>
-                    <span>Archivo subido</span>
-                    <small>Ver archivo ↗</small>
-                  </a>
-                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniFrente()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
-                    @if (subiendoDniFrente()) { <span class="spinner"></span> }
-                    {{ subiendoDniFrente() ? 'Subiendo...' : 'Cambiar archivo' }}
-                  </label>
-                } @else {
-                  <label class="dropzone" [class.dropzone-loading]="subiendoDniFrente()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
-                    @if (subiendoDniFrente()) {
-                      <span class="spinner spinner-blue"></span>
-                    } @else {
-                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    }
-                    <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
-                  </label>
-                }
-              </div>
-
-              <!-- DNI reverso -->
-              <div class="doc-item">
-                <label class="doc-label">DNI (reverso)</label>
-                @if (form.dni_reverso_url) {
-                  <a [href]="form.dni_reverso_url" target="_blank" class="doc-ok">
-                    <span class="doc-check">✓</span>
-                    <span>Archivo subido</span>
-                    <small>Ver archivo ↗</small>
-                  </a>
-                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniReverso()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
-                    @if (subiendoDniReverso()) { <span class="spinner"></span> }
-                    {{ subiendoDniReverso() ? 'Subiendo...' : 'Cambiar archivo' }}
-                  </label>
-                } @else {
-                  <label class="dropzone" [class.dropzone-loading]="subiendoDniReverso()">
-                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
-                    @if (subiendoDniReverso()) {
-                      <span class="spinner spinner-blue"></span>
-                    } @else {
-                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-                      </svg>
-                    }
-                    <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
-                  </label>
-                }
-              </div>
-            </div>
-          </section>
         } @else {
           <!-- DATOS DE LA EMPRESA -->
           <section class="card">
@@ -260,6 +186,81 @@
             </div>
           </section>
         }
+
+        <!-- DOCUMENTOS (DNI del cliente si es natural, o del representante legal si es jurídica) -->
+        <section class="card">
+          <header class="card-head">
+            <div class="card-title">
+              <span class="icon-badge">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                </svg>
+              </span>
+              <h3>{{ form.tipo_persona === 'natural' ? 'Documentos' : 'Documentos del representante legal' }}</h3>
+            </div>
+            <span class="hint">JPG, PNG o PDF</span>
+          </header>
+
+          <div class="docs-grid">
+            <!-- DNI frente -->
+            <div class="doc-item">
+              <label class="doc-label">DNI (frente)</label>
+              @if (form.dni_frente_url) {
+                <a [href]="form.dni_frente_url" target="_blank" class="doc-ok">
+                  <span class="doc-check">✓</span>
+                  <span>Archivo subido</span>
+                  <small>Ver archivo ↗</small>
+                </a>
+                <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniFrente()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+                  @if (subiendoDniFrente()) { <span class="spinner"></span> }
+                  {{ subiendoDniFrente() ? 'Subiendo...' : 'Cambiar archivo' }}
+                </label>
+              } @else {
+                <label class="dropzone" [class.dropzone-loading]="subiendoDniFrente()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniFrenteSeleccionado($event)" [disabled]="subiendoDniFrente()" hidden />
+                  @if (subiendoDniFrente()) {
+                    <span class="spinner spinner-blue"></span>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  }
+                  <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
+                </label>
+              }
+            </div>
+
+            <!-- DNI reverso -->
+            <div class="doc-item">
+              <label class="doc-label">DNI (reverso)</label>
+              @if (form.dni_reverso_url) {
+                <a [href]="form.dni_reverso_url" target="_blank" class="doc-ok">
+                  <span class="doc-check">✓</span>
+                  <span>Archivo subido</span>
+                  <small>Ver archivo ↗</small>
+                </a>
+                <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniReverso()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+                  @if (subiendoDniReverso()) { <span class="spinner"></span> }
+                  {{ subiendoDniReverso() ? 'Subiendo...' : 'Cambiar archivo' }}
+                </label>
+              } @else {
+                <label class="dropzone" [class.dropzone-loading]="subiendoDniReverso()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
+                  @if (subiendoDniReverso()) {
+                    <span class="spinner spinner-blue"></span>
+                  } @else {
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                  }
+                  <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
+                </label>
+              }
+            </div>
+          </div>
+        </section>
 
         <!-- CÓNYUGE (aplica tanto a persona natural como al representante de la jurídica) -->
         @if (esCasado) {

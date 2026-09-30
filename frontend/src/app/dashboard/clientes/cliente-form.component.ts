@@ -24,6 +24,8 @@ export class ClienteFormComponent implements OnInit {
   error = signal<string | null>(null);
   subiendoDniFrente = signal(false);
   subiendoDniReverso = signal(false);
+  subiendoDniConyugeFrente = signal(false);
+  subiendoDniConyugeReverso = signal(false);
 
   form = {
     tipo_persona: 'natural' as TipoPersona,
@@ -50,6 +52,8 @@ export class ClienteFormComponent implements OnInit {
     apellidos: '',
     numero_documento: '',
     telefono: '',
+    dni_frente_url: null as string | null,
+    dni_reverso_url: null as string | null,
   };
 
   constructor(
@@ -108,6 +112,8 @@ export class ClienteFormComponent implements OnInit {
               apellidos: c.conyuge.apellidos,
               numero_documento: c.conyuge.numero_documento,
               telefono: c.conyuge.telefono ?? '',
+              dni_frente_url: c.conyuge.dni_frente_url ?? null,
+              dni_reverso_url: c.conyuge.dni_reverso_url ?? null,
             };
           }
           this.cargando.set(false);
@@ -161,6 +167,52 @@ export class ClienteFormComponent implements OnInit {
     input.value = '';
   }
 
+
+
+    onDniConyugeFrenteSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoDniConyugeFrente.set(true);
+
+    this.clienteService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.conyuge.dni_frente_url = res.url;
+        this.subiendoDniConyugeFrente.set(false);
+      },
+      error: (err) => {
+        this.subiendoDniConyugeFrente.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el DNI del cónyuge (frente)');
+      },
+    });
+    input.value = '';
+  }
+
+  onDniConyugeReversoSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoDniConyugeReverso.set(true);
+
+    this.clienteService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.conyuge.dni_reverso_url = res.url;
+        this.subiendoDniConyugeReverso.set(false);
+      },
+      error: (err) => {
+        this.subiendoDniConyugeReverso.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el DNI del cónyuge (reverso)');
+      },
+    });
+    input.value = '';
+  }
+
   private validar(): string | null {
     if (this.form.tipo_persona === 'juridica') {
       if (!this.form.ruc?.trim() || !this.form.razon_social?.trim() || !this.form.representante_legal?.trim()) {
@@ -173,8 +225,13 @@ export class ClienteFormComponent implements OnInit {
       if (this.form.tipo_documento === 'DNI' && !/^\d{8}$/.test(this.form.numero_documento.trim())) {
         return 'El DNI debe tener 8 dígitos';
       }
-      if (this.esCasado && (!this.conyuge.nombres.trim() || !this.conyuge.apellidos.trim() || !this.conyuge.numero_documento.trim())) {
+    }
+    if (this.esCasado) {
+      if (!this.conyuge.nombres.trim() || !this.conyuge.apellidos.trim() || !this.conyuge.numero_documento.trim()) {
         return 'Si el estado civil es casado, completa los datos del cónyuge';
+      }
+      if (!this.conyuge.dni_frente_url || !this.conyuge.dni_reverso_url) {
+        return 'Sube el DNI (frente y reverso) del cónyuge';
       }
     }
     if (!this.form.telefono.trim()) return 'El teléfono es obligatorio';
@@ -192,7 +249,12 @@ export class ClienteFormComponent implements OnInit {
     this.guardando.set(true);
 
     const conyugePayload = this.esCasado
-      ? { ...this.conyuge, telefono: this.conyuge.telefono || undefined }
+      ? {
+          ...this.conyuge,
+          telefono: this.conyuge.telefono || undefined,
+          dni_frente_url: this.conyuge.dni_frente_url || undefined,
+          dni_reverso_url: this.conyuge.dni_reverso_url || undefined,
+        }
       : undefined;
 
     if (this.esEdicion) {

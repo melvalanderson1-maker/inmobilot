@@ -141,41 +141,7 @@
             </div>
           </section>
 
-          <!-- CÓNYUGE -->
-          @if (esCasado) {
-            <section class="card">
-              <header class="card-head">
-                <div class="card-title">
-                  <span class="icon-badge">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                    </svg>
-                  </span>
-                  <h3>Datos del cónyuge</h3>
-                </div>
-                <span class="hint">Obligatorio si el estado civil es casado</span>
-              </header>
 
-              <div class="form-grid">
-                <div class="campo">
-                  <label>Nombres</label>
-                  <input type="text" [(ngModel)]="conyuge.nombres" placeholder="Nombres" />
-                </div>
-                <div class="campo">
-                  <label>Apellidos</label>
-                  <input type="text" [(ngModel)]="conyuge.apellidos" placeholder="Apellidos" />
-                </div>
-                <div class="campo">
-                  <label>Documento</label>
-                  <input type="text" [(ngModel)]="conyuge.numero_documento" placeholder="N° de documento" />
-                </div>
-                <div class="campo">
-                  <label>Teléfono <em>· opcional</em></label>
-                  <input type="text" [(ngModel)]="conyuge.telefono" placeholder="9XX XXX XXX" />
-                </div>
-              </div>
-            </section>
-          }
 
           <!-- DOCUMENTOS -->
           <section class="card">
@@ -279,6 +245,114 @@
                 <label>Representante legal</label>
                 <input type="text" [(ngModel)]="form.representante_legal" placeholder="Nombre completo del representante" />
               </div>
+              <div class="campo">
+                <label>Estado civil del representante</label>
+                <div class="select-wrap">
+                  <select [(ngModel)]="form.estado_civil">
+                    <option value="">Sin indicar</option>
+                    <option value="soltero">Soltero(a)</option>
+                    <option value="casado">Casado(a)</option>
+                    <option value="viudo">Viudo(a)</option>
+                    <option value="divorciado">Divorciado(a)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </section>
+        }
+
+        <!-- CÓNYUGE (aplica tanto a persona natural como al representante de la jurídica) -->
+        @if (esCasado) {
+          <section class="card">
+            <header class="card-head">
+              <div class="card-title">
+                <span class="icon-badge">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                </span>
+                <h3>Datos del cónyuge</h3>
+              </div>
+              <span class="hint">Obligatorio si el estado civil es casado</span>
+            </header>
+
+            <div class="form-grid">
+              <div class="campo">
+                <label>Nombres</label>
+                <input type="text" [(ngModel)]="conyuge.nombres" placeholder="Nombres" />
+              </div>
+              <div class="campo">
+                <label>Apellidos</label>
+                <input type="text" [(ngModel)]="conyuge.apellidos" placeholder="Apellidos" />
+              </div>
+              <div class="campo">
+                <label>Documento</label>
+                <input type="text" [(ngModel)]="conyuge.numero_documento" placeholder="N° de documento" />
+              </div>
+              <div class="campo">
+                <label>Teléfono <em>· opcional</em></label>
+                <input type="text" [(ngModel)]="conyuge.telefono" placeholder="9XX XXX XXX" />
+              </div>
+            </div>
+
+            <div class="docs-grid">
+              <!-- DNI cónyuge frente -->
+              <div class="doc-item">
+                <label class="doc-label">DNI cónyuge (frente)</label>
+                @if (conyuge.dni_frente_url) {
+                  <a [href]="conyuge.dni_frente_url" target="_blank" class="doc-ok">
+                    <span class="doc-check">✓</span>
+                    <span>Archivo subido</span>
+                    <small>Ver archivo ↗</small>
+                  </a>
+                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniConyugeFrente()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniConyugeFrenteSeleccionado($event)" [disabled]="subiendoDniConyugeFrente()" hidden />
+                    @if (subiendoDniConyugeFrente()) { <span class="spinner"></span> }
+                    {{ subiendoDniConyugeFrente() ? 'Subiendo...' : 'Cambiar archivo' }}
+                  </label>
+                } @else {
+                  <label class="dropzone" [class.dropzone-loading]="subiendoDniConyugeFrente()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniConyugeFrenteSeleccionado($event)" [disabled]="subiendoDniConyugeFrente()" hidden />
+                    @if (subiendoDniConyugeFrente()) {
+                      <span class="spinner spinner-blue"></span>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    }
+                    <span>{{ subiendoDniConyugeFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
+                  </label>
+                }
+              </div>
+
+              <!-- DNI cónyuge reverso -->
+              <div class="doc-item">
+                <label class="doc-label">DNI cónyuge (reverso)</label>
+                @if (conyuge.dni_reverso_url) {
+                  <a [href]="conyuge.dni_reverso_url" target="_blank" class="doc-ok">
+                    <span class="doc-check">✓</span>
+                    <span>Archivo subido</span>
+                    <small>Ver archivo ↗</small>
+                  </a>
+                  <label class="btn btn-outline btn-sm btn-cambiar" [class.btn-disabled]="subiendoDniConyugeReverso()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniConyugeReversoSeleccionado($event)" [disabled]="subiendoDniConyugeReverso()" hidden />
+                    @if (subiendoDniConyugeReverso()) { <span class="spinner"></span> }
+                    {{ subiendoDniConyugeReverso() ? 'Subiendo...' : 'Cambiar archivo' }}
+                  </label>
+                } @else {
+                  <label class="dropzone" [class.dropzone-loading]="subiendoDniConyugeReverso()">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniConyugeReversoSeleccionado($event)" [disabled]="subiendoDniConyugeReverso()" hidden />
+                    @if (subiendoDniConyugeReverso()) {
+                      <span class="spinner spinner-blue"></span>
+                    } @else {
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    }
+                    <span>{{ subiendoDniConyugeReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
+                  </label>
+                }
+              </div>
             </div>
           </section>
         }
@@ -366,15 +440,6 @@
                   <b>{{ (form.nombres && form.apellidos) ? form.nombres + ' ' + form.apellidos : 'Pendiente' }}</b>
                 </div>
               </li>
-              @if (esCasado) {
-                <li [class.ok]="conyuge.nombres && conyuge.apellidos && conyuge.numero_documento">
-                  <span class="dot">@if (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento) { ✓ }</span>
-                  <div>
-                    <small>Cónyuge</small>
-                    <b>{{ (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento) ? conyuge.nombres + ' ' + conyuge.apellidos : 'Pendiente' }}</b>
-                  </div>
-                </li>
-              }
             } @else {
               <li [class.ok]="form.ruc">
                 <span class="dot">@if (form.ruc) { ✓ }</span>
@@ -395,6 +460,15 @@
                 <div>
                   <small>Representante</small>
                   <b>{{ form.representante_legal || 'Pendiente' }}</b>
+                </div>
+              </li>
+            }
+            @if (esCasado) {
+              <li [class.ok]="conyuge.nombres && conyuge.apellidos && conyuge.numero_documento && conyuge.dni_frente_url && conyuge.dni_reverso_url">
+                <span class="dot">@if (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento && conyuge.dni_frente_url && conyuge.dni_reverso_url) { ✓ }</span>
+                <div>
+                  <small>Cónyuge</small>
+                  <b>{{ (conyuge.nombres && conyuge.apellidos && conyuge.numero_documento) ? conyuge.nombres + ' ' + conyuge.apellidos : 'Pendiente' }}</b>
                 </div>
               </li>
             }

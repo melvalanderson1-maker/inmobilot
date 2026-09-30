@@ -247,6 +247,8 @@ export interface ClienteConyugeIn {
   apellidos: string;
   numero_documento: string;
   telefono?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
 }
 
 export interface ClienteConyugeOut {
@@ -255,6 +257,8 @@ export interface ClienteConyugeOut {
   apellidos: string;
   numero_documento: string;
   telefono?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
 }
 
 export interface ClienteCreate {

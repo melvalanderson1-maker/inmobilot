@@ -315,6 +315,10 @@ class Lote(Base):
     usuario_creador = relationship("Usuario", foreign_keys=[creado_por])
     usuario_actualizador = relationship("Usuario", foreign_keys=[actualizado_por])
 
+    @property
+    def manzana_nombre(self):
+        return self.manzana.nombre if self.manzana else None
+
 
 class LoteImagen(Base):
     __tablename__ = "lote_imagenes"

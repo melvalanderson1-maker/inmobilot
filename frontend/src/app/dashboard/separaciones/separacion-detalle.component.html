@@ -207,6 +207,47 @@
             </div>
           </div>
 
+          <!-- Lote -->
+          <div class="panel-bloque">
+            <h3>Datos del lote</h3>
+            <dl class="dato-lista">
+              <div class="dato-item">
+                <dt>Manzana</dt>
+                <dd>{{ separacion()!.lote?.manzana_nombre || '—' }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Lote</dt>
+                <dd>{{ separacion()!.lote?.codigo || '—' }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>N° Partida</dt>
+                <dd>{{ separacion()!.lote?.partida_registral || 'Sin registrar' }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Área</dt>
+                <dd>{{ separacion()!.lote?.area_m2 }} m²</dd>
+              </div>
+              @if (separacion()!.lote?.perimetro) {
+                <div class="dato-item">
+                  <dt>Perímetro</dt>
+                  <dd>{{ separacion()!.lote?.perimetro }} m</dd>
+                </div>
+              }
+              @if (separacion()!.lote?.frontis) {
+                <div class="dato-item">
+                  <dt>Frontis</dt>
+                  <dd>{{ separacion()!.lote?.frontis }}</dd>
+                </div>
+              }
+            </dl>
+            @if (separacion()!.lote?.sunarp_url) {
+              <a [href]="separacion()!.lote!.sunarp_url!" target="_blank" rel="noopener" class="btn-secundario btn-doc">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                Ver partida registral
+              </a>
+            }
+          </div>
+
           <!-- Detalle -->
           <div class="panel-bloque">
             <h3>Detalle de la separación</h3>

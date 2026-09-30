@@ -101,8 +101,14 @@
               <div class="select-wrap">
                 <select [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
                   <option [ngValue]="null" disabled>Selecciona un lote</option>
-                  @for (l of lotesLibres(); track l.id) {
-                    <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
+                  @for (l of lotesTodos(); track l.id) {
+                    <option
+                      [ngValue]="l.id"
+                      [disabled]="l.estado !== 'libre'"
+                      [style.color]="l.estado === 'libre' ? null : (l.estado === 'separado' ? '#c98a35' : '#c94f4f')"
+                    >
+                      {{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}{{ infoOcupacion(l) }}
+                    </option>
                   }
                 </select>
               </div>

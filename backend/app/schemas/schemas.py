@@ -698,6 +698,10 @@ class SeparacionLoteOut(ORMBase):
     id: int
     codigo: str
     ubicacion_lote: Optional[str] = None
+    manzana_nombre: Optional[str] = None
+    perimetro: Optional[Decimal] = None
+    frontis: Optional[str] = None
+    sunarp_url: Optional[str] = None
     area_m2: Decimal
     partida_registral: Optional[str] = None
     precio_total_contado: Optional[Decimal] = None

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -18,7 +18,9 @@ import { Cliente, FormaPago, Lote, Manzana } from '../../core/models';
 })
 export class SeparacionFormComponent implements OnInit {
   idProyecto: number | null = null;
-  lotesLibres = signal<Lote[]>([]);
+  lotesTodos = signal<Lote[]>([]);
+  lotesLibres = computed(() => this.lotesTodos().filter((l) => l.estado === 'libre'));
+  separacionesPorLote = signal<Record<number, { cliente: string; importe: number }>>({});
   manzanas = signal<Manzana[]>([]);
   loteSeleccionado = signal<Lote | null>(null);
   guardando = signal(false);
@@ -61,7 +63,7 @@ export class SeparacionFormComponent implements OnInit {
     this.route.queryParams.subscribe((params) => {
       const id = Number(params['id_proyecto']);
       this.idProyecto = id || null;
-      if (this.idProyecto) this.cargarLotesLibres();
+      if (this.idProyecto) this.cargarLotes();
 
       // Volvemos desde "crear cliente nuevo" con el cliente ya creado
       const idCliente = Number(params['id_cliente']);
@@ -80,20 +82,42 @@ export class SeparacionFormComponent implements OnInit {
     return new Date().toISOString().slice(0, 10);
   }
 
-  cargarLotesLibres(): void {
+  cargarLotes(): void {
     this.api.get<Lote[]>('/lotes', { id_proyecto: this.idProyecto }).subscribe((res) => {
-      this.lotesLibres.set(res.filter((l) => l.estado === 'libre'));
+      this.lotesTodos.set(res);
     });
     this.api.get<Manzana[]>(`/proyectos/${this.idProyecto}/manzanas`).subscribe((res) => this.manzanas.set(res));
-  }
 
+    const activos = ['pendiente_caja', 'pendiente_facturacion', 'vigente', 'vencida', 'devolucion_pendiente'];
+    this.separacionService.listar(this.idProyecto!).subscribe((res) => {
+      const mapa: Record<number, { cliente: string; importe: number }> = {};
+      for (const sep of res) {
+        if (activos.includes(sep.estado)) {
+          mapa[sep.id_lote] = {
+            cliente: sep.cliente ? `${sep.cliente.nombres} ${sep.cliente.apellidos}` : 'Cliente',
+            importe: Number(sep.importe),
+          };
+        }
+      }
+      this.separacionesPorLote.set(mapa);
+    });
+  }
   onLoteSeleccionado(): void {
-    this.loteSeleccionado.set(this.lotesLibres().find((l) => l.id === this.form.id_lote) ?? null);
+    this.loteSeleccionado.set(this.lotesTodos().find((l) => l.id === this.form.id_lote) ?? null);
   }
-
   nombreManzana(lote: Lote): string {
     const manzana = this.manzanas().find((m) => m.id === lote.id_manzana);
     return manzana ? manzana.nombre : '—';
+  }
+
+  infoOcupacion(lote: Lote): string {
+    if (lote.estado === 'libre') return '';
+    const info = this.separacionesPorLote()[lote.id];
+    if (lote.estado === 'separado' && info) {
+      return ` — Separado por ${info.cliente} (S/ ${info.importe.toFixed(2)})`;
+    }
+    const etiquetas: Record<string, string> = { vendido: 'Vendido', bloqueado: 'Bloqueado', separado: 'Separado' };
+    return ` — ${etiquetas[lote.estado] ?? lote.estado}`;
   }
 
   buscarCliente(): void {

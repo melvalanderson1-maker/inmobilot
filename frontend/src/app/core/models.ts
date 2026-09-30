@@ -525,6 +525,10 @@ export interface SeparacionLoteInfo {
   id: number;
   codigo: string;
   ubicacion_lote?: string;
+  manzana_nombre?: string;
+  perimetro?: number;
+  frontis?: string;
+  sunarp_url?: string;
   area_m2: number;
   partida_registral?: string;
   precio_total_contado?: number;

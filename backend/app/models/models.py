@@ -366,6 +366,8 @@ class Cliente(Base):
     ruc = Column(String(20))
     razon_social = Column(String(200))
     representante_legal = Column(String(150))
+    representante_tipo_documento = Column(String(10))
+    representante_numero_documento = Column(String(20))
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
 

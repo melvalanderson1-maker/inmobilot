@@ -279,6 +279,8 @@ export interface ClienteCreate {
   ruc?: string;
   razon_social?: string;
   representante_legal?: string;
+  representante_tipo_documento?: string;
+  representante_numero_documento?: string;
   conyuge?: ClienteConyugeIn;
 }
 
@@ -295,6 +297,8 @@ export interface ClienteUpdate {
   ruc?: string;
   razon_social?: string;
   representante_legal?: string;
+  representante_tipo_documento?: string;
+  representante_numero_documento?: string;
   activo?: boolean;
   conyuge?: ClienteConyugeIn;
 }
@@ -429,6 +433,8 @@ export interface Cliente {
   ruc?: string;
   razon_social?: string;
   representante_legal?: string;
+  representante_tipo_documento?: string;
+  representante_numero_documento?: string;
   activo: boolean;
   created_at: string;
   conyuge?: ClienteConyugeOut;

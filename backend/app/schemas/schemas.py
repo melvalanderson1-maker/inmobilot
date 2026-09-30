@@ -295,6 +295,8 @@ class ClienteCreate(BaseModel):
     ruc: Optional[str] = None
     razon_social: Optional[str] = None
     representante_legal: Optional[str] = None
+    representante_tipo_documento: Optional[str] = None
+    representante_numero_documento: Optional[str] = None
     conyuge: Optional[ClienteConyugeIn] = None
 
     @model_validator(mode="after")
@@ -302,6 +304,8 @@ class ClienteCreate(BaseModel):
         if self.tipo_persona == "juridica":
             if not self.ruc or not self.razon_social or not self.representante_legal:
                 raise ValueError("Persona jurídica requiere RUC, razón social y representante legal")
+            if not self.representante_tipo_documento or not self.representante_numero_documento:
+                raise ValueError("Debes indicar el tipo y número de documento del representante legal")
         if not self.dni_frente_url or not self.dni_reverso_url:
             if self.tipo_persona == "natural":
                 raise ValueError("Debes subir el DNI (frente y reverso) del cliente")
@@ -327,6 +331,8 @@ class ClienteUpdate(BaseModel):
     ruc: Optional[str] = None
     razon_social: Optional[str] = None
     representante_legal: Optional[str] = None
+    representante_tipo_documento: Optional[str] = None
+    representante_numero_documento: Optional[str] = None
     activo: Optional[bool] = None
     conyuge: Optional[ClienteConyugeIn] = None
 
@@ -350,6 +356,8 @@ class ClienteOut(ORMBase):
     ruc: Optional[str] = None
     razon_social: Optional[str] = None
     representante_legal: Optional[str] = None
+    representante_tipo_documento: Optional[str] = None
+    representante_numero_documento: Optional[str] = None
     activo: bool
     created_at: datetime
     conyuge: Optional[ClienteConyugeOut] = None

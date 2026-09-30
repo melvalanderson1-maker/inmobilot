@@ -45,6 +45,8 @@ export class ClienteFormComponent implements OnInit {
     ruc: '',
     razon_social: '',
     representante_legal: '',
+    representante_tipo_documento: 'DNI',
+    representante_numero_documento: '',
   };
 
   conyuge = {
@@ -105,6 +107,8 @@ export class ClienteFormComponent implements OnInit {
             ruc: c.ruc ?? '',
             razon_social: c.razon_social ?? '',
             representante_legal: c.representante_legal ?? '',
+            representante_tipo_documento: c.representante_tipo_documento ?? 'DNI',
+            representante_numero_documento: c.representante_numero_documento ?? '',
           };
           if (c.conyuge) {
             this.conyuge = {
@@ -218,6 +222,15 @@ export class ClienteFormComponent implements OnInit {
       if (!this.form.ruc?.trim() || !this.form.razon_social?.trim() || !this.form.representante_legal?.trim()) {
         return 'RUC, razón social y representante legal son obligatorios';
       }
+      if (!/^\d{11}$/.test(this.form.ruc.trim())) {
+        return 'El RUC debe tener 11 dígitos';
+      }
+      if (!this.form.representante_numero_documento?.trim()) {
+        return 'Indica el número de documento del representante legal';
+      }
+      if (this.form.representante_tipo_documento === 'DNI' && !/^\d{8}$/.test(this.form.representante_numero_documento.trim())) {
+        return 'El DNI del representante debe tener 8 dígitos';
+      }
     } else {
       if (!this.form.nombres.trim() || !this.form.apellidos.trim()) {
         return 'Nombres y apellidos son obligatorios';
@@ -276,6 +289,8 @@ export class ClienteFormComponent implements OnInit {
         ruc: this.form.ruc || undefined,
         razon_social: this.form.razon_social || undefined,
         representante_legal: this.form.representante_legal || undefined,
+        representante_tipo_documento: this.form.representante_tipo_documento || undefined,
+        representante_numero_documento: this.form.representante_numero_documento || undefined,
         conyuge: conyugePayload,
       };
       this.clienteService.actualizar(this.idCliente!, payload).subscribe({
@@ -292,10 +307,11 @@ export class ClienteFormComponent implements OnInit {
         },
       });
     } else {
+      const esJuridica = this.form.tipo_persona === 'juridica';
       const payload: ClienteCreate = {
         tipo_persona: this.form.tipo_persona,
-        tipo_documento: this.form.tipo_documento,
-        numero_documento: this.form.numero_documento.trim(),
+        tipo_documento: esJuridica ? 'RUC' : this.form.tipo_documento,
+        numero_documento: esJuridica ? this.form.ruc.trim() : this.form.numero_documento.trim(),
         nombres: this.form.nombres.trim(),
         apellidos: this.form.apellidos.trim(),
         correo: this.form.correo || undefined,
@@ -310,6 +326,8 @@ export class ClienteFormComponent implements OnInit {
         ruc: this.form.ruc || undefined,
         razon_social: this.form.razon_social || undefined,
         representante_legal: this.form.representante_legal || undefined,
+        representante_tipo_documento: this.form.representante_tipo_documento || undefined,
+        representante_numero_documento: this.form.representante_numero_documento || undefined,
         conyuge: conyugePayload,
       };
       this.clienteService.crear(payload).subscribe({

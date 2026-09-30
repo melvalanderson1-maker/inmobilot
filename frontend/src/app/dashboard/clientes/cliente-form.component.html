@@ -172,6 +172,20 @@
                 <input type="text" [(ngModel)]="form.representante_legal" placeholder="Nombre completo del representante" />
               </div>
               <div class="campo">
+                <label>Tipo de documento (representante)</label>
+                <div class="select-wrap">
+                  <select [(ngModel)]="form.representante_tipo_documento">
+                    <option value="DNI">DNI</option>
+                    <option value="CE">Carné de extranjería</option>
+                    <option value="PASAPORTE">Pasaporte</option>
+                  </select>
+                </div>
+              </div>
+              <div class="campo">
+                <label>Número de documento (representante)</label>
+                <input type="text" [(ngModel)]="form.representante_numero_documento" placeholder="Ej: 12345678" />
+              </div>
+              <div class="campo">
                 <label>Estado civil del representante</label>
                 <div class="select-wrap">
                   <select [(ngModel)]="form.estado_civil">

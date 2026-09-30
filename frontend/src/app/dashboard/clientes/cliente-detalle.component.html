@@ -118,6 +118,29 @@
                 <span>{{ cliente()!.conyuge!.numero_documento }} · {{ cliente()!.conyuge!.telefono || 'sin teléfono' }}</span>
               </div>
             </div>
+
+            @if (cliente()!.conyuge!.dni_frente_url || cliente()!.conyuge!.dni_reverso_url) {
+              <div class="fila-docs-dni">
+                @if (cliente()!.conyuge!.dni_frente_url) {
+                  <a [href]="cliente()!.conyuge!.dni_frente_url" target="_blank" class="link-doc">
+                    <span class="doc-check">✓</span>
+                    <span class="doc-txt">
+                      <b>DNI cónyuge (frente)</b>
+                      <small>Ver archivo ↗</small>
+                    </span>
+                  </a>
+                }
+                @if (cliente()!.conyuge!.dni_reverso_url) {
+                  <a [href]="cliente()!.conyuge!.dni_reverso_url" target="_blank" class="link-doc">
+                    <span class="doc-check">✓</span>
+                    <span class="doc-txt">
+                      <b>DNI cónyuge (reverso)</b>
+                      <small>Ver archivo ↗</small>
+                    </span>
+                  </a>
+                }
+              </div>
+            }
           </section>
         }
 

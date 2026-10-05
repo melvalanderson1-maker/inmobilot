@@ -18,13 +18,28 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ---- Enum de estado de venta ----
+    # ---- Enums ----
+    # Nuevo: se crea aquí una sola vez
     estado_venta_enum = postgresql.ENUM(
         'iniciada', 'documento_generado', 'documento_firmado', 'escriturada',
         'cancelada', 'anulada',
         name='estado_venta_enum',
+        create_type=False,
     )
-    estado_venta_enum.create(op.get_bind())
+    postgresql.ENUM(
+        'iniciada', 'documento_generado', 'documento_firmado', 'escriturada',
+        'cancelada', 'anulada',
+        name='estado_venta_enum',
+    ).create(op.get_bind(), checkfirst=True)
+
+    # Ya existen en la BD: NO se vuelven a crear
+    forma_pago_enum = postgresql.ENUM(
+        'contado', 'credito', name='forma_pago_enum', create_type=False
+    )
+    rol_cliente_contrato_enum = postgresql.ENUM(
+        'titular', 'conyuge', 'copropietario',
+        name='rol_cliente_contrato_enum', create_type=False
+    )
 
     # ---- Campos legales de la empresa (para rellenar los contratos) ----
     op.add_column('empresas', sa.Column('representante_legal_nombre', sa.String(150)))
@@ -46,7 +61,7 @@ def upgrade() -> None:
         sa.Column('id_lote', sa.Integer(), sa.ForeignKey('lotes.id'), nullable=False),
         sa.Column('id_separacion', sa.Integer(), sa.ForeignKey('separaciones.id', ondelete='SET NULL')),
         sa.Column('id_contrato', sa.Integer(), sa.ForeignKey('contratos.id', ondelete='SET NULL')),
-        sa.Column('forma_pago', sa.Enum('contado', 'credito', name='forma_pago_enum'), nullable=False),
+        sa.Column('forma_pago', forma_pago_enum, nullable=False),
         sa.Column('precio_total', sa.Numeric(12, 2), nullable=False),
         sa.Column('estado', estado_venta_enum, nullable=False, server_default='iniciada'),
         sa.Column('documento_generado_url', sa.String(300)),
@@ -65,8 +80,7 @@ def upgrade() -> None:
         'venta_clientes',
         sa.Column('id_venta', sa.Integer(), sa.ForeignKey('ventas.id', ondelete='CASCADE'), primary_key=True),
         sa.Column('id_cliente', sa.Integer(), sa.ForeignKey('clientes.id', ondelete='CASCADE'), primary_key=True),
-        sa.Column('rol', sa.Enum('titular', 'conyuge', 'copropietario', name='rol_cliente_contrato_enum'),
-                   nullable=False, server_default='titular'),
+        sa.Column('rol', rol_cliente_contrato_enum, nullable=False, server_default='titular'),
     )
 
     # ---- documento_ubicacion ----

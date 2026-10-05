@@ -114,6 +114,9 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "liberar_lote": {"admin", "gerencia", "supervisor"},
     "ver_clientes": _EJECUTIVOS | {"contabilidad"},
     "editar_cliente": _EJECUTIVOS,
+    "crear_venta": _EJECUTIVOS,
+    "ver_ventas": _EJECUTIVOS | {"contabilidad", "legal"},
+    "gestionar_rrpp": {"admin", "gerencia", "legal"},
 }
 
 def require_permiso(accion: str):

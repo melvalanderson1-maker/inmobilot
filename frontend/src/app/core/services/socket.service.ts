@@ -61,6 +61,8 @@ export class SocketService implements OnDestroy {
       'contrato:nuevo',
       'contrato:pago_registrado',
       'separacion:actualizada',
+      'venta:nueva',
+      'venta:actualizada',
     ];
 
     for (const evento of eventosEscuchados) {

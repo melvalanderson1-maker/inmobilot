@@ -1,0 +1,154 @@
+<div class="detalle-page">
+  @if (cargando()) {
+    <div class="estado-carga"><span class="spinner"></span> Cargando separación...</div>
+  } @else if (!separacion()) {
+    <div class="estado-vacio">No se encontró la separación</div>
+  } @else {
+    <header class="page-header">
+      <button class="btn-volver" (click)="cancelar()">← Volver a la separación</button>
+      <h1>Iniciar venta — Lote {{ separacion()!.lote?.codigo }}</h1>
+    </header>
+
+    @if (error()) {
+      <div class="mensaje-error" role="alert">{{ error() }}</div>
+    }
+
+    <div class="detalle-grid">
+      <div class="col-visor">
+        <section class="card">
+          <h3>Comprador titular</h3>
+          <div class="cliente-fila">
+            <div class="avatar">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</div>
+            <div class="cliente-datos">
+              <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
+              <span class="dato-linea">{{ separacion()!.cliente?.numero_documento }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Segundo comprador</h3>
+            @if (!agregarSegundoComprador()) {
+              <button class="btn-secundario btn-sm" (click)="agregarSegundoComprador.set(true)">+ Agregar</button>
+            }
+          </div>
+
+          @if (!agregarSegundoComprador()) {
+            <p class="dato-secundario">Agrega un cónyuge o copropietario si la venta tiene más de un titular.</p>
+          } @else if (cliente2()) {
+            <div class="cliente-fila">
+              <div class="avatar">{{ cliente2()!.nombres.charAt(0) }}</div>
+              <div class="cliente-datos">
+                <strong>{{ cliente2()!.nombres }} {{ cliente2()!.apellidos }}</strong>
+                <span class="dato-linea">{{ cliente2()!.numero_documento }}</span>
+              </div>
+              <button class="btn-secundario btn-sm" (click)="quitarSegundoComprador()">Quitar</button>
+            </div>
+          } @else {
+            <div class="campo">
+              <label>Número de documento</label>
+              <div style="display:flex; gap:8px;">
+                <input type="text" [(ngModel)]="documentoBusqueda2" (keyup.enter)="buscarCliente2()" placeholder="DNI" style="flex:1;" />
+                <button class="btn-secundario" (click)="buscarCliente2()" [disabled]="buscandoCliente2()">
+                  {{ buscandoCliente2() ? 'Buscando...' : 'Buscar' }}
+                </button>
+              </div>
+            </div>
+            @if (cliente2NoEncontrado()) {
+              <div class="dato-secundario">
+                No existe un cliente con ese documento.
+                <button class="btn-primary btn-sm" (click)="irACrearCliente2()" style="margin-top:8px;">Crear cliente nuevo</button>
+              </div>
+            }
+          }
+        </section>
+
+        <section class="card">
+          <h3>Condiciones de la venta</h3>
+          <div class="campo">
+            <label>Forma de pago</label>
+            <select [(ngModel)]="formaPago">
+              <option value="contado">Contado (genera Minuta)</option>
+              <option value="credito">Crédito (genera Contrato Preparatorio)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Precio total (S/)</label>
+            <input type="number" [(ngModel)]="precioTotal" placeholder="0.00" />
+          </div>
+        </section>
+
+        @if (formaPago === 'contado') {
+          <section class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3>Pagos realizados</h3>
+              <button class="btn-secundario btn-sm" (click)="agregarFilaPago()">+ Agregar pago</button>
+            </div>
+            @for (pago of pagosPrevios; track $index) {
+              <div style="display:flex; gap:8px; align-items:flex-end; margin-bottom:10px;">
+                <div class="campo" style="flex:1;">
+                  <label>Monto (S/)</label>
+                  <input type="number" [(ngModel)]="pago.monto" placeholder="0.00" />
+                </div>
+                <div class="campo" style="flex:1;">
+                  <label>Fecha</label>
+                  <input type="date" [(ngModel)]="pago.fecha" />
+                </div>
+                @if (pagosPrevios.length > 1) {
+                  <button class="btn-secundario btn-sm" (click)="quitarFilaPago($index)">Quitar</button>
+                }
+              </div>
+            }
+          </section>
+        } @else {
+          <section class="card">
+            <h3>Datos del crédito</h3>
+            <div class="campo">
+              <label>Monto de la inicial (S/)</label>
+              <input type="number" [(ngModel)]="datosCredito.inicial_monto" placeholder="0.00" />
+            </div>
+            <div class="campo">
+              <label>Fecha del depósito</label>
+              <input type="date" [(ngModel)]="datosCredito.fecha_deposito" />
+            </div>
+            <div class="campo">
+              <label>N° de operación</label>
+              <input type="text" [(ngModel)]="datosCredito.numero_operacion" />
+            </div>
+            <div class="campo">
+              <label>Plazo (años)</label>
+              <input type="number" [(ngModel)]="datosCredito.plazo_anios" />
+            </div>
+            <div class="campo">
+              <label>Tasa de interés compensatorio (%)</label>
+              <input type="number" [(ngModel)]="datosCredito.tasa_interes" />
+            </div>
+          </section>
+        }
+      </div>
+
+
+
+
+      <aside class="col-lateral">
+        <section class="card panel">
+          <div class="panel-bloque">
+            <h3>Lote</h3>
+            <dl class="dato-lista">
+              <div class="dato-item"><dt>Manzana</dt><dd>{{ separacion()!.lote?.manzana_nombre || '—' }}</dd></div>
+              <div class="dato-item"><dt>Lote</dt><dd>{{ separacion()!.lote?.codigo }}</dd></div>
+              <div class="dato-item"><dt>Área</dt><dd>{{ separacion()!.lote?.area_m2 }} m²</dd></div>
+            </dl>
+          </div>
+          <div class="panel-bloque">
+            <button class="btn-primary" style="width:100%;" (click)="guardar()" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando...' : 'Iniciar venta' }}
+            </button>
+            <button class="btn-secundario" style="width:100%; margin-top:8px;" (click)="cancelar()">Cancelar</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
+</div>

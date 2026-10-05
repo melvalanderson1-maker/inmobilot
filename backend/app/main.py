@@ -8,7 +8,8 @@ from app.core.config import settings
 from app.sockets import socket_app
 
 
-from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones
+from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, archivos, clientes, separaciones, ventas, empresa_config
+
 
 DOCS_HABILITADOS = settings.ENV != "production"
 
@@ -40,12 +41,16 @@ app.include_router(config_publico.router)
 app.include_router(setup.router)
 app.include_router(clientes.router)
 app.include_router(separaciones.router)
+app.include_router(ventas.router)
+app.include_router(empresa_config.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 # Crear carpetas necesarias
 os.makedirs(os.path.join(STATIC_DIR, "comprobantes"), exist_ok=True)
 os.makedirs(os.path.join(STATIC_DIR, "lotes"), exist_ok=True)
+os.makedirs(os.path.join(STATIC_DIR, "plantillas"), exist_ok=True)
+os.makedirs(os.path.join(STATIC_DIR, "documentos_venta"), exist_ok=True)
 
 # Archivos estáticos
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

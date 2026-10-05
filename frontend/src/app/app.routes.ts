@@ -60,6 +60,18 @@ export const routes: Routes = [
           import('./dashboard/contratos/contratos-list.component').then((c) => c.ContratosListComponent),
       },
       {
+        path: 'separaciones/:id/iniciar-venta',
+        canActivate: [moduloGuard('contratos')],
+        loadComponent: () =>
+          import('./dashboard/ventas/venta-form.component').then((c) => c.VentaFormComponent),
+      },
+      {
+        path: 'ventas/:id',
+        canActivate: [moduloGuard('contratos')],
+        loadComponent: () =>
+          import('./dashboard/ventas/venta-detalle.component').then((c) => c.VentaDetalleComponent),
+      },
+      {
         path: 'separaciones',
         canActivate: [moduloGuard('separaciones')],
         loadComponent: () =>
@@ -100,6 +112,12 @@ export const routes: Routes = [
         canActivate: [moduloGuard('clientes')],
         loadComponent: () =>
           import('./dashboard/clientes/cliente-detalle.component').then((c) => c.ClienteDetalleComponent),
+      },
+
+      {
+        path: 'configuracion/empresa',
+        loadComponent: () =>
+          import('./dashboard/configuracion/empresa-config.component').then((c) => c.EmpresaConfigComponent),
       },
       // Pendiente: pagos, documentos (ver README)
     ],

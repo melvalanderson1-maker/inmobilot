@@ -1,0 +1,423 @@
+.detalle-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.estado-carga,
+.estado-vacio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 20px;
+  color: #697386;
+  font-size: 0.95rem;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-top-color: #0f8f73;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Header ---------- */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.btn-volver {
+  background: none;
+  border: none;
+  color: #697386;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 14px;
+}
+
+.btn-volver:hover {
+  color: #0f8f73;
+}
+
+.header-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.header-titulo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.header-titulo h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #142622;
+}
+
+.header-importe {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.header-importe span {
+  font-size: 0.78rem;
+  color: #697386;
+}
+
+.header-importe strong {
+  font-size: 1.35rem;
+  color: #0b3d33;
+  font-weight: 800;
+}
+
+/* ---------- Chips de estado ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #eef1f0;
+  color: #44514d;
+}
+
+.chip-grande {
+  padding: 7px 16px;
+  font-size: 0.82rem;
+}
+
+.chip-iniciada { background: #e6f5f0; color: #0f8f73; }
+.chip-documento_generado { background: #fef3c7; color: #92660a; }
+.chip-documento_firmado { background: #dbeafe; color: #1d4ed8; }
+.chip-escriturada { background: #d1fae5; color: #047857; }
+.chip-cancelada,
+.chip-anulada { background: #fee2e2; color: #b91c1c; }
+
+/* ---------- Grid principal ---------- */
+.detalle-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .detalle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-visor,
+.col-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: #fff;
+  border: 1px solid #e1ece8;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 8px rgba(11, 61, 51, 0.04);
+}
+
+.card h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+  color: #0b3d33;
+  font-weight: 700;
+}
+
+.dato-secundario {
+  color: #697386;
+  font-size: 0.86rem;
+  margin: 0 0 12px;
+}
+
+/* ---------- Botones ---------- */
+.btn-primary,
+.btn-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.btn-primary {
+  background: #0f8f73;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0b3d33;
+}
+
+.btn-primary:disabled {
+  background: #cfd8d5;
+  color: #78827e;
+  cursor: not-allowed;
+}
+
+.btn-secundario {
+  background: #eef1f0;
+  color: #0b3d33;
+  border: 1px solid #e1ece8;
+}
+
+.btn-secundario:hover {
+  background: #e3ece9;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-doc {
+  margin-top: 6px;
+}
+
+.btn-deshabilitado {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ---------- Cliente / avatar ---------- */
+.panel-bloque {
+  padding: 16px 0;
+  border-bottom: 1px solid #eef1f0;
+}
+
+.panel-bloque:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.panel-bloque h3 {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  color: #0b3d33;
+  font-weight: 700;
+}
+
+.cliente-fila {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.cliente-fila:last-child {
+  margin-bottom: 0;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #0f8f73;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.cliente-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cliente-datos strong {
+  font-size: 0.9rem;
+  color: #142622;
+}
+
+.dato-linea {
+  font-size: 0.8rem;
+  color: #697386;
+}
+
+/* ---------- Lista de datos (dl) ---------- */
+.dato-lista {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dato-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.dato-item dt {
+  color: #697386;
+}
+
+.dato-item dd {
+  margin: 0;
+  color: #142622;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ---------- Fila tipo "comprobante" ---------- */
+.fila-comprobante {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f2f5f4;
+}
+
+.fila-comprobante:last-child {
+  border-bottom: none;
+}
+
+.comprobante-nombre {
+  font-size: 0.86rem;
+  color: #142622;
+  font-weight: 600;
+}
+
+/* ---------- Panel lateral (card contenedora) ---------- */
+.panel {
+  padding: 20px 22px;
+}
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 35, 28, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(6, 35, 28, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eef1f0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #0b3d33;
+}
+
+.modal-cerrar {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #697386;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid #eef1f0;
+}
+
+/* ---------- Campos de formulario ---------- */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0b3d33;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 9px 12px;
+  border: 1px solid #e1ece8;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #142622;
+  background: #f9fbfa;
+  font-family: inherit;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #0f8f73;
+  background: #fff;
+}
+
+.campo textarea {
+  resize: vertical;
+}

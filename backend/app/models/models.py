@@ -84,6 +84,17 @@ class EstadoSeparacionEnum(str, enum.Enum):
     rechazada = "rechazada"
 
 
+class EstadoVentaEnum(str, enum.Enum):
+    iniciada = "iniciada"
+    documento_generado = "documento_generado"
+    documento_firmado = "documento_firmado"
+    escriturada = "escriturada"
+    cancelada = "cancelada"
+    anulada = "anulada"
+
+
+
+
 # =========================================================================
 # 1. TENANT / SAAS
 # =========================================================================
@@ -112,6 +123,15 @@ class Empresa(Base):
     logo_url = Column(String(300))
     dominio_personalizado = Column(String(150))
     id_plan = Column(Integer, ForeignKey("planes.id"))
+    representante_legal_nombre = Column(String(150))
+    representante_legal_dni = Column(String(20))
+    representante_legal_estado_civil = Column(String(20))
+    partida_poderes = Column(String(50))
+    oficina_registral = Column(String(100))
+    domicilio_fiscal = Column(String(250))
+    cuenta_bancaria = Column(String(50))
+    banco = Column(String(100))
+    ciudad_firma_contratos = Column(String(100))
     activo = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -291,6 +311,14 @@ class Lote(Base):
     inicial_financiado_60c = Column(Numeric(12, 2))
     cuota_mensual_60c = Column(Numeric(10, 2))
     frontis = Column(String(50))
+    frente_colindante = Column(String(150))
+    frente_medida = Column(Numeric(10, 2))
+    derecha_colindante = Column(String(150))
+    derecha_medida = Column(Numeric(10, 2))
+    izquierda_colindante = Column(String(150))
+    izquierda_medida = Column(Numeric(10, 2))
+    fondo_colindante = Column(String(150))
+    fondo_medida = Column(Numeric(10, 2))
     estado = Column(SAEnum(EstadoLoteEnum, name="estado_lote_enum"), nullable=False, default=EstadoLoteEnum.libre)
     partida_registral = Column(String(50))
     sunarp_url = Column(String(300))
@@ -682,3 +710,76 @@ class Devolucion(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     separacion = relationship("Separacion", back_populates="devoluciones")
+
+
+
+# =========================================================================
+# 13. VENTAS
+# =========================================================================
+
+class Venta(Base):
+    __tablename__ = "ventas"
+
+    id = Column(Integer, primary_key=True)
+    id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    id_proyecto = Column(Integer, ForeignKey("proyectos.id"), nullable=False)
+    id_lote = Column(Integer, ForeignKey("lotes.id"), nullable=False)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="SET NULL"))
+    id_contrato = Column(Integer, ForeignKey("contratos.id", ondelete="SET NULL"))
+    forma_pago = Column(SAEnum(FormaPagoEnum, name="forma_pago_enum"), nullable=False)
+    precio_total = Column(Numeric(12, 2), nullable=False)
+    estado = Column(SAEnum(EstadoVentaEnum, name="estado_venta_enum"), nullable=False, default=EstadoVentaEnum.iniciada)
+    documento_generado_url = Column(String(300))
+    documento_firmado_url = Column(String(300))
+    pagos_previos = Column(JSONB, nullable=True)
+    datos_credito = Column(JSONB, nullable=True)
+    escritura_url = Column(String(300))
+    titulo_url = Column(String(300))
+    id_usuario_registro = Column(Integer, ForeignKey("usuarios.id"))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_ventas_estado", "id_proyecto", "estado"),
+        Index("idx_ventas_lote", "id_lote"),
+    )
+
+    lote = relationship("Lote")
+    separacion = relationship("Separacion")
+    contrato = relationship("Contrato")
+    clientes_rel = relationship("VentaCliente", back_populates="venta")
+    ubicaciones = relationship("DocumentoUbicacion", back_populates="venta")
+
+
+class VentaCliente(Base):
+    __tablename__ = "venta_clientes"
+
+    id_venta = Column(Integer, ForeignKey("ventas.id", ondelete="CASCADE"), primary_key=True)
+    id_cliente = Column(Integer, ForeignKey("clientes.id", ondelete="CASCADE"), primary_key=True)
+    rol = Column(SAEnum(RolClienteContratoEnum, name="rol_cliente_contrato_enum"), nullable=False, default=RolClienteContratoEnum.titular)
+
+    venta = relationship("Venta", back_populates="clientes_rel")
+    cliente = relationship("Cliente")
+
+
+class DocumentoUbicacion(Base):
+    __tablename__ = "documento_ubicacion"
+
+    id = Column(Integer, primary_key=True)
+    id_venta = Column(Integer, ForeignKey("ventas.id", ondelete="CASCADE"), nullable=False)
+    tipo_documento = Column(String(30), nullable=False)
+    ubicacion = Column(String(30), nullable=False)
+    notaria_nombre = Column(String(100))
+    estado_tramite = Column(String(20), nullable=False, default="en_proceso")
+    numero_tramite = Column(String(50))
+    numero_titulo = Column(String(50))
+    fecha_ingreso = Column(Date)
+    fecha_actualizacion = Column(Date)
+    observaciones = Column(String(500))
+    actualizado_por = Column(Integer, ForeignKey("usuarios.id"))
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (Index("idx_documento_ubicacion_venta", "id_venta"),)
+
+    venta = relationship("Venta", back_populates="ubicaciones")
+

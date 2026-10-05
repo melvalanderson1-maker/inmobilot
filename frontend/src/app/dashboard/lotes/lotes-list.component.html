@@ -456,6 +456,41 @@
                 <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
               </div>
 
+
+                            <h4 class="subseccion campo-span-2">Linderos y medidas perimétricas</h4>
+              <div class="campo">
+                <label>Frente — colindante con</label>
+                <input type="text" [(ngModel)]="form.frente_colindante" placeholder="Ej: PSJ Teodosia Ortiz Palomino" />
+              </div>
+              <div class="campo">
+                <label>Frente — medida (ml)</label>
+                <input type="number" [(ngModel)]="form.frente_medida" placeholder="8.20" />
+              </div>
+              <div class="campo">
+                <label>Derecha — colindante con</label>
+                <input type="text" [(ngModel)]="form.derecha_colindante" placeholder="Ej: Lote N° 02" />
+              </div>
+              <div class="campo">
+                <label>Derecha — medida (ml)</label>
+                <input type="number" [(ngModel)]="form.derecha_medida" placeholder="19.75" />
+              </div>
+              <div class="campo">
+                <label>Izquierda — colindante con</label>
+                <input type="text" [(ngModel)]="form.izquierda_colindante" placeholder="Ej: Lote N° 04" />
+              </div>
+              <div class="campo">
+                <label>Izquierda — medida (ml)</label>
+                <input type="number" [(ngModel)]="form.izquierda_medida" placeholder="19.85" />
+              </div>
+              <div class="campo">
+                <label>Fondo — colindante con</label>
+                <input type="text" [(ngModel)]="form.fondo_colindante" placeholder="Ej: Lote N° 10" />
+              </div>
+              <div class="campo">
+                <label>Fondo — medida (ml)</label>
+                <input type="number" [(ngModel)]="form.fondo_medida" placeholder="8.14" />
+              </div>
+
               <div class="campo campo-span-2">
                 <label>Documento de partida registral (PDF)</label>
                 @if (form.sunarp_url) {

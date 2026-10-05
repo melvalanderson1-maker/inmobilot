@@ -243,7 +243,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       next: () => {
         this.procesando.set(false);
         this.toastService.exito('Separación marcada como convertida a venta');
-        this.cargar();
+        this.router.navigate(['/dashboard/separaciones', this.idSeparacion, 'iniciar-venta']);
       },
       error: (err) => {
         this.procesando.set(false);

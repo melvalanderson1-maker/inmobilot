@@ -1,0 +1,69 @@
+<div class="form-page">
+  <div class="hero">
+    <div class="hero-text">
+      <h1>Configuración legal</h1>
+      <p>Estos datos se usan para generar automáticamente la Minuta y el Contrato Preparatorio.</p>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-carga"><span class="spinner"></span> Cargando...</div>
+  } @else {
+    <div class="layout">
+      <div class="col-main">
+        <section class="card">
+          <h3>Datos de la empresa</h3>
+          <div class="form-grid">
+            <div class="campo">
+              <label>RUC</label>
+              <input type="text" [(ngModel)]="form.ruc" />
+            </div>
+            <div class="campo">
+              <label>Representante legal</label>
+              <input type="text" [(ngModel)]="form.representante_legal_nombre" />
+            </div>
+            <div class="campo">
+              <label>DNI del representante</label>
+              <input type="text" [(ngModel)]="form.representante_legal_dni" />
+            </div>
+            <div class="campo">
+              <label>Estado civil del representante</label>
+              <input type="text" [(ngModel)]="form.representante_legal_estado_civil" placeholder="SOLTERO" />
+            </div>
+            <div class="campo">
+              <label>Partida de poderes</label>
+              <input type="text" [(ngModel)]="form.partida_poderes" />
+            </div>
+            <div class="campo">
+              <label>Oficina registral</label>
+              <input type="text" [(ngModel)]="form.oficina_registral" placeholder="SATIPO" />
+            </div>
+            <div class="campo campo-span-2">
+              <label>Domicilio fiscal</label>
+              <input type="text" [(ngModel)]="form.domicilio_fiscal" />
+            </div>
+            <div class="campo">
+              <label>Cuenta bancaria</label>
+              <input type="text" [(ngModel)]="form.cuenta_bancaria" />
+            </div>
+            <div class="campo">
+              <label>Banco</label>
+              <input type="text" [(ngModel)]="form.banco" placeholder="BCP" />
+            </div>
+            <div class="campo">
+              <label>Ciudad de firma de contratos</label>
+              <input type="text" [(ngModel)]="form.ciudad_firma_contratos" placeholder="SATIPO" />
+            </div>
+          </div>
+        </section>
+      </div>
+      <aside class="col-side">
+        <div class="card card-resumen">
+          <button class="btn btn-primary btn-block" (click)="guardar()" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar configuración' }}
+          </button>
+        </div>
+      </aside>
+    </div>
+  }
+</div>

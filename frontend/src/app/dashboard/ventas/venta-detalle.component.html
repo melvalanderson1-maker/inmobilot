@@ -1,0 +1,161 @@
+<div class="detalle-page">
+  @if (cargando()) {
+    <div class="estado-carga"><span class="spinner"></span> Cargando venta...</div>
+  } @else if (!venta()) {
+    <div class="estado-vacio">No se encontró la venta</div>
+  } @else {
+    <header class="page-header">
+      <button class="btn-volver" (click)="volver()">← Volver</button>
+      <div class="header-fila">
+        <div class="header-titulo">
+          <h1>Lote {{ venta()!.lote?.codigo }}</h1>
+          <span class="chip chip-grande" [ngClass]="'chip-' + venta()!.estado">
+            {{ etiquetaEstado(venta()!.estado) }}
+          </span>
+        </div>
+        <div class="header-importe">
+          <span>Precio total</span>
+          <strong>S/ {{ venta()!.precio_total | number:'1.2-2' }}</strong>
+        </div>
+      </div>
+    </header>
+
+    <div class="detalle-grid">
+      <div class="col-visor">
+        <section class="card">
+          <h3>{{ nombreDocumento() }}</h3>
+
+          @if (venta()!.documento_generado_url) {
+            <a [href]="venta()!.documento_generado_url!" target="_blank" class="btn-secundario btn-doc">
+              Ver {{ nombreDocumento() }} generado ↗
+            </a>
+          } @else {
+            <p class="dato-secundario">El documento aún no se ha generado.</p>
+            <button class="btn-primary" (click)="generarDocumento()" [disabled]="procesando()">
+              {{ procesando() ? 'Generando...' : 'Generar ' + nombreDocumento() }}
+            </button>
+          }
+
+          @if (venta()!.documento_generado_url) {
+            <div style="margin-top: 16px;">
+              @if (venta()!.documento_firmado_url) {
+                <a [href]="venta()!.documento_firmado_url!" target="_blank" class="btn-secundario btn-doc">
+                  Ver documento firmado ↗
+                </a>
+              } @else {
+                <label class="btn-primary btn-doc" [class.btn-deshabilitado]="subiendoFirmado()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoFirmadoSeleccionado($event)" [disabled]="subiendoFirmado()" hidden />
+                  {{ subiendoFirmado() ? 'Subiendo...' : 'Subir documento firmado' }}
+                </label>
+              }
+            </div>
+          }
+        </section>
+
+        <section class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>Ubicación física de documentos</h3>
+            <button class="btn-secundario btn-sm" (click)="abrirUbicacion()">+ Registrar</button>
+          </div>
+
+          @if (venta()!.ubicaciones.length === 0) {
+            <p class="dato-secundario">Sin registros de ubicación todavía.</p>
+          } @else {
+            @for (u of venta()!.ubicaciones; track u.id) {
+              <div class="fila-comprobante">
+                <span class="comprobante-nombre">{{ u.tipo_documento | titlecase }} — {{ etiquetaUbicacion(u.ubicacion) }}</span>
+                <span class="chip">{{ u.estado_tramite }}</span>
+              </div>
+              @if (u.observaciones) { <p class="dato-secundario">{{ u.observaciones }}</p> }
+            }
+          }
+        </section>
+      </div>
+
+      <aside class="col-lateral">
+        <section class="card panel">
+          <div class="panel-bloque">
+            <h3>Compradores</h3>
+            @for (c of venta()!.clientes; track c.id_cliente) {
+              <div class="cliente-fila">
+                <div class="avatar">{{ c.nombres.charAt(0) }}</div>
+                <div class="cliente-datos">
+                  <strong>{{ c.nombres }} {{ c.apellidos }}</strong>
+                  <span class="dato-linea">{{ c.numero_documento }} · {{ c.rol }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="panel-bloque">
+            <h3>Lote</h3>
+            <dl class="dato-lista">
+              <div class="dato-item"><dt>Manzana</dt><dd>{{ venta()!.lote?.manzana_nombre || '—' }}</dd></div>
+              <div class="dato-item"><dt>Lote</dt><dd>{{ venta()!.lote?.codigo }}</dd></div>
+              <div class="dato-item"><dt>Partida</dt><dd>{{ venta()!.lote?.partida_registral || '—' }}</dd></div>
+              <div class="dato-item"><dt>Área</dt><dd>{{ venta()!.lote?.area_m2 }} m²</dd></div>
+            </dl>
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
+</div>
+
+@if (mostrarUbicacion()) {
+  <div class="modal-overlay" (click)="mostrarUbicacion.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Registrar ubicación del documento</h2>
+        <button class="modal-cerrar" (click)="mostrarUbicacion.set(false)">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="campo">
+          <label>Tipo de documento</label>
+          <select [(ngModel)]="ubicacionForm.tipo_documento">
+            <option value="minuta">Minuta</option>
+            <option value="contrato_preparatorio">Contrato Preparatorio</option>
+            <option value="escritura">Escritura Pública</option>
+            <option value="titulo">Título</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Ubicación</label>
+          <select [(ngModel)]="ubicacionForm.ubicacion">
+            <option value="notaria">Notaría</option>
+            <option value="juez_de_paz">Juez de Paz</option>
+            <option value="municipalidad">Municipalidad</option>
+            <option value="archivo_central">Archivo Central</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        @if (ubicacionForm.ubicacion === 'notaria') {
+          <div class="campo">
+            <label>Nombre de la notaría</label>
+            <input type="text" [(ngModel)]="ubicacionForm.notaria_nombre" placeholder="Notaría Mazamari" />
+          </div>
+        }
+        <div class="campo">
+          <label>Estado del trámite</label>
+          <select [(ngModel)]="ubicacionForm.estado_tramite">
+            <option value="en_proceso">En proceso</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="concretado">Concretado</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>N° de trámite <em>· opcional</em></label>
+          <input type="text" [(ngModel)]="ubicacionForm.numero_tramite" />
+        </div>
+        <div class="campo">
+          <label>Observaciones</label>
+          <textarea rows="2" [(ngModel)]="ubicacionForm.observaciones"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secundario" (click)="mostrarUbicacion.set(false)">Cancelar</button>
+        <button class="btn-primary" (click)="guardarUbicacion()" [disabled]="procesando()">Guardar</button>
+      </div>
+    </div>
+  </div>
+}

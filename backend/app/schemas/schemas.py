@@ -161,6 +161,14 @@ class LoteCreate(BaseModel):
     inicial_financiado_60c: Optional[Decimal] = None
     cuota_mensual_60c: Optional[Decimal] = None
     frontis: Optional[str] = None
+    frente_colindante: Optional[str] = None
+    frente_medida: Optional[Decimal] = None
+    derecha_colindante: Optional[str] = None
+    derecha_medida: Optional[Decimal] = None
+    izquierda_colindante: Optional[str] = None
+    izquierda_medida: Optional[Decimal] = None
+    fondo_colindante: Optional[str] = None
+    fondo_medida: Optional[Decimal] = None
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
@@ -184,6 +192,14 @@ class LoteUpdate(BaseModel):
     inicial_financiado_60c: Optional[Decimal] = None
     cuota_mensual_60c: Optional[Decimal] = None
     frontis: Optional[str] = None
+    frente_colindante: Optional[str] = None
+    frente_medida: Optional[Decimal] = None
+    derecha_colindante: Optional[str] = None
+    derecha_medida: Optional[Decimal] = None
+    izquierda_colindante: Optional[str] = None
+    izquierda_medida: Optional[Decimal] = None
+    fondo_colindante: Optional[str] = None
+    fondo_medida: Optional[Decimal] = None
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
     orden: Optional[int] = None
@@ -217,6 +233,14 @@ class LoteOut(ORMBase):
     inicial_financiado_60c: Optional[Decimal] = None
     cuota_mensual_60c: Optional[Decimal] = None
     frontis: Optional[str] = None
+    frente_colindante: Optional[str] = None
+    frente_medida: Optional[Decimal] = None
+    derecha_colindante: Optional[str] = None
+    derecha_medida: Optional[Decimal] = None
+    izquierda_colindante: Optional[str] = None
+    izquierda_medida: Optional[Decimal] = None
+    fondo_colindante: Optional[str] = None
+    fondo_medida: Optional[Decimal] = None
     estado: EstadoLoteEnum
     partida_registral: Optional[str] = None
     sunarp_url: Optional[str] = None
@@ -744,3 +768,150 @@ class SeparacionOut(ORMBase):
         data.ejecutivo_nombre = s.ejecutivo.nombre if s.ejecutivo else None
         data.validado_por_nombre = s.validador.nombre if s.validador else None
         return data
+
+
+# ----------------------------------------------------------------- VENTAS -
+
+class VentaClienteIn(BaseModel):
+    id_cliente: Optional[int] = None
+    cliente_nuevo: Optional[ClienteCreate] = None
+    rol: RolClienteContratoEnum = RolClienteContratoEnum.titular
+
+
+class PagoPrevioIn(BaseModel):
+    monto: Decimal
+    fecha: date
+
+
+class DatosCreditoIn(BaseModel):
+    inicial_monto: Decimal
+    fecha_deposito: date
+    numero_operacion: str
+    plazo_anios: int = 2
+    tasa_interes: Decimal = Decimal("25")
+
+
+class VentaCreate(BaseModel):
+    id_separacion: Optional[int] = None
+    id_lote: Optional[int] = None  # obligatorio si no viene de una separación
+    forma_pago: FormaPagoEnum
+    precio_total: Decimal
+    clientes: list[VentaClienteIn] = []
+    pagos_previos: list[PagoPrevioIn] = []
+    datos_credito: Optional[DatosCreditoIn] = None
+
+
+class VentaClienteOut(ORMBase):
+    id_cliente: int
+    nombres: str
+    apellidos: str
+    numero_documento: str
+    rol: RolClienteContratoEnum
+
+
+class VentaLoteOut(ORMBase):
+    id: int
+    codigo: str
+    manzana_nombre: Optional[str] = None
+    area_m2: Decimal
+    perimetro: Optional[Decimal] = None
+    frontis: Optional[str] = None
+    partida_registral: Optional[str] = None
+    sunarp_url: Optional[str] = None
+
+
+class DocumentoFirmadoIn(BaseModel):
+    url: str
+
+
+class DocumentoUbicacionCreate(BaseModel):
+    tipo_documento: str
+    ubicacion: str
+    notaria_nombre: Optional[str] = None
+    estado_tramite: str = "en_proceso"
+    numero_tramite: Optional[str] = None
+    numero_titulo: Optional[str] = None
+    fecha_ingreso: Optional[date] = None
+    observaciones: Optional[str] = None
+
+
+class DocumentoUbicacionOut(ORMBase):
+    id: int
+    tipo_documento: str
+    ubicacion: str
+    notaria_nombre: Optional[str] = None
+    estado_tramite: str
+    numero_tramite: Optional[str] = None
+    numero_titulo: Optional[str] = None
+    fecha_ingreso: Optional[date] = None
+    fecha_actualizacion: Optional[date] = None
+    observaciones: Optional[str] = None
+    created_at: datetime
+
+
+class VentaOut(ORMBase):
+    id: int
+    id_proyecto: int
+    id_lote: int
+    id_separacion: Optional[int] = None
+    id_contrato: Optional[int] = None
+    forma_pago: FormaPagoEnum
+    precio_total: Decimal
+    estado: str
+    documento_generado_url: Optional[str] = None
+    documento_firmado_url: Optional[str] = None
+    escritura_url: Optional[str] = None
+    titulo_url: Optional[str] = None
+    created_at: datetime
+    lote: Optional[VentaLoteOut] = None
+    clientes: list[VentaClienteOut] = []
+    ubicaciones: list[DocumentoUbicacionOut] = []
+
+    @staticmethod
+    def desde_venta(venta) -> "VentaOut":
+        data = VentaOut.model_validate(venta)
+        if venta.lote:
+            data.lote = VentaLoteOut(
+                id=venta.lote.id, codigo=venta.lote.codigo,
+                manzana_nombre=venta.lote.manzana_nombre,
+                area_m2=venta.lote.area_m2, perimetro=venta.lote.perimetro,
+                frontis=venta.lote.frontis, partida_registral=venta.lote.partida_registral,
+                sunarp_url=venta.lote.sunarp_url,
+            )
+        data.clientes = [
+            VentaClienteOut(
+                id_cliente=vc.id_cliente, nombres=vc.cliente.nombres,
+                apellidos=vc.cliente.apellidos, numero_documento=vc.cliente.numero_documento,
+                rol=vc.rol,
+            )
+            for vc in venta.clientes_rel
+        ]
+        return data
+
+
+# --------------------------------------------------- CONFIGURACIÓN LEGAL --
+
+class EmpresaConfigOut(ORMBase):
+    ruc: Optional[str] = None
+    representante_legal_nombre: Optional[str] = None
+    representante_legal_dni: Optional[str] = None
+    representante_legal_estado_civil: Optional[str] = None
+    partida_poderes: Optional[str] = None
+    oficina_registral: Optional[str] = None
+    domicilio_fiscal: Optional[str] = None
+    cuenta_bancaria: Optional[str] = None
+    banco: Optional[str] = None
+    ciudad_firma_contratos: Optional[str] = None
+
+
+class EmpresaConfigUpdate(BaseModel):
+    ruc: Optional[str] = None
+    representante_legal_nombre: Optional[str] = None
+    representante_legal_dni: Optional[str] = None
+    representante_legal_estado_civil: Optional[str] = None
+    partida_poderes: Optional[str] = None
+    oficina_registral: Optional[str] = None
+    domicilio_fiscal: Optional[str] = None
+    cuenta_bancaria: Optional[str] = None
+    banco: Optional[str] = None
+    ciudad_firma_contratos: Optional[str] = None

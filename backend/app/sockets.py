@@ -120,3 +120,8 @@ async def notificar_separacion(evento: str, separacion_dict: dict, id_proyecto: 
     await emitir_evento(evento, separacion_dict, room=f"proyecto:{id_proyecto}")
     for notif in notificaciones:
         await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
+
+
+async def notificar_venta(evento: str, venta_dict: dict, id_proyecto: int):
+    """Evento de venta a la sala del proyecto (datos mínimos: id, id_lote, estado)."""
+    await emitir_evento(evento, venta_dict, room=f"proyecto:{id_proyecto}")

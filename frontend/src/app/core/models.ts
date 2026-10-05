@@ -63,6 +63,14 @@ export interface Lote {
   inicial_financiado_60c?: number;
   cuota_mensual_60c?: number;
   frontis?: string;
+  frente_colindante?: string;
+  frente_medida?: number;
+  derecha_colindante?: string;
+  derecha_medida?: number;
+  izquierda_colindante?: string;
+  izquierda_medida?: number;
+  fondo_colindante?: string;
+  fondo_medida?: number;
   estado: EstadoLote;
   partida_registral?: string;
   sunarp_url?: string | null;
@@ -564,4 +572,123 @@ export interface Separacion {
   validado_por_nombre?: string;
   comprobantes: Comprobante[];
   devoluciones: Devolucion[];
+}
+
+
+// ------------------------------------------------------------------ VENTAS
+
+export type EstadoVenta =
+  | 'iniciada'
+  | 'documento_generado'
+  | 'documento_firmado'
+  | 'escriturada'
+  | 'cancelada'
+  | 'anulada';
+
+export interface VentaClienteIn {
+  id_cliente?: number;
+  cliente_nuevo?: ClienteCreate;
+  rol: RolClienteContrato;
+}
+
+export interface VentaCreate {
+  id_separacion?: number;
+  id_lote?: number;
+  forma_pago: FormaPago;
+  precio_total: number;
+  clientes: VentaClienteIn[];
+  pagos_previos?: PagoPrevio[];
+  datos_credito?: DatosCredito;
+}
+
+export interface VentaClienteInfo {
+  id_cliente: number;
+  nombres: string;
+  apellidos: string;
+  numero_documento: string;
+  rol: RolClienteContrato;
+}
+
+export interface VentaLoteInfo {
+  id: number;
+  codigo: string;
+  manzana_nombre?: string;
+  area_m2: number;
+  perimetro?: number;
+  frontis?: string;
+  partida_registral?: string;
+  sunarp_url?: string;
+}
+
+export interface DocumentoUbicacionCreate {
+  tipo_documento: string;
+  ubicacion: string;
+  notaria_nombre?: string;
+  estado_tramite?: string;
+  numero_tramite?: string;
+  numero_titulo?: string;
+  fecha_ingreso?: string;
+  observaciones?: string;
+}
+
+export interface DocumentoUbicacion {
+  id: number;
+  tipo_documento: string;
+  ubicacion: string;
+  notaria_nombre?: string;
+  estado_tramite: string;
+  numero_tramite?: string;
+  numero_titulo?: string;
+  fecha_ingreso?: string;
+  fecha_actualizacion?: string;
+  observaciones?: string;
+  created_at: string;
+}
+
+export interface Venta {
+  id: number;
+  id_proyecto: number;
+  id_lote: number;
+  id_separacion?: number;
+  id_contrato?: number;
+  forma_pago: FormaPago;
+  precio_total: number;
+  estado: EstadoVenta;
+  documento_generado_url?: string;
+  documento_firmado_url?: string;
+  escritura_url?: string;
+  titulo_url?: string;
+  created_at: string;
+  lote?: VentaLoteInfo;
+  clientes: VentaClienteInfo[];
+  ubicaciones: DocumentoUbicacion[];
+}
+
+
+// -------------------------------------------------- CONFIGURACIÓN LEGAL --
+
+export interface EmpresaConfig {
+  ruc?: string;
+  representante_legal_nombre?: string;
+  representante_legal_dni?: string;
+  representante_legal_estado_civil?: string;
+  partida_poderes?: string;
+  oficina_registral?: string;
+  domicilio_fiscal?: string;
+  cuenta_bancaria?: string;
+  banco?: string;
+  ciudad_firma_contratos?: string;
+}
+
+export interface PagoPrevio {
+  monto: number;
+  fecha: string;
+}
+
+export interface DatosCredito {
+  inicial_monto: number;
+  fecha_deposito: string;
+  numero_operacion: string;
+  plazo_anios: number;
+  tasa_interes: number;
 }

@@ -8,8 +8,7 @@ from app.core.config import settings
 from app.sockets import socket_app
 
 
-from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, archivos, clientes, separaciones, ventas, empresa_config
-
+from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones, ventas, empresa_config
 
 DOCS_HABILITADOS = settings.ENV != "production"
 

@@ -50,6 +50,15 @@
               }
             </div>
           }
+
+          @if (venta()!.documento_firmado_url && !venta()!.id_contrato) {
+            <button class="btn-primary" style="margin-top:12px;" (click)="registrarContrato()" [disabled]="procesando()">
+              {{ procesando() ? 'Registrando...' : 'Registrar en Contratos (el lote pasará a vendido)' }}
+            </button>
+          }
+          @if (venta()!.id_contrato) {
+            <p class="dato-secundario" style="margin-top:12px;">✓ Ya está registrado en el módulo de Contratos.</p>
+          }
         </section>
 
         <section class="card">

@@ -6,7 +6,8 @@ from app.deps import require_permiso
 from app.models import models as m
 from app.schemas import schemas as s
 from app.services import venta_service as svc
-from app.sockets import notificar_venta
+from app.sockets import notificar_venta, notificar_cambio_estado_lote
+
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
 
@@ -127,3 +128,21 @@ async def registrar_ubicacion_documento(
     db.refresh(registro)
     await notificar_venta("venta:actualizada", _resumen_socket(venta), id_proyecto=venta.id_proyecto)
     return registro
+
+
+@router.post("/{id_venta}/registrar-contrato", response_model=s.VentaOut)
+async def registrar_contrato(
+    id_venta: int,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    venta = svc.cargar_venta(db, id_venta, usuario)
+    contrato = svc.generar_contrato_desde_venta(db, venta, usuario)
+    db.commit()
+
+    venta_completa = svc.cargar_venta(db, id_venta, usuario)
+    await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
+    await notificar_cambio_estado_lote(
+        svc.lote_out_dict(db, venta.id_lote), id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
+    )
+    return s.VentaOut.desde_venta(venta_completa)

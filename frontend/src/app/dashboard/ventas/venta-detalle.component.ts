@@ -170,4 +170,19 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     };
     return mapa[u] ?? u;
   }
+
+    registrarContrato(): void {
+    this.procesando.set(true);
+    this.ventaService.registrarContrato(this.idVenta).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.toastService.exito('Contrato registrado. El lote pasó a vendido.');
+        this.cargar();
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el contrato');
+      },
+    });
+  }
 }

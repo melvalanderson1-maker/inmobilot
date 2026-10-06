@@ -29,4 +29,8 @@ export class VentaService {
   subirArchivo(formData: FormData) {
     return this.api.post<{ url: string }>('/uploads/comprobante', formData);
   }
+
+  registrarContrato(id: number) {
+    return this.api.post<Venta>(`/ventas/${id}/registrar-contrato`, {});
+  }
 }

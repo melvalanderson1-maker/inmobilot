@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.deps import get_ids_proyectos_usuario
 from app.core.config import settings
 from app.models import models as m
+from decimal import Decimal
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
 DIR_PLANTILLAS = os.path.join(_BASE_DIR, "static", "plantillas")
@@ -299,3 +300,78 @@ def guardar_documento_pdf(id_venta: int, contenido: bytes) -> str:
     if settings.PUBLIC_URL_BASE:
         return f"{settings.PUBLIC_URL_BASE}{ruta_relativa}"
     return ruta_relativa
+
+
+# ------------------------------------------------------- contrato formal --
+
+def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario) -> "m.Contrato":
+    """Al firmar el documento, se crea el Contrato formal (el que ya vive en
+    el módulo Contratos), enlazado a la venta. El lote pasa a 'vendido'."""
+    if venta.id_contrato:
+        raise HTTPException(status_code=409, detail="Esta venta ya tiene un contrato formal registrado")
+    if venta.estado not in (m.EstadoVentaEnum.documento_firmado, m.EstadoVentaEnum.escriturada):
+        raise HTTPException(status_code=409, detail="El documento debe estar firmado antes de registrar el contrato")
+
+    numero_contrato = f"V-{venta.id:06d}"
+
+    if venta.forma_pago == m.FormaPagoEnum.contado:
+        inicial_abonado = sum(Decimal(str(p["monto"])) for p in (venta.pagos_previos or []))
+        saldo_financiado = Decimal("0")
+        numero_cuotas = 0
+        estado_contrato = m.EstadoContratoEnum.cancelado
+    else:
+        dc = venta.datos_credito or {}
+        inicial_abonado = Decimal(str(dc.get("inicial_monto", 0)))
+        saldo_financiado = venta.precio_total - inicial_abonado
+        numero_cuotas = 1
+        estado_contrato = m.EstadoContratoEnum.vigente
+
+    contrato = m.Contrato(
+        numero_contrato=numero_contrato,
+        id_lote=venta.id_lote,
+        id_proyecto=venta.id_proyecto,
+        id_empresa=venta.id_empresa,
+        fecha_contrato=date.today(),
+        precio_total=venta.precio_total,
+        inicial_abonado=inicial_abonado,
+        forma_pago=venta.forma_pago,
+        frecuencia_cuota="mensual",
+        saldo_financiado=saldo_financiado,
+        numero_cuotas=numero_cuotas,
+        tiene_interes=False,
+        tipo_contrato="Minuta" if venta.forma_pago == m.FormaPagoEnum.contado else "Contrato Preparatorio",
+        estado=estado_contrato,
+        id_usuario_registro=usuario.id,
+    )
+    db.add(contrato)
+    db.flush()
+
+    for vc in venta.clientes_rel:
+        db.add(m.ContratoCliente(id_contrato=contrato.id, id_cliente=vc.id_cliente, rol=vc.rol))
+
+    if venta.forma_pago == m.FormaPagoEnum.credito and saldo_financiado > 0:
+        dc = venta.datos_credito or {}
+        fecha_deposito = date.fromisoformat(dc["fecha_deposito"])
+        fecha_maxima = fecha_deposito + relativedelta(years=int(dc.get("plazo_anios", 2)))
+        db.add(m.CronogramaPago(
+            id_contrato=contrato.id,
+            numero_cuota=1,
+            fecha_pago_programada=fecha_maxima,
+            amortizacion=saldo_financiado,
+            monto_cuota=saldo_financiado,
+            requiere_pago=True,
+        ))
+
+    venta.id_contrato = contrato.id
+
+    lote = db.query(m.Lote).filter(m.Lote.id == venta.id_lote).first()
+    if lote and lote.estado != m.EstadoLoteEnum.vendido:
+        anterior = lote.estado
+        lote.estado = m.EstadoLoteEnum.vendido
+        lote.actualizado_por = usuario.id
+        db.add(m.LoteEstadoHistorial(
+            id_lote=lote.id, estado_anterior=anterior, estado_nuevo=m.EstadoLoteEnum.vendido,
+            id_usuario=usuario.id, observacion=f"Vendido mediante venta #{venta.id} (contrato {numero_contrato})",
+        ))
+
+    return contrato

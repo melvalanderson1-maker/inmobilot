@@ -34,6 +34,7 @@ export class VentaFormComponent implements OnInit {
     numero_operacion: '',
     plazo_anios: 2,
     tasa_interes: 25,
+    frecuencia_cuota: 'mensual',
   };
 
   agregarSegundoComprador = signal(false);
@@ -118,6 +119,15 @@ export class VentaFormComponent implements OnInit {
 
   mensajeFaltante(): string | null {
     if (!this.precioTotal || this.precioTotal <= 0) return 'Indica el precio total de la venta';
+    if (this.formaPago === 'credito') {
+      const dc = this.datosCredito;
+      if (!dc.inicial_monto || !dc.fecha_deposito || !dc.numero_operacion.trim()) {
+        return 'Completa la inicial, la fecha del depósito y el N° de operación del crédito';
+      }
+      if (dc.plazo_anios < 1 || dc.plazo_anios > 2) {
+        return 'El plazo máximo es de 2 años; si es mayor requiere autorización';
+      }
+    }
     if (this.agregarSegundoComprador() && !this.cliente2()) {
       return 'Busca o crea el segundo comprador, o quita esa sección';
     }
@@ -158,6 +168,7 @@ export class VentaFormComponent implements OnInit {
                 numero_operacion: this.datosCredito.numero_operacion,
                 plazo_anios: this.datosCredito.plazo_anios,
                 tasa_interes: this.datosCredito.tasa_interes,
+                frecuencia_cuota: this.datosCredito.frecuencia_cuota,
               }
             : undefined,
       })

@@ -789,6 +789,7 @@ class DatosCreditoIn(BaseModel):
     numero_operacion: str
     plazo_anios: int = 2
     tasa_interes: Decimal = Decimal("25")
+    frecuencia_cuota: str = "mensual"  # mensual | semestral | unico
 
 
 class VentaCreate(BaseModel):

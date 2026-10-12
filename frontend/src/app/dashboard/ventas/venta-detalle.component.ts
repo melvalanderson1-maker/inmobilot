@@ -6,7 +6,8 @@ import { FormsModule } from '@angular/forms';
 import { VentaService } from '../../core/services/venta.service';
 import { SocketService } from '../../core/services/socket.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Venta, DocumentoUbicacionCreate } from '../../core/models';
+import { ContratoService } from '../../core/services/contrato.service';
+import { Venta, DocumentoUbicacionCreate, CronogramaCuota } from '../../core/models';
 
 @Component({
   selector: 'app-venta-detalle',
@@ -17,6 +18,7 @@ import { Venta, DocumentoUbicacionCreate } from '../../core/models';
 })
 export class VentaDetalleComponent implements OnInit, OnDestroy {
   venta = signal<Venta | null>(null);
+  cronograma = signal<CronogramaCuota[]>([]);
   cargando = signal(false);
   procesando = signal(false);
   idVenta!: number;
@@ -32,6 +34,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   constructor(
     private ventaService: VentaService,
+    private contratoService: ContratoService,
     private socket: SocketService,
     private toastService: ToastService,
     private route: ActivatedRoute,
@@ -61,6 +64,11 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.venta.set(res);
         this.cargando.set(false);
+        if (res.id_contrato && res.forma_pago === 'credito') {
+          this.contratoService.cronograma(res.id_contrato).subscribe((c) => this.cronograma.set(c));
+        } else {
+          this.cronograma.set([]);
+        }
       },
       error: () => this.cargando.set(false),
     });

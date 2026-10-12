@@ -421,3 +421,24 @@
 .campo textarea {
   resize: vertical;
 }
+
+
+.tabla-cuotas {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.tabla-cuotas th {
+  text-align: left;
+  color: #697386;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid #e1ece8;
+}
+
+.tabla-cuotas td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #f2f5f4;
+  color: #142622;
+}

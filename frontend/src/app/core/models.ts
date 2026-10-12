@@ -691,4 +691,5 @@ export interface DatosCredito {
   numero_operacion: string;
   plazo_anios: number;
   tasa_interes: number;
+  frecuencia_cuota: string;
 }

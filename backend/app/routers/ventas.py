@@ -6,7 +6,8 @@ from app.deps import require_permiso
 from app.models import models as m
 from app.schemas import schemas as s
 from app.services import venta_service as svc
-from app.sockets import notificar_venta, notificar_cambio_estado_lote
+from sqlalchemy.orm import joinedload
+from app.sockets import notificar_venta, notificar_cambio_estado_lote, notificar_nuevo_contrato
 
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
@@ -15,6 +16,26 @@ router = APIRouter(prefix="/ventas", tags=["ventas"])
 def _resumen_socket(venta: m.Venta) -> dict:
     return {"id": venta.id, "id_lote": venta.id_lote, "estado": venta.estado.value}
 
+
+async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta, usuario: m.Usuario):
+    """Tiempo real: venta nueva + contrato nuevo (lista de Contratos) + lote vendido."""
+    contrato = (
+        db.query(m.Contrato)
+        .options(
+            joinedload(m.Contrato.lote),
+            joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
+        )
+        .filter(m.Contrato.id == id_contrato)
+        .first()
+    )
+    await notificar_venta("venta:nueva", _resumen_socket(venta), id_proyecto=venta.id_proyecto)
+    await notificar_nuevo_contrato(
+        s.ContratoOut.desde_contrato(contrato).model_dump(mode="json"),
+        id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
+    )
+    await notificar_cambio_estado_lote(
+        svc.lote_out_dict(db, venta.id_lote), id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
+    )
 
 @router.post("/desde-separacion/{id_separacion}", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
 async def crear_venta_desde_separacion(
@@ -34,6 +55,13 @@ async def crear_venta_desde_separacion(
     existente = db.query(m.Venta).filter(m.Venta.id_separacion == id_separacion).first()
     if existente:
         raise HTTPException(status_code=409, detail="Esta separación ya tiene una venta iniciada")
+    if payload.forma_pago == m.FormaPagoEnum.credito:
+        if not payload.datos_credito:
+            raise HTTPException(status_code=422, detail="Completa los datos del crédito (inicial, fecha, operación y plazo)")
+        if payload.datos_credito.frecuencia_cuota not in ("mensual", "semestral", "unico"):
+            raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, semestral o pago único")
+        if not (1 <= payload.datos_credito.plazo_anios <= 2):
+            raise HTTPException(status_code=422, detail="El plazo máximo es de 2 años; si es mayor requiere autorización")
 
     venta = m.Venta(
         id_empresa=usuario.id_empresa,
@@ -65,8 +93,14 @@ async def crear_venta_desde_separacion(
         db.add(m.VentaCliente(id_venta=venta.id, id_cliente=cliente.id, rol=item.rol))
 
     db.commit()
+
+    # El contrato se crea ahora: aparece en Contratos y el lote pasa a vendido
     venta_completa = svc.cargar_venta(db, venta.id, usuario)
-    await notificar_venta("venta:nueva", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
+    contrato = svc.generar_contrato_desde_venta(db, venta_completa, usuario)
+    db.commit()
+
+    venta_completa = svc.cargar_venta(db, venta.id, usuario)
+    await _emitir_contrato_creado(db, contrato.id, venta_completa, usuario)
     return s.VentaOut.desde_venta(venta_completa)
 
 
@@ -154,8 +188,5 @@ async def registrar_contrato(
     db.commit()
 
     venta_completa = svc.cargar_venta(db, id_venta, usuario)
-    await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
-    await notificar_cambio_estado_lote(
-        svc.lote_out_dict(db, venta.id_lote), id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
-    )
+    await _emitir_contrato_creado(db, contrato.id, venta_completa, usuario)
     return s.VentaOut.desde_venta(venta_completa)

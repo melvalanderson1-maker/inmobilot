@@ -51,7 +51,7 @@
             </div>
           }
 
-          @if (venta()!.documento_firmado_url && !venta()!.id_contrato) {
+          @if (!venta()!.id_contrato) {
             <button class="btn-primary" style="margin-top:12px;" (click)="registrarContrato()" [disabled]="procesando()">
               {{ procesando() ? 'Registrando...' : 'Registrar en Contratos (el lote pasará a vendido)' }}
             </button>
@@ -60,6 +60,27 @@
             <p class="dato-secundario" style="margin-top:12px;">✓ Ya está registrado en el módulo de Contratos.</p>
           }
         </section>
+
+        @if (cronograma().length > 0) {
+          <section class="card">
+            <h3>Cronograma de pagos</h3>
+            <table class="tabla-cuotas">
+              <thead>
+                <tr><th>N°</th><th>Vence</th><th>Monto</th><th>Estado</th></tr>
+              </thead>
+              <tbody>
+                @for (c of cronograma(); track c.id) {
+                  <tr>
+                    <td>{{ c.numero_cuota }}</td>
+                    <td>{{ c.fecha_pago_programada }}</td>
+                    <td>S/ {{ c.monto_cuota | number:'1.2-2' }}</td>
+                    <td><span class="chip">{{ c.estado }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </section>
+        }
 
         <section class="card">
           <div style="display:flex; justify-content:space-between; align-items:center;">

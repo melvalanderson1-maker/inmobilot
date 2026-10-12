@@ -117,8 +117,16 @@
               <input type="text" [(ngModel)]="datosCredito.numero_operacion" />
             </div>
             <div class="campo">
-              <label>Plazo (años)</label>
-              <input type="number" [(ngModel)]="datosCredito.plazo_anios" />
+              <label>Plazo (años, máximo 2)</label>
+              <input type="number" min="1" max="2" [(ngModel)]="datosCredito.plazo_anios" />
+            </div>
+            <div class="campo">
+              <label>Frecuencia de pago</label>
+              <select [(ngModel)]="datosCredito.frecuencia_cuota">
+                <option value="mensual">Mensual ({{ datosCredito.plazo_anios * 12 }} cuotas)</option>
+                <option value="semestral">Semestral ({{ datosCredito.plazo_anios * 2 }} cuotas)</option>
+                <option value="unico">Pago único al vencimiento</option>
+              </select>
             </div>
             <div class="campo">
               <label>Tasa de interés compensatorio (%)</label>

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.deps import get_ids_proyectos_usuario
 from app.core.config import settings
 from app.models import models as m
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
 DIR_PLANTILLAS = os.path.join(_BASE_DIR, "plantillas")
@@ -304,27 +304,43 @@ def guardar_documento_pdf(id_venta: int, contenido: bytes) -> str:
 
 # ------------------------------------------------------- contrato formal --
 
+MESES_POR_FRECUENCIA = {"mensual": 1, "semestral": 6}
+
+
 def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario) -> "m.Contrato":
-    """Al firmar el documento, se crea el Contrato formal (el que ya vive en
-    el módulo Contratos), enlazado a la venta. El lote pasa a 'vendido'."""
+    """Crea el Contrato formal (módulo Contratos) al iniciar la venta, con su
+    cronograma si es a crédito. El lote pasa a 'vendido'."""
     if venta.id_contrato:
-        raise HTTPException(status_code=409, detail="Esta venta ya tiene un contrato formal registrado")
-    if venta.estado not in (m.EstadoVentaEnum.documento_firmado, m.EstadoVentaEnum.escriturada):
-        raise HTTPException(status_code=409, detail="El documento debe estar firmado antes de registrar el contrato")
+        raise HTTPException(status_code=409, detail="Esta venta ya tiene un contrato registrado")
 
     numero_contrato = f"V-{venta.id:06d}"
+    fecha_abono = date.today()
+    frecuencia = "mensual"
+    numero_cuotas = 0
+    meses_por_cuota = 1
+    plazo_meses = 0
 
     if venta.forma_pago == m.FormaPagoEnum.contado:
-        inicial_abonado = sum(Decimal(str(p["monto"])) for p in (venta.pagos_previos or []))
-        saldo_financiado = Decimal("0")
-        numero_cuotas = 0
+        inicial_abonado = sum(
+            (Decimal(str(p["monto"])) for p in (venta.pagos_previos or [])), Decimal("0")
+        )
+        saldo = Decimal("0")
         estado_contrato = m.EstadoContratoEnum.cancelado
     else:
         dc = venta.datos_credito or {}
         inicial_abonado = Decimal(str(dc.get("inicial_monto", 0)))
-        saldo_financiado = venta.precio_total - inicial_abonado
-        numero_cuotas = 1
+        saldo = venta.precio_total - inicial_abonado
         estado_contrato = m.EstadoContratoEnum.vigente
+        if dc.get("fecha_deposito"):
+            fecha_abono = date.fromisoformat(str(dc["fecha_deposito"]))
+        plazo_meses = int(dc.get("plazo_anios", 2)) * 12
+        frecuencia = dc.get("frecuencia_cuota", "mensual")
+        meses_por_cuota = MESES_POR_FRECUENCIA.get(frecuencia, plazo_meses)
+        if saldo > 0:
+            numero_cuotas = max(1, plazo_meses // meses_por_cuota)
+        else:
+            saldo = Decimal("0")
+            estado_contrato = m.EstadoContratoEnum.cancelado
 
     contrato = m.Contrato(
         numero_contrato=numero_contrato,
@@ -334,9 +350,10 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         fecha_contrato=date.today(),
         precio_total=venta.precio_total,
         inicial_abonado=inicial_abonado,
+        fecha_abono=fecha_abono,
         forma_pago=venta.forma_pago,
-        frecuencia_cuota="mensual",
-        saldo_financiado=saldo_financiado,
+        frecuencia_cuota=frecuencia,
+        saldo_financiado=saldo,
         numero_cuotas=numero_cuotas,
         tiene_interes=False,
         tipo_contrato="Minuta" if venta.forma_pago == m.FormaPagoEnum.contado else "Contrato Preparatorio",
@@ -349,18 +366,24 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
     for vc in venta.clientes_rel:
         db.add(m.ContratoCliente(id_contrato=contrato.id, id_cliente=vc.id_cliente, rol=vc.rol))
 
-    if venta.forma_pago == m.FormaPagoEnum.credito and saldo_financiado > 0:
-        dc = venta.datos_credito or {}
-        fecha_deposito = date.fromisoformat(dc["fecha_deposito"])
-        fecha_maxima = fecha_deposito + relativedelta(years=int(dc.get("plazo_anios", 2)))
-        db.add(m.CronogramaPago(
-            id_contrato=contrato.id,
-            numero_cuota=1,
-            fecha_pago_programada=fecha_maxima,
-            amortizacion=saldo_financiado,
-            monto_cuota=saldo_financiado,
-            requiere_pago=True,
-        ))
+    # ---- Cronograma: cuotas iguales sin interés; la última absorbe el redondeo ----
+    if numero_cuotas > 0:
+        monto = (saldo / numero_cuotas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        restante = saldo
+        for i in range(1, numero_cuotas + 1):
+            amortizacion = monto if i < numero_cuotas else restante
+            restante -= amortizacion
+            db.add(m.CronogramaPago(
+                id_contrato=contrato.id,
+                numero_cuota=i,
+                fecha_pago_programada=fecha_abono + relativedelta(months=i * meses_por_cuota),
+                capital=restante,
+                amortizacion=amortizacion,
+                interes_mensual=Decimal("0"),
+                interes_acumulado=Decimal("0"),
+                monto_cuota=amortizacion,
+                requiere_pago=True,
+            ))
 
     venta.id_contrato = contrato.id
 
@@ -371,7 +394,8 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         lote.actualizado_por = usuario.id
         db.add(m.LoteEstadoHistorial(
             id_lote=lote.id, estado_anterior=anterior, estado_nuevo=m.EstadoLoteEnum.vendido,
-            id_usuario=usuario.id, observacion=f"Vendido mediante venta #{venta.id} (contrato {numero_contrato})",
+            id_usuario=usuario.id,
+            observacion=f"Vendido mediante venta #{venta.id} (contrato {numero_contrato})",
         ))
 
     return contrato

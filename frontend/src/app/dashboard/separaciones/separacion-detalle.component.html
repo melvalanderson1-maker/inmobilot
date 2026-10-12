@@ -306,6 +306,14 @@
               <button class="btn-primary btn-bloque" (click)="convertir()" [disabled]="procesando()">Convertir a venta</button>
             }
 
+            @if (puedeIniciarVenta()) {
+              <button class="btn-primary btn-bloque" (click)="iniciarVenta()" [disabled]="procesando()">Iniciar venta</button>
+            }
+
+            @if (separacion()!.estado === 'convertida' && idVenta()) {
+              <button class="btn-primary btn-bloque" (click)="verVenta()">Ver venta</button>
+            }
+
             @if (puedeResolverDevolucion()) {
               <button class="btn-primary btn-bloque" (click)="abrirResolverDevolucion()" [disabled]="procesando()">Resolver devolución</button>
             }
@@ -322,7 +330,7 @@
               <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
             }
 
-            @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar()) {
+            @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar() && separacion()!.estado !== 'convertida') {
               <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
             }
           </div>

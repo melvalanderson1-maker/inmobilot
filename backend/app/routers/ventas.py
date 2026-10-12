@@ -70,6 +70,19 @@ async def crear_venta_desde_separacion(
     return s.VentaOut.desde_venta(venta_completa)
 
 
+@router.get("/por-separacion/{id_separacion}")
+def venta_de_separacion(
+    id_separacion: int,
+    usuario: m.Usuario = Depends(require_permiso("ver_ventas")),
+    db: Session = Depends(get_db),
+):
+    venta = db.query(m.Venta).filter(
+        m.Venta.id_separacion == id_separacion,
+        m.Venta.id_empresa == usuario.id_empresa,
+    ).first()
+    return {"id_venta": venta.id if venta else None}
+
+
 @router.get("/{id_venta}", response_model=s.VentaOut)
 def obtener_venta(
     id_venta: int,

@@ -4,6 +4,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
@@ -31,6 +32,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   cargando = signal(false);
   procesando = signal(false);
   idSeparacion!: number;
+  idVenta = signal<number | null>(null);
 
   mostrarRechazo = signal(false);
   motivoRechazo = '';
@@ -90,6 +92,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   });
 
   constructor(
+    private api: ApiService,
     private auth: AuthService,
     private socket: SocketService,
     private separacionService: SeparacionService,
@@ -125,10 +128,30 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     this.separacionService.obtener(this.idSeparacion).subscribe({
       next: (res) => {
         this.separacion.set(res);
+        this.idVenta.set(null);
+        if (res.estado === 'convertida') {
+          this.api.get<{ id_venta: number | null }>('/ventas/por-separacion/' + res.id).subscribe({
+            next: (r) => this.idVenta.set(r.id_venta),
+            error: () => this.idVenta.set(null),
+          });
+        }
         this.cargando.set(false);
       },
       error: () => this.cargando.set(false),
     });
+  }
+
+  puedeIniciarVenta(): boolean {
+    const sep = this.separacion();
+    return !!sep && sep.estado === 'convertida' && !this.idVenta();
+  }
+
+  iniciarVenta(): void {
+    this.router.navigate(['/dashboard/separaciones', this.idSeparacion, 'iniciar-venta']);
+  }
+
+  verVenta(): void {
+    this.router.navigate(['/dashboard/ventas', this.idVenta()]);
   }
 
   volver(): void {

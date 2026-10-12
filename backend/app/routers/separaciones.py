@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -350,10 +351,14 @@ async def solicitar_devolucion(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado not in (E.vigente, E.vencida):
-        raise _conflicto("Solo se puede pedir devolución de una separación vigente o vencida")
-    if payload.monto > sep.importe:
-        raise HTTPException(status_code=422, detail=f"El monto no puede superar lo abonado (S/ {sep.importe:,.2f})")
+    if sep.estado not in (E.vigente, E.vencida, E.convertida):
+        raise _conflicto("Solo se puede pedir devolución de una separación vigente, vencida o convertida")
+    if any(d.estado == "pendiente" for d in sep.devoluciones):
+        raise _conflicto("Ya hay una devolución pendiente para esta separación")
+    ya_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+    disponible = sep.importe - ya_devuelto
+    if payload.monto > disponible:
+        raise HTTPException(status_code=422, detail=f"El monto no puede superar lo disponible a devolver (S/ {disponible:,.2f})")
     sustento = payload.sustento.strip()
     if not sustento:
         raise HTTPException(status_code=422, detail="El sustento es obligatorio")
@@ -362,7 +367,7 @@ async def solicitar_devolucion(
         id_separacion=sep.id, monto=payload.monto, sustento=sustento,
         solicitado_por=usuario.id, estado="pendiente",
     ))
-    sep.estado = E.devolucion_pendiente
+
 
     destinatarios = svc.usuarios_por_roles(
         db, sep.id_empresa, sep.id_proyecto, ["gerencia", "admin"], excluir_id=usuario.id
@@ -388,28 +393,35 @@ async def resolver_devolucion(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado != E.devolucion_pendiente:
-        raise _conflicto("Esta separación no tiene una devolución pendiente")
     dev = next((d for d in sep.devoluciones if d.estado == "pendiente"), None)
     if not dev:
-        raise _conflicto("No se encontró la devolución pendiente")
+        raise _conflicto("Esta separación no tiene una devolución pendiente")
 
     dev.resuelto_por = usuario.id
     dev.fecha_resolucion = svc.ahora_utc()
     dev.respuesta = payload.respuesta
 
+    # Compatibilidad: separaciones que quedaron en 'devolucion_pendiente' con el flujo anterior
+    if sep.estado == E.devolucion_pendiente:
+        sep.estado = E.vencida if sep.fecha_vencimiento < svc.hoy_peru() else E.vigente
+
     cambio = False
     if payload.aprobar:
         dev.estado = "aprobada"
-        sep.estado = E.devuelta
-        if sep.lote.estado == LOTE.separado:
-            cambio = svc.cambiar_estado_lote(
-                db, sep.lote, LOTE.libre, usuario, f"Devolución aprobada de la separación #{sep.id}"
-            )
+        total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+        tiene_venta = db.query(m.Venta.id).filter(
+            m.Venta.id_separacion == sep.id,
+            m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+        ).first() is not None
+        if sep.estado in (E.vigente, E.vencida) and not tiene_venta and total_devuelto >= sep.importe:
+            sep.estado = E.devuelta
+            if sep.lote.estado == LOTE.separado:
+                cambio = svc.cambiar_estado_lote(
+                    db, sep.lote, LOTE.libre, usuario, f"Devolución aprobada de la separación #{sep.id}"
+                )
         titulo = "Devolución aprobada"
     else:
         dev.estado = "rechazada"
-        sep.estado = E.vencida if sep.fecha_vencimiento < svc.hoy_peru() else E.vigente
         titulo = "Devolución rechazada"
 
     notifs = svc.crear_notificaciones(

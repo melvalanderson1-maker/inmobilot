@@ -277,7 +277,8 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeSolicitarDevolucion(): boolean {
     const sep = this.separacion();
-    return !!sep && ['vigente', 'vencida'].includes(sep.estado);
+    return !!sep && ['vigente', 'vencida', 'convertida'].includes(sep.estado)
+      && !sep.devoluciones.some((d) => d.estado === 'pendiente');
   }
 
   abrirDevolucion(): void {
@@ -313,7 +314,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeResolverDevolucion(): boolean {
     const sep = this.separacion();
-    return !!sep && sep.estado === 'devolucion_pendiente' && ['admin', 'gerencia'].includes(this.rolClave);
+    return !!sep && sep.devoluciones.some((d) => d.estado === 'pendiente') && ['admin', 'gerencia'].includes(this.rolClave);
   }
 
   abrirResolverDevolucion(): void {
@@ -329,7 +330,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
         next: () => {
           this.procesando.set(false);
           this.mostrarResolverDevolucion.set(false);
-          this.toastService.exito(aprobar ? 'Devolución aprobada. Lote liberado.' : 'Devolución rechazada.');
+          this.toastService.exito(aprobar ? 'Devolución aprobada.' : 'Devolución rechazada.');
           this.cargar();
         },
         error: (err) => {

@@ -6,8 +6,13 @@ from app.deps import require_permiso
 from app.models import models as m
 from app.schemas import schemas as s
 from app.services import venta_service as svc
+import logging
+
 from sqlalchemy.orm import joinedload
+from app.services import separacion_service as sep_svc
 from app.sockets import notificar_venta, notificar_cambio_estado_lote, notificar_nuevo_contrato
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
@@ -18,24 +23,29 @@ def _resumen_socket(venta: m.Venta) -> dict:
 
 
 async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta, usuario: m.Usuario):
-    """Tiempo real: venta nueva + contrato nuevo (lista de Contratos) + lote vendido."""
-    contrato = (
-        db.query(m.Contrato)
-        .options(
-            joinedload(m.Contrato.lote),
-            joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
+    """Tiempo real: venta nueva + contrato nuevo (lista de Contratos) + lote vendido.
+    Si el aviso falla, NO debe romper la operación: los datos ya están guardados."""
+    try:
+        contrato = (
+            db.query(m.Contrato)
+            .options(
+                joinedload(m.Contrato.lote),
+                joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
+            )
+            .filter(m.Contrato.id == id_contrato)
+            .first()
         )
-        .filter(m.Contrato.id == id_contrato)
-        .first()
-    )
-    await notificar_venta("venta:nueva", _resumen_socket(venta), id_proyecto=venta.id_proyecto)
-    await notificar_nuevo_contrato(
-        s.ContratoOut.desde_contrato(contrato).model_dump(mode="json"),
-        id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
-    )
-    await notificar_cambio_estado_lote(
-        svc.lote_out_dict(db, venta.id_lote), id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
-    )
+        await notificar_venta("venta:nueva", _resumen_socket(venta), id_proyecto=venta.id_proyecto)
+        await notificar_nuevo_contrato(
+            s.ContratoOut.desde_contrato(contrato).model_dump(mode="json"),
+            id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
+        )
+        await notificar_cambio_estado_lote(
+            sep_svc.lote_out_dict(db, venta.id_lote),
+            id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
+        )
+    except Exception:
+        logger.exception("No se pudo emitir el aviso en tiempo real del contrato %s", id_contrato)
 
 @router.post("/desde-separacion/{id_separacion}", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
 async def crear_venta_desde_separacion(

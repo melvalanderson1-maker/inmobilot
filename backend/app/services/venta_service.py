@@ -17,7 +17,7 @@ from app.models import models as m
 from decimal import Decimal
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
-DIR_PLANTILLAS = os.path.join(_BASE_DIR, "static", "plantillas")
+DIR_PLANTILLAS = os.path.join(_BASE_DIR, "plantillas")
 DIR_DOCUMENTOS_VENTA = os.path.join(_BASE_DIR, "static", "documentos_venta")
 os.makedirs(DIR_DOCUMENTOS_VENTA, exist_ok=True)
 

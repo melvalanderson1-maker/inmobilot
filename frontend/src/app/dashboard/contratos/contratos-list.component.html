@@ -83,9 +83,11 @@
             <span class="valor">{{ contratoDrawer()!.lote?.codigo ?? '—' }}</span>
           </div>
           <div class="ficha-item">
-            <span class="etiqueta-mini">Cliente titular</span>
-            <span class="valor">{{ clienteTitular(contratoDrawer()!)?.nombres }} {{ clienteTitular(contratoDrawer()!)?.apellidos }}</span>
-            <span class="documento">{{ clienteTitular(contratoDrawer()!)?.numero_documento }}</span>
+            <span class="etiqueta-mini">Compradores</span>
+            @for (cl of contratoDrawer()!.clientes; track cl.id_cliente) {
+              <span class="valor">{{ cl.nombres }} {{ cl.apellidos }}</span>
+              <span class="documento">{{ cl.numero_documento }} · {{ cl.rol }}</span>
+            }
           </div>
           <div class="ficha-item">
             <span class="etiqueta-mini">Precio total</span>
@@ -96,6 +98,55 @@
             <span class="valor">S/ {{ contratoDrawer()!.inicial_abonado }}</span>
           </div>
         </div>
+
+        <!-- Documentos de la venta -->
+        <div class="bloque-docs">
+          <h4>Documentos de la venta</h4>
+          @if (ventaPorContrato()[contratoDrawer()!.id]; as venta) {
+            <div class="doc-fila">
+              <span>{{ venta.forma_pago === 'contado' ? 'Minuta' : 'Contrato Preparatorio' }}</span>
+              @if (venta.documento_generado_url) {
+                <a [href]="venta.documento_generado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
+              } @else {
+                <span class="texto-tenue">Sin generar</span>
+              }
+            </div>
+            <div class="doc-fila">
+              <span>Documento firmado</span>
+              @if (venta.documento_firmado_url) {
+                <a [href]="venta.documento_firmado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
+              } @else {
+                <span class="texto-tenue">Pendiente</span>
+              }
+            </div>
+            <div class="doc-fila">
+              <span>Estado de la venta</span>
+              <span class="chip">{{ venta.estado }}</span>
+            </div>
+            @for (u of venta.ubicaciones; track u.id) {
+              <div class="doc-fila">
+                <span>{{ u.tipo_documento }} · {{ u.ubicacion }}{{ u.notaria_nombre ? ' (' + u.notaria_nombre + ')' : '' }}</span>
+                <span class="chip">{{ u.estado_tramite }}</span>
+              </div>
+            }
+            <button class="btn-secundario-sm" style="margin-top:8px;" (click)="abrirVenta(venta.id)">Abrir venta completa →</button>
+          } @else {
+            <p class="texto-tenue">Este contrato no proviene del flujo de ventas, así que no tiene documentos asociados.</p>
+          }
+        </div>
+
+        <!-- Acciones de cobranza -->
+        @if (puedeGestionarCobranza) {
+          <div class="acciones-cobranza">
+            @if (contratoDrawer()!.forma_pago === 'credito' && contratoDrawer()!.estado !== 'cancelado' && contratoDrawer()!.estado !== 'anulado') {
+              <button class="btn-secundario-sm" (click)="recalcularCuotas(contratoDrawer()!)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
+              <button class="btn-secundario-sm" (click)="cancelarContrato(contratoDrawer()!)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
+            }
+            @if (contratoDrawer()!.estado === 'cancelado' && ventaPorContrato()[contratoDrawer()!.id] && ventaPorContrato()[contratoDrawer()!.id]!.estado !== 'finalizada') {
+              <button class="btn-secundario-sm" (click)="finalizarVenta(contratoDrawer()!)" [disabled]="procesandoCobranza()">Finalizar venta</button>
+            }
+          </div>
+        }
 
         @if (contratoDrawer()!.forma_pago === 'contado') {
           <p class="texto-tenue">Contrato al contado — no genera cronograma de cuotas.</p>

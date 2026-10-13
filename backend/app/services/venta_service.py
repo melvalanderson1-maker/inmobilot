@@ -162,7 +162,7 @@ def construir_contexto_compradores(clientes: list[m.Cliente], modo: str) -> dict
             f'DE ESTADO CIVIL {(cli.estado_civil or "NO INDICADO").upper()}, '
             f'CON DOMICILIO EN {cli.direccion or "NO INDICADO"}'
         )
-    comprador_bloque = " Y ".join(bloques)
+    comprador_bloque = bloques[0] if len(bloques) == 1 else "; ".join(bloques[:-1]) + " Y " + bloques[-1]
 
     es_plural = len(clientes) > 1
     if modo == "preparatorio":

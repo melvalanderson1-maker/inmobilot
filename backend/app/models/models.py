@@ -89,6 +89,7 @@ class EstadoVentaEnum(str, enum.Enum):
     documento_generado = "documento_generado"
     documento_firmado = "documento_firmado"
     escriturada = "escriturada"
+    finalizada = "finalizada"
     cancelada = "cancelada"
     anulada = "anulada"
 

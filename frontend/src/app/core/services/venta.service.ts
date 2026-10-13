@@ -30,6 +30,10 @@ export class VentaService {
     return this.api.post<{ url: string }>('/uploads/comprobante', formData);
   }
 
+  ventaDeContrato(idContrato: number) {
+    return this.api.get<{ id_venta: number | null }>(`/ventas/por-contrato/${idContrato}`);
+  }
+
   registrarContrato(id: number) {
     return this.api.post<Venta>(`/ventas/${id}/registrar-contrato`, {});
   }

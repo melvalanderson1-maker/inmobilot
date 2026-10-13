@@ -27,42 +27,46 @@
         </section>
 
         <section class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>Segundo comprador</h3>
-            @if (!agregarSegundoComprador()) {
-              <button class="btn-secundario btn-sm" (click)="agregarSegundoComprador.set(true)">+ Agregar</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <h3>Compradores adicionales <span class="dato-linea">({{ extras().length + 1 }} de 4)</span></h3>
+            @if (puedeAgregarMas() && !agregando()) {
+              <button class="btn-secundario btn-sm" (click)="agregando.set(true)">+ Agregar comprador</button>
             }
           </div>
 
-          @if (!agregarSegundoComprador()) {
-            <p class="dato-secundario">Agrega a un cónyuge o copropietario si la venta tiene más de un titular.</p>
-          } @else if (cliente2()) {
-            <div class="cliente-fila">
-              <div class="avatar">{{ cliente2()!.nombres.charAt(0) }}</div>
-              <div class="cliente-datos">
-                <strong>{{ cliente2()!.nombres }} {{ cliente2()!.apellidos }}</strong>
-                <span class="dato-linea">{{ cliente2()!.numero_documento }}@if (cliente2()!.telefono) { · {{ cliente2()!.telefono }} }</span>
+          @if (extras().length === 0 && !agregando()) {
+            <p class="dato-secundario">Agrega al cónyuge o copropietarios si la venta tiene más de un titular (máximo 4 en total).</p>
+          }
+
+          @for (e of extras(); track e.cliente.id) {
+            <div class="cliente-fila" style="margin-top:12px; flex-wrap:wrap;">
+              <div class="avatar">{{ e.cliente.nombres.charAt(0) }}</div>
+              <div class="cliente-datos" style="flex:1; min-width:160px;">
+                <strong>{{ e.cliente.nombres }} {{ e.cliente.apellidos }}</strong>
+                <span class="dato-linea">{{ e.cliente.numero_documento }}@if (e.cliente.telefono) { · {{ e.cliente.telefono }} }</span>
               </div>
-              <button class="btn-secundario btn-sm" (click)="quitarSegundoComprador()">Quitar</button>
-            </div>
-            <div class="campo" style="margin-top:12px;">
-              <label>Rol en la venta</label>
-              <select [(ngModel)]="rolSegundo">
+              <select [ngModel]="e.rol" (ngModelChange)="cambiarRol(e.cliente.id, $event)" style="padding:7px 10px; border:1px solid #e1ece8; border-radius:8px;">
                 <option value="conyuge">Cónyuge</option>
                 <option value="copropietario">Copropietario</option>
               </select>
+              <button class="btn-secundario btn-sm" (click)="quitarComprador(e.cliente.id)">Quitar</button>
             </div>
-          } @else {
-            @if (conyugeTitular()) {
-              <button class="btn-secundario" style="width:100%; margin-bottom:12px;" (click)="usarConyuge()" [disabled]="creandoConyuge()">
-                {{ creandoConyuge() ? 'Cargando...' : 'Usar al cónyuge: ' + conyugeTitular()!.nombres + ' ' + conyugeTitular()!.apellidos }}
-              </button>
-            }
-            <app-cliente-buscador
-              [excluirIds]="idsExcluidos()"
-              (seleccionado)="elegirSegundo($event)"
-              (crearNuevo)="irACrearCliente2($event)"
-            />
+          }
+
+          @if (agregando()) {
+            <div style="margin-top:14px;">
+              @if (conyugeDisponible()) {
+                <button class="btn-secundario" style="width:100%; margin-bottom:12px;" (click)="usarConyuge()" [disabled]="creandoConyuge()">
+                  {{ creandoConyuge() ? 'Cargando...' : 'Usar al cónyuge: ' + conyugeTitular()!.nombres + ' ' + conyugeTitular()!.apellidos }}
+                </button>
+              }
+              <app-cliente-buscador
+                [excluirIds]="idsExcluidos()"
+                (seleccionado)="agregarComprador($event)"
+                (crearNuevo)="irACrearCliente($event)"
+              />
+              <button class="btn-secundario btn-sm" style="margin-top:10px;" (click)="agregando.set(false)">Cancelar</button>
+            </div>
           }
         </section>
 

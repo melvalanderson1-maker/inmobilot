@@ -115,7 +115,9 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "ver_clientes": _EJECUTIVOS | {"contabilidad"},
     "editar_cliente": _EJECUTIVOS,
     "crear_venta": _EJECUTIVOS,
-    "ver_ventas": _EJECUTIVOS | {"contabilidad", "legal"},
+    "ver_ventas": _EJECUTIVOS | {"contabilidad", "legal", "cobranza"},
+    "ver_cobranza": {"admin", "gerencia", "supervisor", "contabilidad", "cobranza"},
+    "gestionar_cobranza": {"admin", "gerencia", "cobranza"},
     "gestionar_rrpp": {"admin", "gerencia", "legal"},
 }
 

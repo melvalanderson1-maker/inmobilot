@@ -916,3 +916,27 @@ class EmpresaConfigUpdate(BaseModel):
     cuenta_bancaria: Optional[str] = None
     banco: Optional[str] = None
     ciudad_firma_contratos: Optional[str] = None
+
+
+# --------------------------------------------------------------- COBRANZA --
+
+class CobranzaFilaOut(BaseModel):
+    id_contrato: int
+    numero_contrato: str
+    id_venta: Optional[int] = None
+    lote_codigo: Optional[str] = None
+    cliente_nombre: str
+    cliente_documento: str
+    cliente_telefono: Optional[str] = None
+    precio_total: Decimal
+    inicial_abonado: Decimal
+    total_pagado: Decimal
+    saldo_pendiente: Decimal
+    monto_vencido: Decimal
+    cuotas_total: int
+    cuotas_pagadas: int
+    cuotas_vencidas: int
+    proxima_fecha: Optional[date] = None
+    proxima_monto: Optional[Decimal] = None
+    dias_atraso: int = 0
+    estado: str

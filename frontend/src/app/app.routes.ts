@@ -72,6 +72,12 @@ export const routes: Routes = [
           import('./dashboard/ventas/venta-detalle.component').then((c) => c.VentaDetalleComponent),
       },
       {
+        path: 'cobranza',
+        canActivate: [moduloGuard('cobranza')],
+        loadComponent: () =>
+          import('./dashboard/cobranza/cobranza-list.component').then((c) => c.CobranzaListComponent),
+      },
+      {
         path: 'separaciones',
         canActivate: [moduloGuard('separaciones')],
         loadComponent: () =>

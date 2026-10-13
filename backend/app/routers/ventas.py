@@ -72,6 +72,8 @@ async def crear_venta_desde_separacion(
             raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, semestral o pago único")
         if not (1 <= payload.datos_credito.plazo_anios <= 2):
             raise HTTPException(status_code=422, detail="El plazo máximo es de 2 años; si es mayor requiere autorización")
+    if len(payload.clientes) > 4:
+        raise HTTPException(status_code=422, detail="Una venta admite como máximo 4 compradores")
     ids_compradores = [i.id_cliente for i in payload.clientes if i.id_cliente]
     if len(ids_compradores) != len(set(ids_compradores)):
         raise HTTPException(status_code=422, detail="Un mismo cliente no puede figurar dos veces como comprador")

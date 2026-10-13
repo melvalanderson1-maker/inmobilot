@@ -5,6 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ContratoService } from '../../core/services/contrato.service';
 import { SocketService } from '../../core/services/socket.service';
+import { AuthService } from '../../core/services/auth.service';
+import { VentaService } from '../../core/services/venta.service';
+import { CobranzaService } from '../../core/services/cobranza.service';
+import { ToastService } from '../../core/services/toast.service';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   Proyecto,
   Lote,
@@ -15,6 +20,7 @@ import {
   Pago,
   PagoCreate,
   FormaPago,
+  Venta,
 } from '../../core/models';
 
 interface ResumenContrato {
@@ -49,6 +55,9 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   pagosPorContrato = signal<Partial<Record<number, Pago[]>>>({});
   cargandoCronograma = signal<number | null>(null);
   detalleMensual = signal<Record<number, boolean>>({});
+  ventaPorContrato = signal<Partial<Record<number, Venta | null>>>({});
+  procesandoCobranza = signal(false);
+  private idAbrirPendiente: number | null = null;
 
   modalComprobanteAbierto = signal(false);
   comprobanteUrlActual = signal<string | null>(null);
@@ -108,10 +117,23 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   constructor(
     private api: ApiService,
     private contratoService: ContratoService,
-    private socket: SocketService
+    private socket: SocketService,
+    private auth: AuthService,
+    private ventaService: VentaService,
+    private cobranzaService: CobranzaService,
+    private toastService: ToastService,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
+  get puedeGestionarCobranza(): boolean {
+    return ['admin', 'gerencia', 'cobranza'].includes(this.auth.usuario()?.rol?.clave ?? '');
+  }
+
   ngOnInit(): void {
+    const abrir = Number(this.route.snapshot.queryParamMap.get('abrir'));
+    this.idAbrirPendiente = abrir || null;
+
     this.api.get<Proyecto[]>('/proyectos').subscribe((proyectos) => {
       this.proyectos.set(proyectos);
       if (proyectos.length > 0) {
@@ -125,15 +147,21 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       if (evento.evento === 'contrato:nuevo') {
         const contrato = evento.data as Contrato;
         if (contrato && contrato.id_proyecto === this.idProyectoSeleccionado) {
-          this.cargarContratos();
+          this.cargarContratos(true);
           this.cargarLotesLibres();
         }
       }
       if (evento.evento === 'contrato:pago_registrado') {
         const idContrato = (evento.data as any)?.id_contrato;
+        this.cargarContratos(true);
         if (idContrato && this.contratoDrawer()?.id === idContrato) {
           this.cargarCronograma(idContrato);
+          this.cargarVenta(idContrato);
         }
+      }
+      if (evento.evento === 'venta:nueva' || evento.evento === 'venta:actualizada') {
+        const abierto = this.contratoDrawer();
+        if (abierto) this.cargarVenta(abierto.id);
       }
     });
   }
@@ -148,13 +176,24 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.cargarLotesLibres();
   }
 
-  cargarContratos(): void {
+  cargarContratos(silencioso = false): void {
     if (!this.idProyectoSeleccionado) return;
-    this.cargando.set(true);
+    if (!silencioso) this.cargando.set(true);
     this.contratoService.listar(this.idProyectoSeleccionado).subscribe({
       next: (res) => {
         this.contratos.set(res);
         this.cargando.set(false);
+
+        const abierto = this.contratoDrawer();
+        if (abierto) {
+          const actualizado = res.find((c) => c.id === abierto.id);
+          if (actualizado) this.contratoDrawer.set(actualizado);
+        }
+        if (this.idAbrirPendiente) {
+          const buscado = res.find((c) => c.id === this.idAbrirPendiente);
+          this.idAbrirPendiente = null;
+          if (buscado) this.abrirDrawer(buscado);
+        }
       },
       error: () => this.cargando.set(false),
     });
@@ -175,6 +214,78 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     if (!this.cronogramaPorContrato()[contrato.id]) {
       this.cargarCronograma(contrato.id);
     }
+    this.cargarVenta(contrato.id);
+  }
+
+  cargarVenta(idContrato: number): void {
+    this.ventaService.ventaDeContrato(idContrato).subscribe({
+      next: (r) => {
+        if (!r.id_venta) {
+          this.ventaPorContrato.update((a) => ({ ...a, [idContrato]: null }));
+          return;
+        }
+        this.ventaService.obtener(r.id_venta).subscribe({
+          next: (v) => this.ventaPorContrato.update((a) => ({ ...a, [idContrato]: v })),
+          error: () => this.ventaPorContrato.update((a) => ({ ...a, [idContrato]: null })),
+        });
+      },
+      error: () => this.ventaPorContrato.update((a) => ({ ...a, [idContrato]: null })),
+    });
+  }
+
+  abrirVenta(idVenta: number): void {
+    this.router.navigate(['/dashboard/ventas', idVenta]);
+  }
+
+  recalcularCuotas(contrato: Contrato): void {
+    if (!confirm('¿Recalcular las cuotas pendientes con el saldo actual?')) return;
+    this.procesandoCobranza.set(true);
+    this.cobranzaService.recalcular(contrato.id).subscribe({
+      next: (r) => {
+        this.procesandoCobranza.set(false);
+        this.toastService.exito(r.mensaje);
+        this.cargarCronograma(contrato.id);
+      },
+      error: (err) => {
+        this.procesandoCobranza.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo recalcular');
+      },
+    });
+  }
+
+  cancelarContrato(contrato: Contrato): void {
+    if (!confirm('¿Cancelar el contrato? Solo es posible si el cliente ya pagó todo el saldo.')) return;
+    this.procesandoCobranza.set(true);
+    this.cobranzaService.cancelar(contrato.id).subscribe({
+      next: () => {
+        this.procesandoCobranza.set(false);
+        this.toastService.exito('Contrato cancelado');
+        this.cargarContratos(true);
+        this.cargarCronograma(contrato.id);
+      },
+      error: (err) => {
+        this.procesandoCobranza.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo cancelar el contrato');
+      },
+    });
+  }
+
+  finalizarVenta(contrato: Contrato): void {
+    const venta = this.ventaPorContrato()[contrato.id];
+    if (!venta) return;
+    if (!confirm('¿Finalizar la venta? Esta acción cierra el proceso de cobranza.')) return;
+    this.procesandoCobranza.set(true);
+    this.cobranzaService.finalizarVenta(venta.id).subscribe({
+      next: () => {
+        this.procesandoCobranza.set(false);
+        this.toastService.exito('Venta finalizada');
+        this.cargarVenta(contrato.id);
+      },
+      error: (err) => {
+        this.procesandoCobranza.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo finalizar la venta');
+      },
+    });
   }
 
   cerrarDrawer(): void {

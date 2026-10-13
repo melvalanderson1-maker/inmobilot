@@ -10,6 +10,12 @@ import { ToastService } from '../../core/services/toast.service';
 import { Separacion, FormaPago, Cliente, VentaClienteIn } from '../../core/models';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
+type RolExtra = 'conyuge' | 'copropietario';
+interface CompradorExtra {
+  cliente: Cliente;
+  rol: RolExtra;
+}
+
 @Component({
   selector: 'app-venta-form',
   standalone: true,
@@ -18,6 +24,8 @@ import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-
   styleUrl: './venta-form.component.css',
 })
 export class VentaFormComponent implements OnInit {
+  readonly MAX_EXTRAS = 3; // titular + 3 = 4 compradores (máximo del proceso)
+
   idSeparacion!: number;
   separacion = signal<Separacion | null>(null);
   cargando = signal(false);
@@ -38,17 +46,17 @@ export class VentaFormComponent implements OnInit {
     frecuencia_cuota: 'mensual',
   };
 
-  agregarSegundoComprador = signal(false);
-  cliente2 = signal<Cliente | null>(null);
-  rolSegundo: 'conyuge' | 'copropietario' = 'copropietario';
+  extras = signal<CompradorExtra[]>([]);
+  agregando = signal(false);
   conyugeTitular = signal<{ nombres: string; apellidos: string; numero_documento: string } | null>(null);
   creandoConyuge = signal(false);
 
-  idsExcluidos = computed(() => {
-    const ids = [this.separacion()?.id_cliente ?? 0];
-    const c2 = this.cliente2();
-    if (c2) ids.push(c2.id);
-    return ids;
+  idsExcluidos = computed(() => [this.separacion()?.id_cliente ?? 0, ...this.extras().map((e) => e.cliente.id)]);
+  puedeAgregarMas = computed(() => this.extras().length < this.MAX_EXTRAS);
+  conyugeDisponible = computed(() => {
+    const cy = this.conyugeTitular();
+    if (!cy) return false;
+    return !this.extras().some((e) => e.cliente.numero_documento === cy.numero_documento);
   });
 
   constructor(
@@ -59,6 +67,8 @@ export class VentaFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router
   ) {}
+
+  // ---- Borrador: se conserva al ir a "Crear cliente nuevo" y volver ----
 
   private claveBorrador(): string {
     return `venta-borrador-${this.idSeparacion}`;
@@ -72,6 +82,7 @@ export class VentaFormComponent implements OnInit {
         precioTotal: this.precioTotal,
         pagosPrevios: this.pagosPrevios,
         datosCredito: this.datosCredito,
+        extras: this.extras(),
       })
     );
   }
@@ -85,6 +96,7 @@ export class VentaFormComponent implements OnInit {
       this.precioTotal = b.precioTotal ?? this.precioTotal;
       if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
       if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
+      if (b.extras?.length) this.extras.set(b.extras);
     } catch {
       /* borrador dañado: se ignora */
     }
@@ -106,32 +118,48 @@ export class VentaFormComponent implements OnInit {
         this.restaurarBorrador();
         this.cargando.set(false);
 
-        // Cónyuge del titular (para ofrecer "Usar al cónyuge")
         this.clienteService.obtener(res.id_cliente).subscribe((titular) => {
           this.conyugeTitular.set(titular.conyuge ?? null);
         });
 
-        // Volvemos de "Crear cliente nuevo": queda cargado como segundo comprador
+        // Volvemos de "Crear cliente nuevo": queda agregado como comprador
         const idNuevo = Number(this.route.snapshot.queryParamMap.get('id_cliente'));
         if (idNuevo && idNuevo !== res.id_cliente) {
-          this.clienteService.obtener(idNuevo).subscribe((c) => this.elegirSegundo(c));
+          this.clienteService.obtener(idNuevo).subscribe((c) => this.agregarComprador(c));
         }
       },
       error: () => this.cargando.set(false),
     });
   }
 
-  elegirSegundo(c: Cliente, rol: 'conyuge' | 'copropietario' = 'copropietario'): void {
+  // ---- Compradores adicionales ----
+
+  agregarComprador(c: Cliente, rol: RolExtra = 'copropietario'): void {
     if (c.id === this.separacion()?.id_cliente) {
       this.toastService.error('Ese cliente ya es el comprador titular');
       return;
     }
-    this.cliente2.set(c);
-    this.rolSegundo = rol;
-    this.agregarSegundoComprador.set(true);
+    if (this.extras().some((e) => e.cliente.id === c.id)) {
+      this.toastService.error('Ese cliente ya está agregado');
+      return;
+    }
+    if (this.extras().length >= this.MAX_EXTRAS) {
+      this.toastService.error('Una venta admite como máximo 4 compradores');
+      return;
+    }
+    this.extras.update((lista) => [...lista, { cliente: c, rol }]);
+    this.agregando.set(false);
   }
 
-  irACrearCliente2(texto: string): void {
+  quitarComprador(idCliente: number): void {
+    this.extras.update((lista) => lista.filter((e) => e.cliente.id !== idCliente));
+  }
+
+  cambiarRol(idCliente: number, rol: RolExtra): void {
+    this.extras.update((lista) => lista.map((e) => (e.cliente.id === idCliente ? { ...e, rol } : e)));
+  }
+
+  irACrearCliente(texto: string): void {
     this.guardarBorrador();
     const esNumero = /^\d{6,}$/.test(texto);
     this.router.navigate(['/dashboard/clientes/nuevo'], {
@@ -149,7 +177,7 @@ export class VentaFormComponent implements OnInit {
     this.clienteService.conyugeComoCliente(sep.id_cliente).subscribe({
       next: (c) => {
         this.creandoConyuge.set(false);
-        this.elegirSegundo(c, 'conyuge');
+        this.agregarComprador(c, 'conyuge');
       },
       error: (err) => {
         this.creandoConyuge.set(false);
@@ -158,10 +186,7 @@ export class VentaFormComponent implements OnInit {
     });
   }
 
-  quitarSegundoComprador(): void {
-    this.agregarSegundoComprador.set(false);
-    this.cliente2.set(null);
-  }
+  // ---- Pagos previos (contado) ----
 
   agregarFilaPago(): void {
     this.pagosPrevios.push({ monto: null, fecha: '' });
@@ -182,9 +207,6 @@ export class VentaFormComponent implements OnInit {
         return 'El plazo máximo es de 2 años; si es mayor requiere autorización';
       }
     }
-    if (this.agregarSegundoComprador() && !this.cliente2()) {
-      return 'Busca o crea el segundo comprador, o quita esa sección';
-    }
     return null;
   }
 
@@ -200,11 +222,10 @@ export class VentaFormComponent implements OnInit {
     this.error.set(null);
     this.guardando.set(true);
 
-    const clientes: VentaClienteIn[] = [{ id_cliente: sep.id_cliente, rol: 'titular' }];
-    const c2 = this.cliente2();
-    if (c2) {
-      clientes.push({ id_cliente: c2.id, rol: this.rolSegundo });
-    }
+    const clientes: VentaClienteIn[] = [
+      { id_cliente: sep.id_cliente, rol: 'titular' },
+      ...this.extras().map((e) => ({ id_cliente: e.cliente.id, rol: e.rol })),
+    ];
 
     const pagosValidos = this.pagosPrevios.filter((p) => p.monto && p.fecha);
 
@@ -213,7 +234,7 @@ export class VentaFormComponent implements OnInit {
         forma_pago: this.formaPago,
         precio_total: this.precioTotal!,
         clientes,
-        pagos_previos: this.formaPago === 'contado' ? pagosValidos as any : undefined,
+        pagos_previos: this.formaPago === 'contado' ? (pagosValidos as any) : undefined,
         datos_credito:
           this.formaPago === 'credito' && this.datosCredito.inicial_monto
             ? {

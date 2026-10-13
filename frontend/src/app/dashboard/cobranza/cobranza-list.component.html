@@ -1,0 +1,108 @@
+<div class="cobranza-page">
+  <div class="page-header">
+    <div>
+      <h1>Cobranza</h1>
+      <p class="subtitle">Saldos por cobrar, cuotas vencidas y seguimiento de clientes</p>
+    </div>
+  </div>
+
+  <div class="selector-proyecto">
+    <label>Proyecto</label>
+    <select [(ngModel)]="idProyecto" (ngModelChange)="cargar()">
+      @for (p of proyectos(); track p.id) {
+        <option [ngValue]="p.id">{{ p.nombre }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span>Por cobrar</span><strong>S/ {{ kpiPorCobrar() | number:'1.2-2' }}</strong></div>
+    <div class="kpi kpi-rojo"><span>Monto vencido</span><strong>S/ {{ kpiVencido() | number:'1.2-2' }}</strong></div>
+    <div class="kpi kpi-rojo"><span>Contratos con atraso</span><strong>{{ kpiConAtraso() }}</strong></div>
+    <div class="kpi"><span>Contratos activos</span><strong>{{ kpiActivos() }}</strong></div>
+  </div>
+
+  <div class="barra-filtros">
+    <div class="chips">
+      @for (f of filtros; track f.valor) {
+        <button type="button" class="chip-filtro" [class.activo]="filtro() === f.valor" (click)="filtro.set(f.valor)">
+          {{ f.etiqueta }}
+        </button>
+      }
+    </div>
+    <input
+      type="text"
+      class="buscar"
+      placeholder="Buscar por cliente, DNI, celular, lote o contrato"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+    />
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando cobranza...</div>
+  } @else if (filtradas().length === 0) {
+    <div class="estado">No hay contratos a crédito para este filtro.</div>
+  } @else {
+    <div class="tabla-card">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Contrato / Lote</th>
+            <th>Cliente</th>
+            <th>Valor del terreno</th>
+            <th>Pagado</th>
+            <th>Saldo</th>
+            <th>Próximo pago</th>
+            <th>Atraso</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of filtradas(); track f.id_contrato) {
+            <tr>
+              <td>
+                <strong>{{ f.numero_contrato }}</strong>
+                <small>Lote {{ f.lote_codigo ?? '—' }}</small>
+              </td>
+              <td>
+                <strong>{{ f.cliente_nombre }}</strong>
+                <small>{{ f.cliente_documento }}</small>
+                @if (f.cliente_telefono) {
+                  <small class="contacto">
+                    <a [href]="'tel:' + f.cliente_telefono">{{ f.cliente_telefono }}</a>
+                    @if (waUrl(f.cliente_telefono); as wa) {
+                      · <a [href]="wa" target="_blank" rel="noopener">WhatsApp</a>
+                    }
+                  </small>
+                }
+              </td>
+              <td>S/ {{ f.precio_total | number:'1.2-2' }}</td>
+              <td>S/ {{ f.total_pagado | number:'1.2-2' }}</td>
+              <td><strong>S/ {{ f.saldo_pendiente | number:'1.2-2' }}</strong></td>
+              <td>
+                @if (f.proxima_fecha) {
+                  {{ f.proxima_fecha }}
+                  <small>S/ {{ f.proxima_monto | number:'1.2-2' }} · cuota {{ f.cuotas_pagadas + 1 }}/{{ f.cuotas_total }}</small>
+                } @else {
+                  —
+                }
+              </td>
+              <td>
+                @if (f.cuotas_vencidas > 0) {
+                  <span class="chip chip-atraso">{{ f.dias_atraso }} días</span>
+                  <small>{{ f.cuotas_vencidas }} cuota(s) · S/ {{ f.monto_vencido | number:'1.2-2' }}</small>
+                } @else {
+                  <span class="chip chip-ok">Al día</span>
+                }
+              </td>
+              <td><span class="chip" [ngClass]="'chip-' + f.estado">{{ f.estado }}</span></td>
+              <td><button class="btn-abrir" (click)="abrirContrato(f)">Abrir</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

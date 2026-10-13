@@ -582,6 +582,7 @@ export type EstadoVenta =
   | 'documento_generado'
   | 'documento_firmado'
   | 'escriturada'
+  | 'finalizada'
   | 'cancelada'
   | 'anulada';
 
@@ -692,4 +693,29 @@ export interface DatosCredito {
   plazo_anios: number;
   tasa_interes: number;
   frecuencia_cuota: string;
+}
+
+
+// --------------------------------------------------------------- COBRANZA --
+
+export interface CobranzaFila {
+  id_contrato: number;
+  numero_contrato: string;
+  id_venta?: number;
+  lote_codigo?: string;
+  cliente_nombre: string;
+  cliente_documento: string;
+  cliente_telefono?: string;
+  precio_total: number;
+  inicial_abonado: number;
+  total_pagado: number;
+  saldo_pendiente: number;
+  monto_vencido: number;
+  cuotas_total: number;
+  cuotas_pagadas: number;
+  cuotas_vencidas: number;
+  proxima_fecha?: string;
+  proxima_monto?: number;
+  dias_atraso: number;
+  estado: string;
 }

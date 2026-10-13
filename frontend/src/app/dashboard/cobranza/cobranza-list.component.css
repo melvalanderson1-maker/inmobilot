@@ -1,0 +1,39 @@
+.cobranza-page { max-width: 1280px; margin: 0 auto; padding: 24px; }
+.page-header h1 { margin: 0; font-size: 1.5rem; color: #142622; }
+.subtitle { margin: 4px 0 0; color: #697386; font-size: 0.9rem; }
+
+.selector-proyecto { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.selector-proyecto label { font-size: 0.78rem; font-weight: 700; color: #697386; text-transform: uppercase; }
+.selector-proyecto select { padding: 9px 12px; border: 1px solid #e1ece8; border-radius: 10px; background: #fff; }
+
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.kpi { background: #fff; border: 1px solid #e1ece8; border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+.kpi span { font-size: 0.78rem; color: #697386; }
+.kpi strong { font-size: 1.3rem; color: #0b3d33; }
+.kpi-rojo strong { color: #b91c1c; }
+
+.barra-filtros { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip-filtro { border: 1px solid #e1ece8; background: #fff; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 0.84rem; color: #44514d; cursor: pointer; }
+.chip-filtro.activo { background: #0f8f73; border-color: #0f8f73; color: #fff; }
+.buscar { flex: 1; min-width: 240px; max-width: 420px; padding: 10px 14px; border: 1px solid #e1ece8; border-radius: 10px; font-size: 0.9rem; background: #fff; }
+
+.estado { text-align: center; padding: 50px 20px; color: #697386; }
+
+.tabla-card { background: #fff; border: 1px solid #e1ece8; border-radius: 14px; overflow-x: auto; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.tabla th { text-align: left; padding: 12px 14px; color: #697386; font-weight: 600; border-bottom: 1px solid #e1ece8; white-space: nowrap; }
+.tabla td { padding: 12px 14px; border-bottom: 1px solid #f2f5f4; vertical-align: top; color: #142622; }
+.tabla small { display: block; color: #697386; font-size: 0.76rem; margin-top: 2px; }
+.contacto a { color: #0f8f73; font-weight: 600; text-decoration: none; }
+
+.chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; background: #eef1f0; color: #44514d; }
+.chip-atraso { background: #fee2e2; color: #b91c1c; }
+.chip-ok, .chip-vigente { background: #e6f5f0; color: #0f8f73; }
+.chip-cancelado { background: #d1fae5; color: #047857; }
+.chip-moroso { background: #fee2e2; color: #b91c1c; }
+
+.btn-abrir { border: 1px solid #e1ece8; background: #f9fbfa; padding: 7px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; color: #0b3d33; cursor: pointer; }
+.btn-abrir:hover { background: #e6f5f0; }
+
+@media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, 1fr); } }

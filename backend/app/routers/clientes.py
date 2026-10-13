@@ -57,6 +57,7 @@ def listar_clientes(
     busqueda: Optional[str] = None,
     tipo_persona: Optional[str] = None,
     activo: Optional[bool] = None,
+    limite: int = 200,
     usuario: m.Usuario = Depends(require_permiso("ver_clientes")),
     db: Session = Depends(get_db),
 ):
@@ -71,16 +72,19 @@ def listar_clientes(
     if activo is not None:
         query = query.filter(m.Cliente.activo == activo)
     if busqueda:
-        texto = f"%{busqueda.strip()}%"
-        query = query.filter(
-            (m.Cliente.nombres.ilike(texto))
-            | (m.Cliente.apellidos.ilike(texto))
-            | (m.Cliente.numero_documento.ilike(texto))
-            | (m.Cliente.razon_social.ilike(texto))
-            | (m.Cliente.telefono.ilike(texto))
-        )
+        # Cada palabra debe aparecer en algún campo: "erick melendez" encuentra a "Erick Anderson Melendez"
+        for palabra in busqueda.strip().split():
+            texto = f"%{palabra}%"
+            query = query.filter(
+                (m.Cliente.nombres.ilike(texto))
+                | (m.Cliente.apellidos.ilike(texto))
+                | (m.Cliente.numero_documento.ilike(texto))
+                | (m.Cliente.razon_social.ilike(texto))
+                | (m.Cliente.ruc.ilike(texto))
+                | (m.Cliente.telefono.ilike(texto))
+            )
 
-    return query.order_by(m.Cliente.created_at.desc()).limit(200).all()
+    return query.order_by(m.Cliente.created_at.desc()).limit(max(1, min(limite, 200))).all()
 
 
 @router.get("/{id_cliente}", response_model=s.ClienteDetalleOut)
@@ -210,3 +214,70 @@ def actualizar_cliente(
         db.query(m.Cliente).options(joinedload(m.Cliente.conyuge)).filter(m.Cliente.id == cliente.id).first()
     )
     return cliente_completo
+
+
+
+@router.post("/{id_cliente}/conyuge-como-cliente", response_model=s.ClienteOut)
+def conyuge_como_cliente(
+    id_cliente: int,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    """Convierte al cónyuge registrado en un Cliente propio, para que pueda ser
+    titular o segundo comprador. Si ya existe como cliente, devuelve ese."""
+    titular = (
+        db.query(m.Cliente)
+        .options(joinedload(m.Cliente.conyuge))
+        .filter(m.Cliente.id == id_cliente, m.Cliente.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not titular:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+    if not titular.conyuge:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Este cliente no tiene cónyuge registrado")
+
+    cy = titular.conyuge
+    documento = cy.numero_documento.strip()
+    existente = (
+        db.query(m.Cliente)
+        .filter(m.Cliente.id_empresa == usuario.id_empresa, m.Cliente.numero_documento == documento)
+        .first()
+    )
+    id_resultado = existente.id if existente else None
+
+    if not existente:
+        nuevo = m.Cliente(
+            id_empresa=usuario.id_empresa,
+            tipo_persona="natural",
+            tipo_documento="DNI",
+            numero_documento=documento,
+            nombres=cy.nombres,
+            apellidos=cy.apellidos,
+            telefono=cy.telefono or titular.telefono,
+            direccion=titular.direccion,
+            dni_frente_url=cy.dni_frente_url,
+            dni_reverso_url=cy.dni_reverso_url,
+            estado_civil="casado",
+        )
+        db.add(nuevo)
+        db.flush()
+        # Cónyuge en espejo: ella queda casada con el titular (solo si el titular es persona natural)
+        if titular.tipo_persona == "natural":
+            db.add(m.ClienteConyuge(
+                id_cliente=nuevo.id,
+                nombres=titular.nombres,
+                apellidos=titular.apellidos,
+                numero_documento=titular.numero_documento,
+                telefono=titular.telefono,
+                dni_frente_url=titular.dni_frente_url,
+                dni_reverso_url=titular.dni_reverso_url,
+            ))
+        db.commit()
+        id_resultado = nuevo.id
+
+    return (
+        db.query(m.Cliente)
+        .options(joinedload(m.Cliente.conyuge))
+        .filter(m.Cliente.id == id_resultado)
+        .first()
+    )

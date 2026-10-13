@@ -8,11 +8,12 @@ import { ClienteService } from '../../core/services/cliente.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Cliente, FormaPago, Lote, Manzana } from '../../core/models';
+import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 @Component({
   selector: 'app-separacion-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ClienteBuscadorComponent],
   templateUrl: './separacion-form.component.html',
   styleUrl: './separacion-form.component.css',
 })
@@ -141,6 +142,24 @@ export class SeparacionFormComponent implements OnInit {
       error: () => {
         this.buscandoCliente.set(false);
         this.toastService.error('No se pudo buscar el cliente');
+      },
+    });
+  }
+
+  onClienteElegido(cliente: Cliente): void {
+    this.clienteEncontrado.set(cliente);
+    this.clienteNoEncontrado.set(false);
+    this.dniFrenteUrl = cliente.dni_frente_url ?? null;
+    this.dniReversoUrl = cliente.dni_reverso_url ?? null;
+  }
+
+  irACrearClienteNuevo(texto: string): void {
+    const esNumero = /^\d{6,}$/.test(texto);
+    this.router.navigate(['/dashboard/clientes/nuevo'], {
+      queryParams: {
+        ...(esNumero ? { documento: texto } : {}),
+        returnTo: '/dashboard/separaciones/nueva',
+        id_proyecto: this.idProyecto,
       },
     });
   }

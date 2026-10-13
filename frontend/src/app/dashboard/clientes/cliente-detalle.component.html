@@ -117,6 +117,9 @@
                 <strong>{{ cliente()!.conyuge!.nombres }} {{ cliente()!.conyuge!.apellidos }}</strong>
                 <span>{{ cliente()!.conyuge!.numero_documento }} · {{ cliente()!.conyuge!.telefono || 'sin teléfono' }}</span>
               </div>
+              <button class="btn btn-outline btn-sm" (click)="registrarConyugeComoCliente()" [disabled]="registrandoConyuge()">
+                {{ registrandoConyuge() ? 'Registrando...' : 'Registrar como cliente' }}
+              </button>
             </div>
 
             @if (cliente()!.conyuge!.dni_frente_url || cliente()!.conyuge!.dni_reverso_url) {

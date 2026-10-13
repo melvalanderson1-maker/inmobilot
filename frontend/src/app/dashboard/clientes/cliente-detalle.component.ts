@@ -3,6 +3,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ClienteService } from '../../core/services/cliente.service';
+import { ToastService } from '../../core/services/toast.service';
 import { ClienteDetalle } from '../../core/models';
 
 @Component({
@@ -17,11 +18,36 @@ export class ClienteDetalleComponent implements OnInit {
   cargando = signal(false);
   idCliente!: number;
 
-  constructor(private clienteService: ClienteService, private route: ActivatedRoute, private router: Router) {}
+  registrandoConyuge = signal(false);
+
+  constructor(
+    private clienteService: ClienteService,
+    private toastService: ToastService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-    this.idCliente = Number(this.route.snapshot.paramMap.get('id'));
-    this.cargar();
+    // Suscripción al parámetro: al pasar de un cliente a otro la pantalla se recarga
+    this.route.paramMap.subscribe((p) => {
+      this.idCliente = Number(p.get('id'));
+      this.cargar();
+    });
+  }
+
+  registrarConyugeComoCliente(): void {
+    this.registrandoConyuge.set(true);
+    this.clienteService.conyugeComoCliente(this.idCliente).subscribe({
+      next: (c) => {
+        this.registrandoConyuge.set(false);
+        this.toastService.exito('Cónyuge registrada como cliente');
+        this.router.navigate(['/dashboard/clientes', c.id]);
+      },
+      error: (err) => {
+        this.registrandoConyuge.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar al cónyuge como cliente');
+      },
+    });
   }
 
   cargar(): void {

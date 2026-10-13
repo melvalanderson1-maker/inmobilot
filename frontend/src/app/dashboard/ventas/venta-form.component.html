@@ -35,32 +35,34 @@
           </div>
 
           @if (!agregarSegundoComprador()) {
-            <p class="dato-secundario">Agrega un cónyuge o copropietario si la venta tiene más de un titular.</p>
+            <p class="dato-secundario">Agrega a un cónyuge o copropietario si la venta tiene más de un titular.</p>
           } @else if (cliente2()) {
             <div class="cliente-fila">
               <div class="avatar">{{ cliente2()!.nombres.charAt(0) }}</div>
               <div class="cliente-datos">
                 <strong>{{ cliente2()!.nombres }} {{ cliente2()!.apellidos }}</strong>
-                <span class="dato-linea">{{ cliente2()!.numero_documento }}</span>
+                <span class="dato-linea">{{ cliente2()!.numero_documento }}@if (cliente2()!.telefono) { · {{ cliente2()!.telefono }} }</span>
               </div>
               <button class="btn-secundario btn-sm" (click)="quitarSegundoComprador()">Quitar</button>
             </div>
-          } @else {
-            <div class="campo">
-              <label>Número de documento</label>
-              <div style="display:flex; gap:8px;">
-                <input type="text" [(ngModel)]="documentoBusqueda2" (keyup.enter)="buscarCliente2()" placeholder="DNI" style="flex:1;" />
-                <button class="btn-secundario" (click)="buscarCliente2()" [disabled]="buscandoCliente2()">
-                  {{ buscandoCliente2() ? 'Buscando...' : 'Buscar' }}
-                </button>
-              </div>
+            <div class="campo" style="margin-top:12px;">
+              <label>Rol en la venta</label>
+              <select [(ngModel)]="rolSegundo">
+                <option value="conyuge">Cónyuge</option>
+                <option value="copropietario">Copropietario</option>
+              </select>
             </div>
-            @if (cliente2NoEncontrado()) {
-              <div class="dato-secundario">
-                No existe un cliente con ese documento.
-                <button class="btn-primary btn-sm" (click)="irACrearCliente2()" style="margin-top:8px;">Crear cliente nuevo</button>
-              </div>
+          } @else {
+            @if (conyugeTitular()) {
+              <button class="btn-secundario" style="width:100%; margin-bottom:12px;" (click)="usarConyuge()" [disabled]="creandoConyuge()">
+                {{ creandoConyuge() ? 'Cargando...' : 'Usar al cónyuge: ' + conyugeTitular()!.nombres + ' ' + conyugeTitular()!.apellidos }}
+              </button>
             }
+            <app-cliente-buscador
+              [excluirIds]="idsExcluidos()"
+              (seleccionado)="elegirSegundo($event)"
+              (crearNuevo)="irACrearCliente2($event)"
+            />
           }
         </section>
 

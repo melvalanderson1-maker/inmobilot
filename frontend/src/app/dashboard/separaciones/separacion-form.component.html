@@ -47,27 +47,11 @@
         </header>
 
         @if (!clienteEncontrado()) {
-          <div class="fila-busqueda">
-            <div class="input-icon">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input type="text" placeholder="Número de documento (DNI)" [(ngModel)]="documentoBusqueda" (keyup.enter)="buscarCliente()" />
-            </div>
-            <button class="btn btn-outline" (click)="buscarCliente()" [disabled]="buscandoCliente()">
-              @if (buscandoCliente()) { <span class="spinner"></span> }
-              {{ buscandoCliente() ? 'Buscando...' : 'Buscar' }}
-            </button>
-          </div>
-          <p class="ayuda">Busca al cliente por su número de documento. Si no existe, podrás crearlo y volver aquí.</p>
-
-          @if (clienteNoEncontrado()) {
-            <div class="aviso-no-encontrado">
-              <div class="aviso-icon">!</div>
-              <p>No hay ningún cliente registrado con ese documento.</p>
-              <button class="btn btn-primary btn-sm" (click)="irACrearCliente()">Crear cliente nuevo</button>
-            </div>
-          }
+          <app-cliente-buscador
+            (seleccionado)="onClienteElegido($event)"
+            (crearNuevo)="irACrearClienteNuevo($event)"
+          />
+          <p class="ayuda">Busca por DNI, celular, nombre o apellido. Si no existe, puedes crearlo desde la misma lista y volverás aquí.</p>
         } @else {
           <div class="cliente-encontrado">
             <div class="avatar">

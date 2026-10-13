@@ -10,7 +10,7 @@ export class ClienteService {
     return this.api.get<Cliente | null>('/clientes/buscar', { documento });
   }
 
-  listar(filtros?: { busqueda?: string; tipo_persona?: string; activo?: boolean }) {
+  listar(filtros?: { busqueda?: string; tipo_persona?: string; activo?: boolean; limite?: number }) {
     return this.api.get<Cliente[]>('/clientes', filtros as Record<string, unknown>);
   }
 
@@ -24,6 +24,10 @@ export class ClienteService {
 
   actualizar(id: number, payload: ClienteUpdate) {
     return this.api.patch<Cliente>(`/clientes/${id}`, payload);
+  }
+
+  conyugeComoCliente(idCliente: number) {
+    return this.api.post<Cliente>(`/clientes/${idCliente}/conyuge-como-cliente`, {});
   }
 
   subirArchivo(formData: FormData) {

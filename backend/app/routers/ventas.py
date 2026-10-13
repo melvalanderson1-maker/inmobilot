@@ -72,6 +72,9 @@ async def crear_venta_desde_separacion(
             raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, semestral o pago único")
         if not (1 <= payload.datos_credito.plazo_anios <= 2):
             raise HTTPException(status_code=422, detail="El plazo máximo es de 2 años; si es mayor requiere autorización")
+    ids_compradores = [i.id_cliente for i in payload.clientes if i.id_cliente]
+    if len(ids_compradores) != len(set(ids_compradores)):
+        raise HTTPException(status_code=422, detail="Un mismo cliente no puede figurar dos veces como comprador")
 
     venta = m.Venta(
         id_empresa=usuario.id_empresa,
@@ -122,6 +125,19 @@ def venta_de_separacion(
 ):
     venta = db.query(m.Venta).filter(
         m.Venta.id_separacion == id_separacion,
+        m.Venta.id_empresa == usuario.id_empresa,
+    ).first()
+    return {"id_venta": venta.id if venta else None}
+
+
+@router.get("/por-contrato/{id_contrato}")
+def venta_de_contrato(
+    id_contrato: int,
+    usuario: m.Usuario = Depends(require_permiso("ver_ventas")),
+    db: Session = Depends(get_db),
+):
+    venta = db.query(m.Venta).filter(
+        m.Venta.id_contrato == id_contrato,
         m.Venta.id_empresa == usuario.id_empresa,
     ).first()
     return {"id_venta": venta.id if venta else None}

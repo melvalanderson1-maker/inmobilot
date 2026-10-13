@@ -1,0 +1,33 @@
+<div class="buscador">
+  <input
+    type="text"
+    class="buscador-input"
+    [ngModel]="texto"
+    (ngModelChange)="onTexto($event)"
+    (focus)="abierto.set(true)"
+    [placeholder]="placeholder"
+    autocomplete="off"
+  />
+
+  @if (abierto() && texto.trim().length >= 2) {
+    <div class="resultados">
+      @if (buscando()) {
+        <div class="res-msg">Buscando...</div>
+      } @else {
+        @for (c of resultados(); track c.id) {
+          <button type="button" class="res-item" (click)="elegir(c)">
+            <span class="res-avatar">{{ nombre(c).charAt(0) }}</span>
+            <span class="res-datos">
+              <strong>{{ nombre(c) }}</strong>
+              <small>{{ documento(c) }}@if (c.telefono) { · {{ c.telefono }} }</small>
+            </span>
+          </button>
+        }
+        @if (resultados().length === 0) {
+          <div class="res-msg">Sin resultados para "{{ texto.trim() }}"</div>
+        }
+        <button type="button" class="res-crear" (click)="crear()">+ Crear cliente nuevo</button>
+      }
+    </div>
+  }
+</div>

@@ -1481,3 +1481,9 @@
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
+
+
+.chip-pago-pendiente_caja { background: #fef3c7; color: #92660a; }
+.chip-pago-pendiente_facturacion { background: #dbeafe; color: #1d4ed8; }
+.chip-pago-validado { background: #d1fae5; color: #047857; }
+.chip-pago-rechazado { background: #fee2e2; color: #b91c1c; }

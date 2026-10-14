@@ -95,7 +95,7 @@ export class CobranzaListComponent implements OnInit, OnDestroy {
   }
 
   abrirContrato(f: CobranzaFila): void {
-    this.router.navigate(['/dashboard/contratos'], { queryParams: { abrir: f.id_contrato } });
+    this.router.navigate(['/dashboard/contratos'], { queryParams: { abrir: f.id_contrato, origen: 'cobranza' } });
   }
 
   waUrl(telefono?: string): string | null {

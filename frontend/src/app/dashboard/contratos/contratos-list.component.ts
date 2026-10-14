@@ -58,6 +58,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   ventaPorContrato = signal<Partial<Record<number, Venta | null>>>({});
   procesandoCobranza = signal(false);
   private idAbrirPendiente: number | null = null;
+  private volverACobranza = false;
 
   modalComprobanteAbierto = signal(false);
   comprobanteUrlActual = signal<string | null>(null);
@@ -133,6 +134,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const abrir = Number(this.route.snapshot.queryParamMap.get('abrir'));
     this.idAbrirPendiente = abrir || null;
+    this.volverACobranza = this.route.snapshot.queryParamMap.get('origen') === 'cobranza';
 
     this.api.get<Proyecto[]>('/proyectos').subscribe((proyectos) => {
       this.proyectos.set(proyectos);
@@ -290,6 +292,30 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   cerrarDrawer(): void {
     this.drawerAbierto.set(false);
+    if (this.volverACobranza) {
+      this.router.navigate(['/dashboard/cobranza']);
+    }
+  }
+
+  get puedeRegistrarPago(): boolean {
+    return ['admin', 'gerencia', 'supervisor', 'cobranza', 'contabilidad'].includes(this.auth.usuario()?.rol?.clave ?? '');
+  }
+
+  /** ¿Esa cuota ya tiene un pago esperando a Caja o Facturación? */
+  pagoEnProceso(idContrato: number, idCuota: number): boolean {
+    return (this.pagosPorContrato()[idContrato] ?? []).some(
+      (p) => p.id_cuota === idCuota && (p.estado === 'pendiente_caja' || p.estado === 'pendiente_facturacion')
+    );
+  }
+
+  etiquetaPago(estado: string): string {
+    const mapa: Record<string, string> = {
+      pendiente_caja: 'En Caja',
+      pendiente_facturacion: 'En Facturación',
+      validado: 'Aplicado',
+      rechazado: 'Rechazado',
+    };
+    return mapa[estado] ?? estado;
   }
 
   cargarCronograma(idContrato: number): void {
@@ -323,7 +349,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   resumen(contrato: Contrato): ResumenContrato {
     const cuotas = (this.cronogramaPorContrato()[contrato.id] ?? []).filter((c) => c.requiere_pago);
-    const pagos = this.pagosPorContrato()[contrato.id] ?? [];
+    const pagos = (this.pagosPorContrato()[contrato.id] ?? []).filter((p) => p.estado === 'validado');
 
     const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
     const saldoPendiente = Math.max(Number(contrato.saldo_financiado) - totalPagado, 0);
@@ -575,6 +601,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
           next: () => {
             this.guardandoPago.set(false);
             this.modalPagoAbierto.set(false);
+            this.toastService.exito('Pago enviado a Caja para su validación');
             this.cargarCronograma(this.contratoPagoId!);
           },
           error: (err) => {

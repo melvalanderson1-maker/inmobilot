@@ -5,6 +5,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { SocketService } from '../../core/services/socket.service';
+import { SonidoService } from '../../core/services/sonido.service';
 import { Notificacion } from '../../core/models';
 import { ToastContainerComponent } from '../../shared/toast/toast-container.component';
 import { LoaderComponent } from '../../shared/loader/loader.component';
@@ -23,11 +24,14 @@ export class ShellComponent implements OnInit, OnDestroy {
   colapsado = signal(false);
   mostrarModalLogout = signal(false);
   menuMovilAbierto = signal(false);
+  private idsConocidos = new Set<number>();
+  private primeraCarga = true;
 
   constructor(
     public auth: AuthService,
     private api: ApiService,
     private socket: SocketService,
+    public sonido: SonidoService,
     private router: Router
   ) {}
 
@@ -58,11 +62,24 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.socket.desconectar();
+    this.socket.desconectar(true);
   }
 
   cargarNotificaciones(): void {
     this.api.get<Notificacion[]>('/notificaciones', { solo_no_leidas: false }).subscribe((res) => {
+      const miId = this.auth.usuario()?.id;
+      if (!this.primeraCarga) {
+        // Suena solo con notificaciones nuevas sin leer y que no provocó el propio usuario
+        const nuevas = res.filter(
+          (n) =>
+            !n.leido &&
+            !this.idsConocidos.has(n.id) &&
+            (n.data?.['id_usuario_accion'] as number | undefined) !== miId
+        );
+        if (nuevas.length > 0) this.sonido.reproducir();
+      }
+      res.forEach((n) => this.idsConocidos.add(n.id));
+      this.primeraCarga = false;
       this.notificaciones.set(res);
     });
   }
@@ -99,19 +116,28 @@ export class ShellComponent implements OnInit, OnDestroy {
     }
   }
 
-  marcarLeido(n: Notificacion): void {
-    if (!n.leido) {
+    marcarLeido(n: Notificacion): void {
+      if (n.leido) return;
       this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
         this.cargarNotificaciones();
       });
     }
 
-    const idSeparacion = n.data?.['id_separacion'] as number | undefined;
-    if (idSeparacion) {
-      this.panelNotifAbierto.set(false);
-      this.router.navigate(['/dashboard/separaciones', idSeparacion]);
+    /** Al hacer clic en una notificación: se marca leída y te lleva a donde corresponde. */
+    abrirNotificacion(n: Notificacion): void {
+      this.marcarLeido(n);
+      const d = (n.data ?? {}) as Record<string, any>;
+      if (d['id_pago']) {
+        this.panelNotifAbierto.set(false);
+        this.router.navigate(['/dashboard/pagos']);
+      } else if (d['id_separacion']) {
+        this.panelNotifAbierto.set(false);
+        this.router.navigate(['/dashboard/separaciones', d['id_separacion']]);
+      } else if (d['id_venta']) {
+        this.panelNotifAbierto.set(false);
+        this.router.navigate(['/dashboard/ventas', d['id_venta']]);
+      }
     }
-  }
 
   abrirModalLogout(): void {
     this.mostrarModalLogout.set(true);

@@ -158,6 +158,20 @@
       </button>
 
       <div class="spacer"></div>
+      <button class="campana" (click)="sonido.alternar()" [title]="sonido.habilitado() ? 'Sonido activado (clic para silenciar)' : 'Sonido silenciado (clic para activar)'">
+        @if (sonido.habilitado()) {
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+        } @else {
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        }
+      </button>
       <button class="campana" (click)="toggleNotificaciones()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -175,7 +189,7 @@
             <p class="vacio">Sin notificaciones</p>
           }
           @for (n of notificaciones(); track n.id) {
-            <div class="item-notif" [class.no-leido]="!n.leido" (click)="marcarLeido(n)">
+            <div class="item-notif" [class.no-leido]="!n.leido" (click)="abrirNotificacion(n)">
               <strong>{{ n.titulo }}</strong>
               @if (n.mensaje) {
                 <p>{{ n.mensaje }}</p>

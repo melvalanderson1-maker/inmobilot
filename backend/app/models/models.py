@@ -514,10 +514,25 @@ class Pago(Base):
     fecha_pago = Column(Date, nullable=False)
     metodo_pago = Column(String(50))
     numero_operacion = Column(String(50))
-    comprobante_url = Column(String(300))
+    comprobante_url = Column(String(300))  # voucher del cliente
     registrado_por = Column(Integer, ForeignKey("usuarios.id"))
     observacion = Column(String(300))
     created_at = Column(DateTime, server_default=func.now())
+
+    # Circuito: pendiente_caja -> pendiente_facturacion -> validado (o rechazado)
+    estado = Column(String(30), nullable=False, default="pendiente_caja", server_default="validado")
+    validado_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_validacion = Column(DateTime)
+    motivo_rechazo = Column(String(300))
+    factura_tipo = Column(String(30))
+    factura_numero = Column(String(50))
+    factura_url = Column(String(300))
+    facturado_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_facturacion = Column(DateTime)
+
+    contrato = relationship("Contrato")
+    cuota = relationship("CronogramaPago")
+    registrador = relationship("Usuario", foreign_keys=[registrado_por])
 
 
 # =========================================================================

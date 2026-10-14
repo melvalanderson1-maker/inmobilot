@@ -407,6 +407,11 @@ export interface Pago {
   metodo_pago?: string;
   numero_operacion?: string;
   comprobante_url?: string;
+  estado: string;
+  motivo_rechazo?: string;
+  factura_tipo?: string;
+  factura_numero?: string;
+  factura_url?: string;
 }
 
 
@@ -718,4 +723,34 @@ export interface CobranzaFila {
   proxima_monto?: number;
   dias_atraso: number;
   estado: string;
+}
+
+
+export interface PagoCola {
+  id: number;
+  id_contrato: number;
+  id_proyecto: number;
+  numero_contrato: string;
+  lote_codigo?: string;
+  cliente_nombre: string;
+  cliente_documento: string;
+  numero_cuota?: number;
+  monto: number;
+  fecha_pago: string;
+  metodo_pago?: string;
+  numero_operacion?: string;
+  comprobante_url?: string;
+  estado: string;
+  motivo_rechazo?: string;
+  factura_tipo?: string;
+  factura_numero?: string;
+  factura_url?: string;
+  registrado_por_nombre?: string;
+  created_at: string;
+}
+
+export interface PagoComprobanteIn {
+  tipo: string;
+  numero: string;
+  archivo_url: string;
 }

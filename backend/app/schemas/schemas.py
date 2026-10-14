@@ -530,6 +530,44 @@ class PagoOut(ORMBase):
     metodo_pago: Optional[str] = None
     numero_operacion: Optional[str] = None
     comprobante_url: Optional[str] = None
+    estado: str = "validado"
+    motivo_rechazo: Optional[str] = None
+    factura_tipo: Optional[str] = None
+    factura_numero: Optional[str] = None
+    factura_url: Optional[str] = None
+
+
+class PagoRechazo(BaseModel):
+    motivo: str
+
+
+class PagoComprobanteIn(BaseModel):
+    tipo: str  # boleta | factura | recibo
+    numero: str
+    archivo_url: str
+
+
+class PagoColaOut(BaseModel):
+    id: int
+    id_contrato: int
+    id_proyecto: int
+    numero_contrato: str
+    lote_codigo: Optional[str] = None
+    cliente_nombre: str
+    cliente_documento: str
+    numero_cuota: Optional[int] = None
+    monto: Decimal
+    fecha_pago: date
+    metodo_pago: Optional[str] = None
+    numero_operacion: Optional[str] = None
+    comprobante_url: Optional[str] = None
+    estado: str
+    motivo_rechazo: Optional[str] = None
+    factura_tipo: Optional[str] = None
+    factura_numero: Optional[str] = None
+    factura_url: Optional[str] = None
+    registrado_por_nombre: Optional[str] = None
+    created_at: datetime
 
 
 # ----------------------------------------------------------------- LEADS --

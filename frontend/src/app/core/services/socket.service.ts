@@ -13,6 +13,7 @@ export interface EventoSocket<T = unknown> {
 @Injectable({ providedIn: 'root' })
 export class SocketService implements OnDestroy {
   private socket: Socket | null = null;
+  private modo: 'privado' | 'publico' | null = null;
   private eventos$ = new Subject<EventoSocket>();
 
   readonly onEvento = this.eventos$.asObservable();
@@ -21,8 +22,10 @@ export class SocketService implements OnDestroy {
 
   conectar(): void {
     const token = this.auth.token();
-    if (!token || this.socket?.connected) return;
+    // Si ya existe el socket (aunque esté reconectando) no se crea otro: evitaría eventos duplicados
+    if (!token || this.socket) return;
 
+    this.modo = 'privado';
     this.socket = io(this.cfg.apiUrl(), {
       path: '/socket.io',
       auth: { token },
@@ -33,8 +36,9 @@ export class SocketService implements OnDestroy {
   }
 
   conectarPublico(idProyecto: number): void {
-    if (this.socket?.connected) return;
+    if (this.socket) return;
 
+    this.modo = 'publico';
     this.socket = io(this.cfg.apiUrl(), {
       path: '/socket.io',
       transports: ['websocket'],
@@ -63,6 +67,7 @@ export class SocketService implements OnDestroy {
       'separacion:actualizada',
       'venta:nueva',
       'venta:actualizada',
+      'pago:actualizado',
     ];
 
     for (const evento of eventosEscuchados) {
@@ -70,12 +75,18 @@ export class SocketService implements OnDestroy {
     }
   }
 
-  desconectar(): void {
+  /**
+   * Con sesión iniciada, el Shell es el dueño de la conexión: las pantallas hijas
+   * llaman desconectar() al cerrarse y NO deben cortarla. Solo el Shell usa forzar=true.
+   */
+  desconectar(forzar = false): void {
+    if (this.modo === 'privado' && !forzar) return;
     this.socket?.disconnect();
     this.socket = null;
+    this.modo = null;
   }
 
   ngOnDestroy(): void {
-    this.desconectar();
+    this.desconectar(true);
   }
 }

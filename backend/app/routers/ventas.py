@@ -10,7 +10,7 @@ import logging
 
 from sqlalchemy.orm import joinedload
 from app.services import separacion_service as sep_svc
-from app.sockets import notificar_venta, notificar_cambio_estado_lote, notificar_nuevo_contrato
+from app.sockets import notificar_venta, notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_usuarios
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +44,33 @@ async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta,
             sep_svc.lote_out_dict(db, venta.id_lote),
             id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa,
         )
+        if venta.forma_pago == m.FormaPagoEnum.credito:
+            await _avisar_roles(
+                db, usuario, venta, ["cobranza", "admin"],
+                "venta_credito_nueva", "Nuevo contrato a crédito",
+                f"Lote {venta.lote.codigo if venta.lote else ''}: ya puedes iniciar el seguimiento de cobranza.",
+            )
     except Exception:
         logger.exception("No se pudo emitir el aviso en tiempo real del contrato %s", id_contrato)
+
+
+async def _avisar_roles(db: Session, usuario: m.Usuario, venta: m.Venta, roles: list[str],
+                        tipo: str, titulo: str, mensaje: str):
+    """Notificación (campana + sonido) a los usuarios de esos roles con acceso al proyecto.
+    Si falla no rompe la operación principal."""
+    try:
+        destinatarios = sep_svc.usuarios_por_roles(
+            db, usuario.id_empresa, venta.id_proyecto, roles, excluir_id=usuario.id
+        )
+        notifs = sep_svc.crear_notificaciones(
+            db, usuario.id_empresa, destinatarios, tipo, titulo, mensaje,
+            {"id_venta": venta.id, "id_proyecto": venta.id_proyecto, "id_lote": venta.id_lote},
+        )
+        db.commit()
+        await notificar_usuarios(sep_svc.notificaciones_a_dict(notifs))
+    except Exception:
+        db.rollback()
+        logger.exception("No se pudo notificar a %s por la venta %s", roles, venta.id)
 
 @router.post("/desde-separacion/{id_separacion}", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
 async def crear_venta_desde_separacion(
@@ -165,6 +190,10 @@ async def generar_documento(
     venta.documento_generado_url = svc.guardar_documento_pdf(venta.id, pdf_bytes)
     venta.estado = m.EstadoVentaEnum.documento_generado
     db.commit()
+    await _avisar_roles(
+        db, usuario, venta, ["legal"], "venta_documento_generado", "Documento generado",
+        f"Se generó el documento de la venta del lote {venta.lote.codigo if venta.lote else ''}.",
+    )
     venta_completa = svc.cargar_venta(db, id_venta, usuario)
     await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
     return s.VentaOut.desde_venta(venta_completa)
@@ -181,6 +210,10 @@ async def subir_documento_firmado(
     venta.documento_firmado_url = payload.url
     venta.estado = m.EstadoVentaEnum.documento_firmado
     db.commit()
+    await _avisar_roles(
+        db, usuario, venta, ["legal"], "venta_documento_firmado", "Documento firmado",
+        f"El documento de la venta del lote {venta.lote.codigo if venta.lote else ''} ya está firmado.",
+    )
     venta_completa = svc.cargar_venta(db, id_venta, usuario)
     await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
     return s.VentaOut.desde_venta(venta_completa)

@@ -1,0 +1,144 @@
+<div class="pagos-page">
+  <div class="page-header">
+    <h1>Pagos</h1>
+    <p class="subtitle">Validación de Caja y comprobantes de Facturación</p>
+  </div>
+
+  <div class="selector-proyecto">
+    <label>Proyecto</label>
+    <select [(ngModel)]="idProyecto" (ngModelChange)="cargar()">
+      @for (p of proyectos(); track p.id) {
+        <option [ngValue]="p.id">{{ p.nombre }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="barra">
+    <div class="tabs">
+      @for (t of tabs; track t.valor) {
+        <button type="button" class="tab" [class.activa]="tab() === t.valor" (click)="tab.set(t.valor)">
+          {{ t.etiqueta }}
+          <span class="contador">{{ conteo()[t.valor] ?? 0 }}</span>
+        </button>
+      }
+    </div>
+    <input
+      type="text"
+      class="buscar"
+      placeholder="Buscar por cliente, DNI, lote, contrato u operación"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+    />
+  </div>
+
+  @if (cargando()) {
+    <div class="estado">Cargando pagos...</div>
+  } @else if (filtrados().length === 0) {
+    <div class="estado">No hay pagos en esta vista.</div>
+  } @else {
+    <div class="tabla-card">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Contrato / Lote</th>
+            <th>Cliente</th>
+            <th>Cuota</th>
+            <th>Monto</th>
+            <th>Operación</th>
+            <th>Voucher</th>
+            <th>Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of filtrados(); track p.id) {
+            <tr>
+              <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
+              <td><strong>{{ p.numero_contrato }}</strong><small>Lote {{ p.lote_codigo ?? '—' }}</small></td>
+              <td><strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small></td>
+              <td>{{ p.numero_cuota ?? '—' }}</td>
+              <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
+              <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
+              <td>
+                @if (urlCompleta(p.comprobante_url); as url) {
+                  <a [href]="url" target="_blank" rel="noopener" class="enlace">Ver ↗</a>
+                } @else { — }
+              </td>
+              <td>
+                <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
+                @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
+                @if (p.factura_numero) {
+                  <small>
+                    {{ p.factura_tipo | titlecase }} {{ p.factura_numero }}
+                    @if (urlCompleta(p.factura_url); as f) { · <a [href]="f" target="_blank" rel="noopener" class="enlace">Ver</a> }
+                  </small>
+                }
+              </td>
+              <td class="acciones">
+                @if (p.estado === 'pendiente_caja' && puedeValidar) {
+                  <button class="btn-ok" (click)="validar(p)" [disabled]="procesando()">Validar</button>
+                  <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                }
+                @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
+                  <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+@if (pagoRechazo()) {
+  <div class="modal-overlay" (click)="pagoRechazo.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Rechazar pago</h2>
+      <p class="sub">S/ {{ pagoRechazo()!.monto | number:'1.2-2' }} · contrato {{ pagoRechazo()!.numero_contrato }}</p>
+      <div class="campo">
+        <label>Motivo</label>
+        <textarea rows="3" [(ngModel)]="motivoRechazo" placeholder="Ej: el voucher no coincide con el monto"></textarea>
+      </div>
+      <div class="pie">
+        <button class="btn-sec" (click)="pagoRechazo.set(null)">Cancelar</button>
+        <button class="btn-no" (click)="confirmarRechazo()" [disabled]="procesando()">Rechazar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (pagoComprobante()) {
+  <div class="modal-overlay" (click)="pagoComprobante.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Subir comprobante</h2>
+      <p class="sub">S/ {{ pagoComprobante()!.monto | number:'1.2-2' }} · contrato {{ pagoComprobante()!.numero_contrato }}</p>
+      <div class="campo">
+        <label>Tipo</label>
+        <select [(ngModel)]="comprobanteForm.tipo">
+          <option value="boleta">Boleta</option>
+          <option value="factura">Factura</option>
+          <option value="recibo">Recibo</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>Número</label>
+        <input type="text" [(ngModel)]="comprobanteForm.numero" placeholder="B001-00123" />
+      </div>
+      <div class="campo">
+        <label>Archivo (JPG, PNG o PDF)</label>
+        @if (comprobanteForm.archivo_url) {
+          <span class="ok">Archivo subido ✓</span>
+        } @else {
+          <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoComprobante($event)" [disabled]="subiendoArchivo()" />
+          @if (subiendoArchivo()) { <span class="sub">Subiendo...</span> }
+        }
+      </div>
+      <div class="pie">
+        <button class="btn-sec" (click)="pagoComprobante.set(null)">Cancelar</button>
+        <button class="btn-ok" (click)="confirmarComprobante()" [disabled]="procesando() || subiendoArchivo()">Guardar y aplicar</button>
+      </div>
+    </div>
+  </div>
+}

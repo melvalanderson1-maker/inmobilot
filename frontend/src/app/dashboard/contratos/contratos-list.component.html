@@ -236,9 +236,13 @@
                     </td>
                     <td>
                       @if (cuota.requiere_pago && cuota.estado !== 'pagada') {
-                        <button class="btn-secundario-sm" (click)="abrirRegistrarPago(contratoDrawer()!.id, cuota)">
-                          Pagar
-                        </button>
+                        @if (pagoEnProceso(contratoDrawer()!.id, cuota.id)) {
+                          <span class="chip chip-pago-pendiente_caja">En validación</span>
+                        } @else if (puedeRegistrarPago) {
+                          <button class="btn-secundario-sm" (click)="abrirRegistrarPago(contratoDrawer()!.id, cuota)">
+                            Pagar
+                          </button>
+                        }
                       }
                     </td>
                   </tr>
@@ -261,6 +265,7 @@
                     <th>Método</th>
                     <th>N° op.</th>
                     <th>Comp.</th>
+                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,6 +282,11 @@
                         } @else {
                           <span class="sin-comprobante">—</span>
                         }
+                      </td>
+                      <td>
+                        <span class="chip" [ngClass]="'chip-pago-' + pago.estado" [attr.title]="pago.motivo_rechazo ?? ''">
+                          {{ etiquetaPago(pago.estado) }}
+                        </span>
                       </td>
                     </tr>
                   }
@@ -474,6 +484,9 @@
           @if (errorPago()) {
             <div class="mensaje-error">{{ errorPago() }}</div>
           }
+          <div class="aviso-info">
+            El pago pasará primero a <strong>Caja</strong> y luego a <strong>Facturación</strong>. Se aplicará a la cuota cuando Facturación suba el comprobante.
+          </div>
 
           <div class="campo">
             <label>Monto (S/)</label>

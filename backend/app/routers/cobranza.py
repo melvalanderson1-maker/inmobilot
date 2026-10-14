@@ -19,7 +19,11 @@ CERO = Decimal("0")
 
 
 def _total_pagado(db: Session, id_contrato: int) -> Decimal:
-    total = db.query(func.coalesce(func.sum(m.Pago.monto), 0)).filter(m.Pago.id_contrato == id_contrato).scalar()
+    total = (
+        db.query(func.coalesce(func.sum(m.Pago.monto), 0))
+        .filter(m.Pago.id_contrato == id_contrato, m.Pago.estado == "validado")
+        .scalar()
+    )
     return Decimal(str(total))
 
 
@@ -71,7 +75,7 @@ def resumen_cobranza(
     if ids:
         pagado = dict(
             db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
-            .filter(m.Pago.id_contrato.in_(ids))
+            .filter(m.Pago.id_contrato.in_(ids), m.Pago.estado == "validado")
             .group_by(m.Pago.id_contrato)
             .all()
         )
@@ -178,6 +182,14 @@ async def cancelar_contrato(
     if contrato.estado in (m.EstadoContratoEnum.cancelado, m.EstadoContratoEnum.anulado):
         raise _conflicto("El contrato ya está cerrado")
 
+    en_tramite = (
+        db.query(m.Pago.id)
+        .filter(m.Pago.id_contrato == contrato.id, m.Pago.estado.in_(["pendiente_caja", "pendiente_facturacion"]))
+        .first()
+    )
+    if en_tramite:
+        raise _conflicto("Hay pagos pendientes de Caja o Facturación. Espera a que se apliquen antes de cancelar")
+
     saldo = contrato.saldo_financiado - _total_pagado(db, contrato.id)
     if saldo > 0:
         raise _conflicto(f"Aún falta cobrar S/ {saldo:,.2f}. Registra el pago antes de cancelar el contrato")
@@ -219,7 +231,7 @@ async def finalizar_venta(
 
     tiene_deposito = (
         db.query(m.Pago.id)
-        .filter(m.Pago.id_contrato == contrato.id, m.Pago.comprobante_url.isnot(None))
+        .filter(m.Pago.id_contrato == contrato.id, m.Pago.comprobante_url.isnot(None), m.Pago.estado == "validado")
         .first()
         is not None
     )

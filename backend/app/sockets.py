@@ -125,3 +125,15 @@ async def notificar_separacion(evento: str, separacion_dict: dict, id_proyecto: 
 async def notificar_venta(evento: str, venta_dict: dict, id_proyecto: int):
     """Evento de venta a la sala del proyecto (datos mínimos: id, id_lote, estado)."""
     await emitir_evento(evento, venta_dict, room=f"proyecto:{id_proyecto}")
+
+
+async def notificar_usuarios(notificaciones: list[dict]):
+    """Notificación privada a cada destinatario (sala usuario:{id})."""
+    for notif in notificaciones:
+        await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
+
+
+async def notificar_pago(evento: str, pago_dict: dict, id_proyecto: int, notificaciones: list[dict]):
+    """Evento de pago a la sala del proyecto (datos mínimos) + aviso privado a los destinatarios."""
+    await emitir_evento(evento, pago_dict, room=f"proyecto:{id_proyecto}")
+    await notificar_usuarios(notificaciones)

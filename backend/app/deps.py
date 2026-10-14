@@ -118,6 +118,10 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "ver_ventas": _EJECUTIVOS | {"contabilidad", "legal", "cobranza"},
     "ver_cobranza": {"admin", "gerencia", "supervisor", "contabilidad", "cobranza"},
     "gestionar_cobranza": {"admin", "gerencia", "cobranza"},
+    "registrar_pago": {"admin", "gerencia", "supervisor", "cobranza", "contabilidad"},
+    "validar_pago": {"admin", "caja"},
+    "facturar_pago": {"admin", "facturacion"},
+    "ver_pagos": {"admin", "gerencia", "supervisor", "contabilidad", "cobranza", "caja", "facturacion"},
     "gestionar_rrpp": {"admin", "gerencia", "legal"},
 }
 

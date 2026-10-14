@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
-from app.deps import require_modulo, get_ids_proyectos_usuario
+from app.deps import require_modulo, require_permiso, get_ids_proyectos_usuario
+from app.services import separacion_service as sep_svc
 from app.models import models as m
 from app.schemas import schemas as s
-from app.sockets import notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_pago_registrado
+from app.sockets import notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_pago_registrado, notificar_pago
 
 router = APIRouter(prefix="/contratos", tags=["contratos"])
 
@@ -371,13 +372,33 @@ def listar_pagos(
 async def registrar_pago(
     id_contrato: int,
     payload: s.PagoCreate,
-    usuario: m.Usuario = Depends(require_modulo("pagos")),
+    usuario: m.Usuario = Depends(require_permiso("registrar_pago")),
     db: Session = Depends(get_db),
 ):
-    contrato = db.query(m.Contrato).filter(m.Contrato.id == id_contrato).first()
+    """El pago NO se aplica a la cuota todavía: queda pendiente de Caja y luego de Facturación."""
+    contrato = (
+        db.query(m.Contrato)
+        .filter(m.Contrato.id == id_contrato, m.Contrato.id_empresa == usuario.id_empresa)
+        .first()
+    )
     if not contrato:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contrato no encontrado")
     _validar_acceso_proyecto(db, usuario, contrato.id_proyecto)
+
+    if contrato.estado in (m.EstadoContratoEnum.cancelado, m.EstadoContratoEnum.anulado):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El contrato ya está cerrado")
+    if payload.monto <= 0:
+        raise HTTPException(status_code=422, detail="El monto debe ser mayor a cero")
+    if payload.id_cuota:
+        cuota = (
+            db.query(m.CronogramaPago)
+            .filter(m.CronogramaPago.id == payload.id_cuota, m.CronogramaPago.id_contrato == id_contrato)
+            .first()
+        )
+        if not cuota:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La cuota no pertenece a este contrato")
+        if cuota.estado == m.EstadoCuotaEnum.pagada:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esa cuota ya está pagada")
 
     pago = m.Pago(
         id_cuota=payload.id_cuota,
@@ -389,26 +410,28 @@ async def registrar_pago(
         comprobante_url=payload.comprobante_url,
         registrado_por=usuario.id,
         observacion=payload.observacion,
+        estado="pendiente_caja",
     )
     db.add(pago)
+    db.flush()
 
-    if payload.id_cuota:
-        cuota = db.query(m.CronogramaPago).filter(m.CronogramaPago.id == payload.id_cuota).first()
-        if cuota:
-            cuota.monto_pagado = (cuota.monto_pagado or Decimal("0")) + payload.monto
-            if cuota.monto_pagado >= cuota.monto_cuota:
-                cuota.estado = m.EstadoCuotaEnum.pagada
-                cuota.fecha_pago_real = payload.fecha_pago
-            else:
-                cuota.estado = m.EstadoCuotaEnum.parcial
-
+    destinatarios = sep_svc.usuarios_por_roles(
+        db, usuario.id_empresa, contrato.id_proyecto, ["caja", "admin"], excluir_id=usuario.id
+    )
+    notifs = sep_svc.crear_notificaciones(
+        db, usuario.id_empresa, destinatarios,
+        "pago_pendiente_caja",
+        "Pago por validar",
+        f"{usuario.nombre} registró un pago de S/ {payload.monto:,.2f} (contrato {contrato.numero_contrato})",
+        {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "pendiente_caja"},
+    )
     db.commit()
     db.refresh(pago)
 
-    await notificar_pago_registrado(
-        id_contrato=id_contrato,
-        id_proyecto=contrato.id_proyecto,
-        id_empresa=usuario.id_empresa,
+    await notificar_pago(
+        "pago:actualizado",
+        {"id": pago.id, "id_contrato": contrato.id, "estado": pago.estado},
+        contrato.id_proyecto,
+        sep_svc.notificaciones_a_dict(notifs),
     )
-
     return pago

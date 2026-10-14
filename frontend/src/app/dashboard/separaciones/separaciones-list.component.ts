@@ -75,6 +75,12 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     this.cargarSeparaciones();
   }
 
+  /** Vuelve el filtro de estado a "Todos" y recarga. */
+  limpiarFiltros(): void {
+    this.filtroEstado = 'todos';
+    this.cargarSeparaciones();
+  }
+
   cargarSeparaciones(): void {
     if (!this.idProyectoSeleccionado) return;
     this.cargando.set(true);

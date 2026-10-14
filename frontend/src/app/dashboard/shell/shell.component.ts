@@ -11,6 +11,8 @@ import { ToastContainerComponent } from '../../shared/toast/toast-container.comp
 import { LoaderComponent } from '../../shared/loader/loader.component';
 import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 
+type TemaApp = 'oscuro' | 'claro';
+
 @Component({
   selector: 'app-shell',
   standalone: true,
@@ -24,6 +26,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   colapsado = signal(false);
   mostrarModalLogout = signal(false);
   menuMovilAbierto = signal(false);
+  tema = signal<TemaApp>(this.temaInicial());
   private idsConocidos = new Set<number>();
   private primeraCarga = true;
 
@@ -62,8 +65,34 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.bloquearScroll(false);
     this.socket.desconectar(true);
   }
+
+  // ===== TEMA OSCURO / CLARO =====
+
+  private temaInicial(): TemaApp {
+    let guardado: string | null = null;
+    try {
+      guardado = localStorage.getItem('inmobilot-tema');
+    } catch {}
+    const tema: TemaApp = guardado === 'claro' ? 'claro' : 'oscuro';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-tema', tema);
+    }
+    return tema;
+  }
+
+  alternarTema(): void {
+    const nuevo: TemaApp = this.tema() === 'oscuro' ? 'claro' : 'oscuro';
+    this.tema.set(nuevo);
+    document.documentElement.setAttribute('data-tema', nuevo);
+    try {
+      localStorage.setItem('inmobilot-tema', nuevo);
+    } catch {}
+  }
+
+  // ===== NOTIFICACIONES =====
 
   cargarNotificaciones(): void {
     this.api.get<Notificacion[]>('/notificaciones', { solo_no_leidas: false }).subscribe((res) => {
@@ -88,6 +117,31 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.panelNotifAbierto.update((v) => !v);
   }
 
+  marcarLeido(n: Notificacion): void {
+    if (n.leido) return;
+    this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
+      this.cargarNotificaciones();
+    });
+  }
+
+  /** Al hacer clic en una notificación: se marca leída y te lleva a donde corresponde. */
+  abrirNotificacion(n: Notificacion): void {
+    this.marcarLeido(n);
+    const d = (n.data ?? {}) as Record<string, any>;
+    if (d['id_pago']) {
+      this.panelNotifAbierto.set(false);
+      this.router.navigate(['/dashboard/pagos']);
+    } else if (d['id_separacion']) {
+      this.panelNotifAbierto.set(false);
+      this.router.navigate(['/dashboard/separaciones', d['id_separacion']]);
+    } else if (d['id_venta']) {
+      this.panelNotifAbierto.set(false);
+      this.router.navigate(['/dashboard/ventas', d['id_venta']]);
+    }
+  }
+
+  // ===== SIDEBAR / MENÚ MÓVIL =====
+
   toggleSidebar(): void {
     this.colapsado.update((v) => !v);
   }
@@ -95,10 +149,26 @@ export class ShellComponent implements OnInit, OnDestroy {
   toggleMenuMovil(): void {
     this.colapsado.set(false);
     this.menuMovilAbierto.update((v) => !v);
+    this.bloquearScroll(this.menuMovilAbierto());
   }
 
   cerrarMenuMovil(): void {
     this.menuMovilAbierto.set(false);
+    this.bloquearScroll(false);
+  }
+
+  /** Evita que el fondo se desplace mientras el menú móvil está abierto. */
+  private bloquearScroll(bloquear: boolean): void {
+    if (typeof document === 'undefined') return;
+    document.body.style.overflow = bloquear ? 'hidden' : '';
+  }
+
+  /** Si agrandas la ventana (rotar tablet, redimensionar), cierra el menú móvil. */
+  @HostListener('window:resize')
+  onResize(): void {
+    if (window.innerWidth > 900 && this.menuMovilAbierto()) {
+      this.cerrarMenuMovil();
+    }
   }
 
   @HostListener('document:keydown.escape')
@@ -116,28 +186,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     }
   }
 
-    marcarLeido(n: Notificacion): void {
-      if (n.leido) return;
-      this.api.patch<Notificacion>(`/notificaciones/${n.id}/leido`, {}).subscribe(() => {
-        this.cargarNotificaciones();
-      });
-    }
-
-    /** Al hacer clic en una notificación: se marca leída y te lleva a donde corresponde. */
-    abrirNotificacion(n: Notificacion): void {
-      this.marcarLeido(n);
-      const d = (n.data ?? {}) as Record<string, any>;
-      if (d['id_pago']) {
-        this.panelNotifAbierto.set(false);
-        this.router.navigate(['/dashboard/pagos']);
-      } else if (d['id_separacion']) {
-        this.panelNotifAbierto.set(false);
-        this.router.navigate(['/dashboard/separaciones', d['id_separacion']]);
-      } else if (d['id_venta']) {
-        this.panelNotifAbierto.set(false);
-        this.router.navigate(['/dashboard/ventas', d['id_venta']]);
-      }
-    }
+  // ===== LOGOUT =====
 
   abrirModalLogout(): void {
     this.mostrarModalLogout.set(true);
@@ -151,6 +200,8 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.mostrarModalLogout.set(false);
     this.auth.logout();
   }
+
+  // ===== ICONOS =====
 
   tipoIcono(nombre: string): string {
     const n = (nombre ?? '').toLowerCase();

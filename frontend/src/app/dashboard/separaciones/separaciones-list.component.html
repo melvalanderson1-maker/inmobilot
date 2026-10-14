@@ -1,18 +1,22 @@
 <div class="sep-page">
   <div class="page-header">
-    <div>
+    <div class="page-titulo">
       <h1>Separaciones</h1>
       <p class="subtitle">Sigue el estado de cada separación, desde el voucher hasta el comprobante</p>
     </div>
     <button class="btn-primary" (click)="irANueva()">
-      <span>+</span> Nueva separación
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Nueva separación</span>
     </button>
   </div>
 
   <div class="filtros-bar">
     <div class="selector-proyecto">
-      <label>Proyecto</label>
-      <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+      <label for="filtro-proyecto">Proyecto</label>
+      <select id="filtro-proyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
         @for (p of proyectos(); track p.id) {
           <option [value]="p.id">{{ p.nombre }}</option>
         }
@@ -20,8 +24,8 @@
     </div>
 
     <div class="selector-proyecto">
-      <label>Estado</label>
-      <select [(ngModel)]="filtroEstado" (ngModelChange)="cambiarFiltro()">
+      <label for="filtro-estado">Estado</label>
+      <select id="filtro-estado" [(ngModel)]="filtroEstado" (ngModelChange)="cambiarFiltro()">
         <option value="todos">Todos</option>
         @for (e of estados; track e.valor) {
           <option [value]="e.valor">{{ e.etiqueta }}</option>
@@ -29,15 +33,38 @@
       </select>
     </div>
 
-    <span class="filtros-contador">{{ separaciones().length }} separaciones</span>
+    <span class="filtros-contador">
+      {{ separaciones().length }} {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
+    </span>
   </div>
 
   @if (cargando()) {
-    <div class="estado-carga">Cargando separaciones...</div>
+    <div class="skeleton-lista" aria-busy="true" aria-label="Cargando separaciones">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+        <div class="skeleton-fila">
+          <span class="sk sk-corto"></span>
+          <span class="sk sk-largo"></span>
+          <span class="sk sk-medio"></span>
+          <span class="sk sk-chip"></span>
+        </div>
+      }
+    </div>
   } @else if (separaciones().length === 0) {
     <div class="estado-vacio">
+      <div class="vacio-icono">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+          <path d="M3 9h18"></path>
+          <path d="m8 14 2 2 4-4"></path>
+        </svg>
+      </div>
       <p>No hay separaciones que coincidan con este filtro.</p>
-      <button class="btn-primary" (click)="irANueva()">Crear la primera</button>
+      <div class="vacio-acciones">
+        @if (filtroEstado !== 'todos') {
+          <button class="btn-secundario" (click)="limpiarFiltros()">Limpiar filtros</button>
+        }
+        <button class="btn-primary" (click)="irANueva()">Crear la primera</button>
+      </div>
     </div>
   } @else {
     <div class="tabla-card tabla-card-scroll vista-tabla">
@@ -48,18 +75,18 @@
             <th>Cliente</th>
             <th>Importe</th>
             <th>Vencimiento</th>
-            <th>Ejecutivo</th>
+            <th class="col-ejecutivo">Ejecutivo</th>
             <th>Estado</th>
           </tr>
         </thead>
         <tbody>
           @for (sep of separaciones(); track sep.id) {
-            <tr (click)="irADetalle(sep)">
-              <td>{{ sep.lote?.codigo || '—' }}</td>
+            <tr tabindex="0" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
+              <td class="td-lote">{{ sep.lote?.codigo || '—' }}</td>
               <td>{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : '—' }}</td>
-              <td>S/ {{ sep.importe | number:'1.2-2' }}</td>
-              <td>{{ sep.fecha_vencimiento }}</td>
-              <td>{{ sep.ejecutivo_nombre || '—' }}</td>
+              <td class="td-importe">S/ {{ sep.importe | number:'1.2-2' }}</td>
+              <td class="td-fecha">{{ sep.fecha_vencimiento }}</td>
+              <td class="col-ejecutivo">{{ sep.ejecutivo_nombre || '—' }}</td>
               <td><span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span></td>
             </tr>
           }
@@ -69,15 +96,25 @@
 
     <div class="vista-cards">
       @for (sep of separaciones(); track sep.id) {
-        <div class="sep-card" (click)="irADetalle(sep)">
+        <div class="sep-card" tabindex="0" role="button" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
           <div class="sep-card-top">
             <strong>{{ sep.lote?.codigo || '—' }}</strong>
             <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
           </div>
           <p class="sep-card-cliente">{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : 'Sin cliente' }}</p>
           <div class="sep-card-datos">
-            <span>S/ {{ sep.importe | number:'1.2-2' }}</span>
-            <span>Vence: {{ sep.fecha_vencimiento }}</span>
+            <div class="dato">
+              <span class="dato-label">Importe</span>
+              <span class="dato-valor dato-importe">S/ {{ sep.importe | number:'1.2-2' }}</span>
+            </div>
+            <div class="dato">
+              <span class="dato-label">Vence</span>
+              <span class="dato-valor">{{ sep.fecha_vencimiento }}</span>
+            </div>
+            <div class="dato dato-ancho">
+              <span class="dato-label">Ejecutivo</span>
+              <span class="dato-valor">{{ sep.ejecutivo_nombre || '—' }}</span>
+            </div>
           </div>
         </div>
       }

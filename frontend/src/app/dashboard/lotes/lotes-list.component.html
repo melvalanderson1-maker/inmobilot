@@ -1,17 +1,21 @@
 <div class="lotes-page">
   <div class="page-header">
-    <div>
+    <div class="page-titulo">
       <h1>Lotes</h1>
       <p class="subtitle">Administra el inventario de terrenos de cada proyecto</p>
     </div>
     <button class="btn-primary" (click)="abrirNuevo()">
-      <span>+</span> Nuevo lote
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>Nuevo lote</span>
     </button>
   </div>
 
   <div class="selector-proyecto">
-    <label>Proyecto</label>
-    <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+    <label for="sel-proyecto">Proyecto</label>
+    <select id="sel-proyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
       @for (p of proyectos(); track p.id) {
         <option [value]="p.id">{{ p.nombre }}</option>
       }
@@ -47,13 +51,19 @@
     </div>
 
     <div class="filtros-bar">
-      <input
-        type="text"
-        class="filtro-busqueda"
-        placeholder="Buscar por código, ubicación o partida registral..."
-        [ngModel]="filtroBusqueda()"
-        (ngModelChange)="filtroBusqueda.set($event)"
-      />
+      <div class="busqueda-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          type="text"
+          class="filtro-busqueda"
+          placeholder="Buscar por código, ubicación o partida registral..."
+          [ngModel]="filtroBusqueda()"
+          (ngModelChange)="filtroBusqueda.set($event)"
+        />
+      </div>
       <select class="filtro-select" [ngModel]="filtroEstado()" (ngModelChange)="filtroEstado.set($event)">
         <option value="todos">Todos los estados</option>
         <option value="libre">Libre</option>
@@ -81,11 +91,37 @@
   }
 
   @if (cargando()) {
-    <div class="estado-carga">Cargando lotes...</div>
+    <div class="skeleton-lista" aria-busy="true" aria-label="Cargando lotes">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="skeleton-fila">
+          <span class="sk sk-cuadro"></span>
+          <span class="sk sk-corto"></span>
+          <span class="sk sk-largo"></span>
+          <span class="sk sk-medio"></span>
+          <span class="sk sk-chip"></span>
+        </div>
+      }
+    </div>
   } @else if (lotes().length === 0) {
     <div class="estado-vacio">
+      <div class="vacio-icono">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2 3 7v13h6v-6h6v6h6V7z"></path>
+        </svg>
+      </div>
       <p>Aún no hay lotes registrados en este proyecto.</p>
       <button class="btn-primary" (click)="abrirNuevo()">Crear el primero</button>
+    </div>
+  } @else if (lotesFiltrados().length === 0) {
+    <div class="estado-vacio">
+      <div class="vacio-icono">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
+      <p>Ningún lote coincide con los filtros aplicados.</p>
+      <button class="btn-secundario" (click)="limpiarFiltros()">Limpiar filtros</button>
     </div>
   } @else {
     <div class="tabla-card tabla-card-scroll vista-tabla">
@@ -101,7 +137,6 @@
             <th rowspan="2">Área</th>
             <th colspan="2" class="grupo-base">Inversión base</th>
             <th colspan="4" class="grupo-financiado">Inversión financiado 2 años</th>
-
             <th colspan="2" class="grupo-contado">Inversión al contado</th>
             <th rowspan="2" class="celda-estado">Estado</th>
             <th rowspan="2" class="acciones"></th>
@@ -113,7 +148,6 @@
             <th class="grupo-financiado">Inicial</th>
             <th class="grupo-financiado">Financiado</th>
             <th class="grupo-financiado">Total</th>
-
             <th class="grupo-contado">Px m²</th>
             <th class="grupo-contado">Total</th>
           </tr>
@@ -126,6 +160,7 @@
                   <img
                     [src]="urlImagenLote(lote.imagenes[0].url)"
                     class="miniatura"
+                    loading="lazy"
                     (click)="abrirImagen(lote.imagenes[0].url)"
                     alt="Lote {{ lote.codigo }}"
                   />
@@ -163,7 +198,6 @@
               <td class="grupo-financiado">{{ lote.inicial_financiado ? ('S/ ' + (lote.inicial_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado">{{ lote.monto_financiado ? ('S/ ' + (lote.monto_financiado | number:'1.0-0')) : '—' }}</td>
               <td class="grupo-financiado monto">{{ lote.precio_total_financiado ? ('S/ ' + (lote.precio_total_financiado | number:'1.0-0')) : '—' }}</td>
-
               <td class="grupo-contado">{{ lote.precio_m2_contado ? ('S/' + lote.precio_m2_contado) : '—' }}</td>
               <td class="grupo-contado monto">{{ lote.precio_total_contado ? ('S/ ' + (lote.precio_total_contado | number:'1.0-0')) : '—' }}</td>
               <td class="celda-estado" [class.celda-estado-activa]="menuEstadoAbierto() === lote.id">
@@ -198,27 +232,30 @@
                 </div>
               </td>
               <td class="acciones">
-                @if (auth.usuario()?.rol?.clave === 'admin') {
-                  <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M12 20h9" />
-                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                    </svg>
-                  </button>
-                  @if (urlMaqueta()) {
-                    <button
-                      class="btn-icono"
-                      [class.icono-ubicado]="lote.mapa_x != null"
-                      (click)="abrirUbicarMapa(lote)"
-                      [title]="lote.mapa_x != null ? 'Ya ubicado en el mapa' : 'Ubicar en el mapa'"
-                    >
+                <div class="acciones-wrap">
+                  @if (auth.usuario()?.rol?.clave === 'admin') {
+                    <button class="btn-icono" (click)="abrirEditar(lote)" title="Editar lote" aria-label="Editar lote">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
-                        <circle cx="12" cy="10" r="2.5" />
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
                       </svg>
                     </button>
+                    @if (urlMaqueta()) {
+                      <button
+                        class="btn-icono"
+                        [class.icono-ubicado]="lote.mapa_x != null"
+                        (click)="abrirUbicarMapa(lote)"
+                        [title]="lote.mapa_x != null ? 'Ya ubicado en el mapa' : 'Ubicar en el mapa'"
+                        aria-label="Ubicar en el mapa"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                          <path d="M12 22s7-7.58 7-12A7 7 0 0 0 5 10c0 4.42 7 12 7 12Z" />
+                          <circle cx="12" cy="10" r="2.5" />
+                        </svg>
+                      </button>
+                    }
                   }
-                }
+                </div>
               </td>
             </tr>
           }
@@ -233,6 +270,7 @@
             @if (lote.imagenes && lote.imagenes.length > 0) {
               <img
                 [src]="urlImagenLote(lote.imagenes[0].url)"
+                loading="lazy"
                 (click)="abrirImagen(lote.imagenes[0].url)"
                 alt="Lote {{ lote.codigo }}"
               />
@@ -341,11 +379,11 @@
 
     @if (totalPaginas() > 1) {
       <div class="paginacion">
-        <button class="btn-pagina" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1">
+        <button class="btn-pagina" (click)="irAPagina(paginaActual() - 1)" [disabled]="paginaActual() === 1" aria-label="Página anterior">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
         <span class="paginacion-info">Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
-        <button class="btn-pagina" (click)="irAPagina(paginaActual() + 1)" [disabled]="paginaActual() === totalPaginas()">
+        <button class="btn-pagina" (click)="irAPagina(paginaActual() + 1)" [disabled]="paginaActual() === totalPaginas()" aria-label="Página siguiente">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -355,226 +393,237 @@
   <!-- Modal: crear / editar lote -->
   @if (formularioAbierto()) {
     <div class="modal-overlay" (click)="cerrarFormulario()">
-      <div class="modal modal-grande" [class.modal-grande--con-doc]="form.sunarp_url" (click)="$event.stopPropagation()">
+      <div class="modal modal-grande modal-form" [class.modal-grande--con-doc]="form.sunarp_url" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h2>{{ loteEditando() ? 'Editar lote ' + loteEditando()!.codigo : 'Nuevo lote' }}</h2>
-            <button class="btn-cerrar" (click)="cerrarFormulario()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12" />
-                <path d="M18 6 6 18" />
-              </svg>
-            </button>
+          <button class="btn-cerrar" (click)="cerrarFormulario()" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
         </div>
 
-      <div class="modal-body modal-body-lote">
-        @if (error()) {
-          <div class="mensaje-error">{{ error() }}</div>
-        }
+        <div class="modal-body modal-body-lote">
+          @if (error()) {
+            <div class="mensaje-error">{{ error() }}</div>
+          }
 
-        <div class="lote-form-layout">
-          <div class="form-col">
-            <div class="form-grid">
-              @if (!loteEditando()) {
-                <div class="campo campo-span-2">
-                  <label>Manzana</label>
-                  <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
-                    <option [ngValue]="null" disabled>Selecciona una manzana</option>
-                    @for (m of manzanas(); track m.id) {
-                      <option [ngValue]="m.id">
-                        {{ m.nombre }} — {{ m.etapa?.nombre || 'Sin etapa' }} (Partida {{ m.etapa?.partida_registral || 's/n' }})
-                      </option>
-                    }
-                  </select>
-                  <small class="ayuda">Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).</small>
+          <div class="lote-form-layout">
+            <div class="form-col">
+              <div class="form-grid">
+                @if (!loteEditando()) {
+                  <div class="campo campo-span-2">
+                    <label>Manzana</label>
+                    <select [(ngModel)]="form.id_manzana" (ngModelChange)="onManzanaSeleccionada()">
+                      <option [ngValue]="null" disabled>Selecciona una manzana</option>
+                      @for (m of manzanas(); track m.id) {
+                        <option [ngValue]="m.id">
+                          {{ m.nombre }} — {{ m.etapa?.nombre || 'Sin etapa' }} (Partida {{ m.etapa?.partida_registral || 's/n' }})
+                        </option>
+                      }
+                    </select>
+                    <small class="ayuda">Se muestra la etapa y su partida matriz de cada manzana, para diferenciar manzanas con el mismo nombre en etapas distintas (ej. B vs B°).</small>
+                  </div>
+                }
+
+                <div class="campo">
+                  <label>Código</label>
+                  <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
                 </div>
-              }
+                <div class="campo">
+                  <label>Ubicación</label>
+                  <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
+                </div>
+                <div class="campo">
+                  <label>Frontis</label>
+                  <input type="text" [(ngModel)]="form.frontis" placeholder="Ej: 8.50 m" />
+                </div>
+                <div class="campo">
+                  <label>Perímetro (m)</label>
+                  <input type="number" [(ngModel)]="form.perimetro" />
+                </div>
+                <div class="campo">
+                  <label>Área (m²)</label>
+                  <input type="number" [(ngModel)]="form.area_m2" />
+                </div>
 
-              <div class="campo">
-                <label>Código</label>
-                <input type="text" [(ngModel)]="form.codigo" placeholder="B16" [disabled]="!!loteEditando()" />
-              </div>
-              <div class="campo">
-                <label>Ubicación</label>
-                <input type="text" [(ngModel)]="form.ubicacion_lote" placeholder="INTERMEDIO / ESQUINA" />
-              </div>
-              <div class="campo">
-                <label>Frontis</label>
-                <input type="text" [(ngModel)]="form.frontis" placeholder="Ej: 8.50 m" />
-              </div>
-              <div class="campo">
-                <label>Perímetro (m)</label>
-                <input type="number" [(ngModel)]="form.perimetro" />
-              </div>
-              <div class="campo">
-                <label>Área (m²)</label>
-                <input type="number" [(ngModel)]="form.area_m2" />
-              </div>
+                <h4 class="subseccion campo-span-2">Inversión base</h4>
+                <div class="campo">
+                  <label>Precio por m²</label>
+                  <input type="number" [(ngModel)]="form.precio_m2_base" />
+                </div>
+                <div class="campo">
+                  <label>Precio total</label>
+                  <input type="number" [(ngModel)]="form.precio_total_base" />
+                </div>
 
-              <h4 class="subseccion campo-span-2">Inversión base</h4>
-              <div class="campo">
-                <label>Precio por m²</label>
-                <input type="number" [(ngModel)]="form.precio_m2_base" />
-              </div>
-              <div class="campo">
-                <label>Precio total</label>
-                <input type="number" [(ngModel)]="form.precio_total_base" />
-              </div>
+                <h4 class="subseccion campo-span-2">Inversión final contado</h4>
+                <div class="campo">
+                  <label>Precio por m²</label>
+                  <input type="number" [(ngModel)]="form.precio_m2_contado" />
+                </div>
+                <div class="campo">
+                  <label>Precio total</label>
+                  <input type="number" [(ngModel)]="form.precio_total_contado" />
+                </div>
 
-              <h4 class="subseccion campo-span-2">Inversión final contado</h4>
-              <div class="campo">
-                <label>Precio por m²</label>
-                <input type="number" [(ngModel)]="form.precio_m2_contado" />
-              </div>
-              <div class="campo">
-                <label>Precio total</label>
-                <input type="number" [(ngModel)]="form.precio_total_contado" />
-              </div>
+                <h4 class="subseccion campo-span-2">Inversión final financiado</h4>
+                <div class="campo">
+                  <label>Precio por m²</label>
+                  <input type="number" [(ngModel)]="form.precio_m2_financiado" />
+                </div>
+                <div class="campo">
+                  <label>Inicial</label>
+                  <input type="number" [(ngModel)]="form.inicial_financiado" />
+                </div>
+                <div class="campo">
+                  <label>Monto financiado</label>
+                  <input type="number" [(ngModel)]="form.monto_financiado" />
+                </div>
+                <div class="campo campo-span-2">
+                  <label>Total</label>
+                  <input type="number" [(ngModel)]="form.precio_total_financiado" />
+                </div>
 
-              <h4 class="subseccion campo-span-2">Inversión final financiado</h4>
-              <div class="campo">
-                <label>Precio por m²</label>
-                <input type="number" [(ngModel)]="form.precio_m2_financiado" />
-              </div>
-              <div class="campo">
-                <label>Inicial</label>
-                <input type="number" [(ngModel)]="form.inicial_financiado" />
-              </div>
-              <div class="campo">
-                <label>Monto financiado</label>
-                <input type="number" [(ngModel)]="form.monto_financiado" />
-              </div>
-              <div class="campo campo-span-2">
-                <label>Total</label>
-                <input type="number" [(ngModel)]="form.precio_total_financiado" />
-              </div>
+                <div class="campo campo-span-2">
+                  <label>Partida registral (SUNARP)</label>
+                  <input type="text" [(ngModel)]="form.partida_registral" />
+                  <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
+                </div>
 
+                <h4 class="subseccion campo-span-2">Linderos y medidas perimétricas</h4>
+                <div class="campo">
+                  <label>Frente — colindante con</label>
+                  <input type="text" [(ngModel)]="form.frente_colindante" placeholder="Ej: PSJ Teodosia Ortiz Palomino" />
+                </div>
+                <div class="campo">
+                  <label>Frente — medida (ml)</label>
+                  <input type="number" [(ngModel)]="form.frente_medida" placeholder="8.20" />
+                </div>
+                <div class="campo">
+                  <label>Derecha — colindante con</label>
+                  <input type="text" [(ngModel)]="form.derecha_colindante" placeholder="Ej: Lote N° 02" />
+                </div>
+                <div class="campo">
+                  <label>Derecha — medida (ml)</label>
+                  <input type="number" [(ngModel)]="form.derecha_medida" placeholder="19.75" />
+                </div>
+                <div class="campo">
+                  <label>Izquierda — colindante con</label>
+                  <input type="text" [(ngModel)]="form.izquierda_colindante" placeholder="Ej: Lote N° 04" />
+                </div>
+                <div class="campo">
+                  <label>Izquierda — medida (ml)</label>
+                  <input type="number" [(ngModel)]="form.izquierda_medida" placeholder="19.85" />
+                </div>
+                <div class="campo">
+                  <label>Fondo — colindante con</label>
+                  <input type="text" [(ngModel)]="form.fondo_colindante" placeholder="Ej: Lote N° 10" />
+                </div>
+                <div class="campo">
+                  <label>Fondo — medida (ml)</label>
+                  <input type="number" [(ngModel)]="form.fondo_medida" placeholder="8.14" />
+                </div>
 
+                <div class="campo campo-span-2">
+                  <label>Documento de partida registral (PDF)</label>
+                  @if (form.sunarp_url) {
+                    <div class="sunarp-archivo-actual">
+                      <a [href]="form.sunarp_url" target="_blank" rel="noopener">Ver documento actual</a>
+                      <button
+                        type="button"
+                        class="btn-eliminar-imagen"
+                        (click)="quitarSunarpUrl()"
+                        [disabled]="eliminandoSunarp()"
+                        title="Quitar"
+                        aria-label="Quitar documento"
+                      >
+                        @if (eliminandoSunarp()) {
+                          <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
+                            <path d="M21 12a9 9 0 0 0-9-9" />
+                          </svg>
+                        } @else {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                            <path d="M6 6l12 12" />
+                            <path d="M18 6 6 18" />
+                          </svg>
+                        }
+                      </button>
+                    </div>
+                  } @else {
+                    <label class="dropzone dropzone-compacta">
+                      <input type="file" accept="application/pdf" (change)="onArchivoSunarpSeleccionado($event)" [disabled]="subiendoSunarp()" hidden />
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                        <path d="M12 16V4" />
+                        <path d="m7 9 5-5 5 5" />
+                        <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                      </svg>
+                      <span>{{ subiendoSunarp() ? 'Subiendo...' : 'Arrastra o selecciona el PDF' }}</span>
+                    </label>
+                  }
+                </div>
 
-              <div class="campo campo-span-2">
-                <label>Partida registral (SUNARP)</label>
-                <input type="text" [(ngModel)]="form.partida_registral" />
-                <small class="ayuda">Se sugiere automáticamente la partida de la etapa (matriz) al elegir manzana. Reemplázala por la partida propia del lote cuando SUNARP la independice.</small>
+                <div class="campo campo-span-2">
+                  <label>Servicios disponibles</label>
+                  <div class="servicios-checks">
+                    <label class="servicio-check">
+                      <input type="checkbox" [(ngModel)]="form.servicios.agua" />
+                      Agua
+                    </label>
+                    <label class="servicio-check">
+                      <input type="checkbox" [(ngModel)]="form.servicios.desague" />
+                      Desagüe
+                    </label>
+                    <label class="servicio-check">
+                      <input type="checkbox" [(ngModel)]="form.servicios.luz" />
+                      Luz
+                    </label>
+                    <label class="servicio-check">
+                      <input type="checkbox" [(ngModel)]="form.servicios.internet" />
+                      Internet
+                    </label>
+                  </div>
+                </div>
               </div>
+            </div>
 
+            <div class="imagenes-col">
+              <h4 class="subseccion subseccion-imagenes">Imágenes del lote</h4>
 
-                            <h4 class="subseccion campo-span-2">Linderos y medidas perimétricas</h4>
-              <div class="campo">
-                <label>Frente — colindante con</label>
-                <input type="text" [(ngModel)]="form.frente_colindante" placeholder="Ej: PSJ Teodosia Ortiz Palomino" />
-              </div>
-              <div class="campo">
-                <label>Frente — medida (ml)</label>
-                <input type="number" [(ngModel)]="form.frente_medida" placeholder="8.20" />
-              </div>
-              <div class="campo">
-                <label>Derecha — colindante con</label>
-                <input type="text" [(ngModel)]="form.derecha_colindante" placeholder="Ej: Lote N° 02" />
-              </div>
-              <div class="campo">
-                <label>Derecha — medida (ml)</label>
-                <input type="number" [(ngModel)]="form.derecha_medida" placeholder="19.75" />
-              </div>
-              <div class="campo">
-                <label>Izquierda — colindante con</label>
-                <input type="text" [(ngModel)]="form.izquierda_colindante" placeholder="Ej: Lote N° 04" />
-              </div>
-              <div class="campo">
-                <label>Izquierda — medida (ml)</label>
-                <input type="number" [(ngModel)]="form.izquierda_medida" placeholder="19.85" />
-              </div>
-              <div class="campo">
-                <label>Fondo — colindante con</label>
-                <input type="text" [(ngModel)]="form.fondo_colindante" placeholder="Ej: Lote N° 10" />
-              </div>
-              <div class="campo">
-                <label>Fondo — medida (ml)</label>
-                <input type="number" [(ngModel)]="form.fondo_medida" placeholder="8.14" />
-              </div>
+              <label class="dropzone dropzone-compacta">
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onImagenesSeleccionadas($event)" hidden />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                  <path d="M12 16V4" />
+                  <path d="m7 9 5-5 5 5" />
+                  <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+                </svg>
+                <span>Subir imágenes</span>
+              </label>
 
-              <div class="campo campo-span-2">
-                <label>Documento de partida registral (PDF)</label>
-                @if (form.sunarp_url) {
-                  <div class="sunarp-archivo-actual">
-                    <a [href]="form.sunarp_url" target="_blank" rel="noopener">Ver documento actual</a>
-                    <button
-                      type="button"
-                      class="btn-eliminar-imagen"
-                      (click)="quitarSunarpUrl()"
-                      [disabled]="eliminandoSunarp()"
-                      title="Quitar"
-                    >
-                      @if (eliminandoSunarp()) {
-                        <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                          <circle cx="12" cy="12" r="9" stroke-opacity="0.25" />
-                          <path d="M21 12a9 9 0 0 0-9-9" />
-                        </svg>
-                      } @else {
+              <div class="galeria-columna">
+                @if (loteEditando() && loteEditando()!.imagenes.length > 0) {
+                  @for (img of loteEditando()!.imagenes; track img.id) {
+                    <div class="imagen-item imagen-item-col">
+                      <img [src]="urlImagenLote(img.url)" (click)="abrirImagen(img.url)" alt="Imagen del lote" />
+                      @if (img.es_portada) {
+                        <span class="etiqueta-portada">Portada</span>
+                      }
+                      <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar" aria-label="Eliminar imagen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                           <path d="M6 6l12 12" />
                           <path d="M18 6 6 18" />
                         </svg>
-                      }
-                    </button>
-                  </div>
-                } @else {
-                  <label class="dropzone dropzone-compacta">
-                    <input type="file" accept="application/pdf" (change)="onArchivoSunarpSeleccionado($event)" [disabled]="subiendoSunarp()" hidden />
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                      <path d="M12 16V4" />
-                      <path d="m7 9 5-5 5 5" />
-                      <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-                    </svg>
-                    <span>{{ subiendoSunarp() ? 'Subiendo...' : 'Arrastra o selecciona el PDF' }}</span>
-                  </label>
+                      </button>
+                    </div>
+                  }
                 }
-              </div>
 
-              <div class="campo campo-span-2">
-                <label>Servicios disponibles</label>
-                <div class="servicios-checks">
-                  <label class="servicio-check">
-                    <input type="checkbox" [(ngModel)]="form.servicios.agua" />
-                    Agua
-                  </label>
-                  <label class="servicio-check">
-                    <input type="checkbox" [(ngModel)]="form.servicios.desague" />
-                    Desagüe
-                  </label>
-                  <label class="servicio-check">
-                    <input type="checkbox" [(ngModel)]="form.servicios.luz" />
-                    Luz
-                  </label>
-                  <label class="servicio-check">
-                    <input type="checkbox" [(ngModel)]="form.servicios.internet" />
-                    Internet
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="imagenes-col">
-            <h4 class="subseccion subseccion-imagenes">Imágenes del lote</h4>
-
-            <label class="dropzone dropzone-compacta">
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple (change)="onImagenesSeleccionadas($event)" hidden />
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-                <path d="M12 16V4" />
-                <path d="m7 9 5-5 5 5" />
-                <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-              </svg>
-              <span>Subir imágenes</span>
-            </label>
-
-            <div class="galeria-columna">
-              @if (loteEditando() && loteEditando()!.imagenes.length > 0) {
-                @for (img of loteEditando()!.imagenes; track img.id) {
+                @for (url of previsualizaciones; track $index) {
                   <div class="imagen-item imagen-item-col">
-                    <img [src]="urlImagenLote(img.url)" (click)="abrirImagen(img.url)" alt="Imagen del lote" />
-                    @if (img.es_portada) {
-                      <span class="etiqueta-portada">Portada</span>
-                    }
-                    <button class="btn-eliminar-imagen" (click)="eliminarImagenExistente(img.id)" title="Eliminar">
+                    <img [src]="url" alt="Nueva imagen" />
+                    <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar" aria-label="Quitar imagen">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                         <path d="M6 6l12 12" />
                         <path d="M18 6 6 18" />
@@ -582,57 +631,45 @@
                     </button>
                   </div>
                 }
-              }
 
-              @for (url of previsualizaciones; track $index) {
-                <div class="imagen-item imagen-item-col">
-                  <img [src]="url" alt="Nueva imagen" />
-                  <button class="btn-eliminar-imagen" (click)="quitarPrevisualizacion($index)" title="Quitar">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                      <path d="M6 6l12 12" />
-                      <path d="M18 6 6 18" />
-                    </svg>
-                  </button>
-                </div>
-              }
-
-              @if ((!loteEditando() || loteEditando()!.imagenes.length === 0) && previsualizaciones.length === 0) {
-                <p class="sin-imagenes">Aún no hay imágenes</p>
-              }
+                @if ((!loteEditando() || loteEditando()!.imagenes.length === 0) && previsualizaciones.length === 0) {
+                  <p class="sin-imagenes">Aún no hay imágenes</p>
+                }
+              </div>
             </div>
-          </div>
 
-          @if (form.sunarp_url) {
-            <div class="documento-col">
-              <div class="documento-col-header">
-                <h4 class="subseccion subseccion-documento">Partida registral (PDF)</h4>
-                <div class="documento-col-acciones">
-                  <label class="btn-secundario btn-documento-accion" [class.disabled]="subiendoSunarp() || eliminandoSunarp()">
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      (change)="onArchivoSunarpSeleccionado($event)"
+            @if (form.sunarp_url) {
+              <div class="documento-col">
+                <div class="documento-col-header">
+                  <h4 class="subseccion subseccion-documento">Partida registral (PDF)</h4>
+                  <div class="documento-col-acciones">
+                    <label class="btn-secundario btn-documento-accion" [class.disabled]="subiendoSunarp() || eliminandoSunarp()">
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        (change)="onArchivoSunarpSeleccionado($event)"
+                        [disabled]="subiendoSunarp() || eliminandoSunarp()"
+                        hidden
+                      />
+                      {{ subiendoSunarp() ? 'Subiendo...' : 'Reemplazar' }}
+                    </label>
+                    <button
+                      type="button"
+                      class="btn-secundario btn-documento-accion btn-documento-eliminar"
+                      (click)="quitarSunarpUrl()"
                       [disabled]="subiendoSunarp() || eliminandoSunarp()"
-                      hidden
-                    />
-                    {{ subiendoSunarp() ? 'Subiendo...' : 'Reemplazar' }}
-                  </label>
-                  <button
-                    type="button"
-                    class="btn-secundario btn-documento-accion btn-documento-eliminar"
-                    (click)="quitarSunarpUrl()"
-                    [disabled]="subiendoSunarp() || eliminandoSunarp()"
-                  >
-                    {{ eliminandoSunarp() ? 'Eliminando...' : 'Eliminar' }}
-                  </button>
+                    >
+                      {{ eliminandoSunarp() ? 'Eliminando...' : 'Eliminar' }}
+                    </button>
+                  </div>
                 </div>
+                <div class="documento-visor">
+                  <iframe [src]="urlDocumentoFormSeguro()" title="Partida registral del lote" loading="lazy"></iframe>
+                </div>
+                <a class="documento-abrir" [href]="form.sunarp_url" target="_blank" rel="noopener">Abrir en pestaña nueva</a>
               </div>
-              <div class="documento-visor">
-                <iframe [src]="urlDocumentoFormSeguro()" title="Partida registral del lote" loading="lazy"></iframe>
-              </div>
-              <a class="documento-abrir" [href]="form.sunarp_url" target="_blank" rel="noopener">Abrir en pestaña nueva</a>
-            </div>
-          }
+            }
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -649,21 +686,20 @@
         </div>
       </div>
     </div>
-  </div>
   }
 
-  <!-- Modal: visor de imagen --> 
+  <!-- Modal: visor de imagen -->
   @if (modalImagenAbierto()) {
     <div class="modal-overlay" (click)="cerrarImagen()">
-      <div class="modal modal-visor" (click)="$event.stopPropagation()">
+      <div class="modal modal-visor" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h2>Imagen del lote</h2>
-          <button class="btn-cerrar" (click)="cerrarImagen()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12" />
-                <path d="M18 6 6 18" />
-              </svg>
-            </button>
+          <button class="btn-cerrar" (click)="cerrarImagen()" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
         </div>
         <div class="modal-body modal-body-visor">
           @if (imagenUrlActual()) {
@@ -677,30 +713,27 @@
     </div>
   }
 
-
-
-    @if (modalMapaAbierto()) {
+  <!-- Modal: ubicar lote en el mapa -->
+  @if (modalMapaAbierto()) {
     <div class="modal-overlay" (click)="cerrarUbicarMapa()">
-      <div class="modal modal-grande" (click)="$event.stopPropagation()">
+      <div class="modal modal-grande modal-mapa" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
         <div class="modal-header">
           <h2>Ubicar lote {{ loteUbicando()?.codigo }} en el mapa</h2>
-          <button class="btn-cerrar" (click)="cerrarUbicarMapa()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M6 6l12 12" />
-                <path d="M18 6 6 18" />
-              </svg>
-            </button>
+          <button class="btn-cerrar" (click)="cerrarUbicarMapa()" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 6l12 12" />
+              <path d="M18 6 6 18" />
+            </svg>
+          </button>
         </div>
         <div class="modal-body">
-          <p style="font-size:13px;color:#697386;margin-bottom:12px;">
-            Haz clic sobre el punto exacto del lote en la imagen.
-          </p>
+          <p class="mapa-ayuda">Haz clic sobre el punto exacto del lote en la imagen.</p>
           @if (urlMaqueta()) {
-            <div style="position:relative;cursor:crosshair;" (click)="onClickMaqueta($event)">
-              <img [src]="urlMaqueta()" style="width:100%;display:block;border-radius:8px;" />
+            <div class="mapa-contenedor" (click)="onClickMaqueta($event)">
+              <img [src]="urlMaqueta()" class="mapa-img" alt="Maqueta del proyecto" />
               @if (loteUbicando()?.mapa_x != null) {
                 <div
-                  style="position:absolute;width:18px;height:18px;border-radius:50%;background:#c94f4f;border:2px solid #fff;transform:translate(-50%,-50%);pointer-events:none;"
+                  class="mapa-pin"
                   [style.left.%]="loteUbicando()?.mapa_x"
                   [style.top.%]="loteUbicando()?.mapa_y"
                 ></div>
@@ -708,7 +741,7 @@
             </div>
           }
           @if (guardandoUbicacion()) {
-            <p style="margin-top:10px;font-size:13px;">Guardando posición...</p>
+            <p class="mapa-guardando">Guardando posición...</p>
           }
         </div>
         <div class="modal-footer">

@@ -39,7 +39,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
     codigo: '',
     ubicacion_lote: '',
     frontis: '',
-    
+
     frente_colindante: '',
     frente_medida: null as number | null,
     derecha_colindante: '',
@@ -169,7 +169,17 @@ export class LotesListComponent implements OnInit, OnDestroy {
       this.filtroPrecioMax();
       this.paginaActual.set(1);
     });
+
+    // NUEVO: bloquea el scroll del fondo mientras haya un modal abierto
+    effect(() => {
+      const hayModal =
+        this.formularioAbierto() || this.modalImagenAbierto() || this.modalMapaAbierto();
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = hayModal ? 'hidden' : '';
+      }
+    });
   }
+
   // ---- Ubicar en el mapa (clic directo sobre la imagen) ----
   modalMapaAbierto = signal(false);
   loteUbicando = signal<Lote | null>(null);
@@ -251,6 +261,10 @@ export class LotesListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // NUEVO: restaura el scroll si el componente se destruye con un modal abierto
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
     this.socket.desconectar();
   }
 
@@ -297,6 +311,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
         error: () => this.cargando.set(false),
       });
   }
+
   // ---- Abrir formulario ----
 
   abrirNuevo(): void {
@@ -507,7 +522,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
       .join('')
       .toUpperCase();
   }
-  
+
   abrirImagen(relativa: string): void {
     this.imagenUrlActual.set(this.urlImagenLote(relativa));
     this.modalImagenAbierto.set(true);
@@ -533,6 +548,11 @@ export class LotesListComponent implements OnInit, OnDestroy {
   onEscape(): void {
     if (this.menuEstadoAbierto() !== null) {
       this.cerrarMenuEstado();
+      return;
+    }
+    // NUEVO: Escape también cierra el modal del mapa
+    if (this.modalMapaAbierto()) {
+      this.cerrarUbicarMapa();
       return;
     }
     if (this.modalImagenAbierto()) {
@@ -607,14 +627,14 @@ export class LotesListComponent implements OnInit, OnDestroy {
           sunarp_url: this.form.sunarp_url,
           servicios: this.form.servicios,
         })
-        .subscribe({ 
+        .subscribe({
           next: (loteActualizado) => this.subirImagenesPendientes(loteActual.id, loteActual.imagenes.length, loteActualizado.actualizado_por_nombre),
-          error: (err) => { 
-            this.guardando.set(false); 
+          error: (err) => {
+            this.guardando.set(false);
             const mensaje = err?.error?.detail ?? 'Error al actualizar el lote';
             this.error.set(mensaje);
             this.toastService.error(mensaje);
-          }, 
+          },
         });
     } else {
       if (!this.form.id_manzana) {
@@ -653,21 +673,21 @@ export class LotesListComponent implements OnInit, OnDestroy {
           sunarp_url: this.form.sunarp_url || undefined,
           servicios: this.form.servicios,
         })
-        .subscribe({ 
+        .subscribe({
           next: (lote) => this.subirImagenesPendientes(lote.id, 0, lote.creado_por_nombre),
-          error: (err) => { 
-            this.guardando.set(false); 
+          error: (err) => {
+            this.guardando.set(false);
             const mensaje = err?.error?.detail ?? 'Error al crear el lote';
             this.error.set(mensaje);
             this.toastService.error(mensaje);
-          }, 
+          },
         });
     }
   }
 
   private subirImagenesPendientes(idLote: number, imagenesExistentes: number, nombreUsuario?: string): void {
-    if (this.archivosNuevos.length === 0) { 
-      this.guardando.set(false); 
+    if (this.archivosNuevos.length === 0) {
+      this.guardando.set(false);
       this.cerrarFormulario();
       this.cargarLotes();
 
@@ -678,7 +698,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
 
       this.toastService.exito(mensaje);
 
-      return; 
+      return;
     }
     this.subiendoImagenes.set(true);
     let completados = 0;
@@ -693,40 +713,40 @@ export class LotesListComponent implements OnInit, OnDestroy {
           this.loteService.agregarImagen(idLote, res.url, esPortada, imagenesExistentes + index).subscribe({
             next: () => {
               completados++;
-            if (completados === this.archivosNuevos.length) { 
-              this.subiendoImagenes.set(false); 
-              this.guardando.set(false); 
-              this.cerrarFormulario(); 
-              this.cargarLotes();
+              if (completados === this.archivosNuevos.length) {
+                this.subiendoImagenes.set(false);
+                this.guardando.set(false);
+                this.cerrarFormulario();
+                this.cargarLotes();
 
-              const sufijo = nombreUsuario ? ` por ${nombreUsuario}` : '';
-              const mensaje = this.loteEditando()
-                ? `Lote actualizado correctamente${sufijo}`
-                : `Lote creado correctamente${sufijo}`;
+                const sufijo = nombreUsuario ? ` por ${nombreUsuario}` : '';
+                const mensaje = this.loteEditando()
+                  ? `Lote actualizado correctamente${sufijo}`
+                  : `Lote creado correctamente${sufijo}`;
 
-              this.toastService.exito(mensaje);
-            }
+                this.toastService.exito(mensaje);
+              }
             },
-              error: (err) => { 
-                console.error('Error al vincular imagen al lote:', err);
+            error: (err) => {
+              console.error('Error al vincular imagen al lote:', err);
 
-                const mensaje =
-                  err?.error?.detail ??
-                  'La imagen se subió pero no se pudo vincular al lote';
+              const mensaje =
+                err?.error?.detail ??
+                'La imagen se subió pero no se pudo vincular al lote';
 
-                this.error.set(mensaje);
-                this.toastService.error(mensaje);
+              this.error.set(mensaje);
+              this.toastService.error(mensaje);
 
-                completados++;
+              completados++;
 
-                if (completados === this.archivosNuevos.length) { 
-                  this.subiendoImagenes.set(false); 
-                  this.guardando.set(false); 
-                } 
-              },
+              if (completados === this.archivosNuevos.length) {
+                this.subiendoImagenes.set(false);
+                this.guardando.set(false);
+              }
+            },
           });
         },
-        error: (err) => { 
+        error: (err) => {
           console.error('Error al subir imagen:', err);
 
           const mensaje = err?.error?.detail ?? 'No se pudo subir la imagen';
@@ -736,33 +756,32 @@ export class LotesListComponent implements OnInit, OnDestroy {
 
           completados++;
 
-          if (completados === this.archivosNuevos.length) { 
-            this.subiendoImagenes.set(false); 
-            this.guardando.set(false); 
-          } 
+          if (completados === this.archivosNuevos.length) {
+            this.subiendoImagenes.set(false);
+            this.guardando.set(false);
+          }
         },
       });
     });
   }
 
-  
-async cambiarEstado(lote: Lote, estado: EstadoLote, selectElement?: HTMLSelectElement): Promise<void> {
-  if (estado === lote.estado) {
+  async cambiarEstado(lote: Lote, estado: EstadoLote, selectElement?: HTMLSelectElement): Promise<void> {
+    if (estado === lote.estado) {
+      if (selectElement) selectElement.value = '';
+      return;
+    }
+
+    const confirmado = await this.confirmModal.confirm(
+      'Cambiar estado del lote',
+      `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`
+    );
+
+    // Apenas se resuelve el modal (confirmes o canceles), el select
+    // vuelve a mostrar "Cambiar estado" — así nunca queda "pegado"
+    // en una opción que en realidad no se aplicó.
     if (selectElement) selectElement.value = '';
-    return;
-  }
 
-  const confirmado = await this.confirmModal.confirm(
-    'Cambiar estado del lote',
-    `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`
-  );
-
-  // Apenas se resuelve el modal (confirmes o canceles), el select
-  // vuelve a mostrar "Cambiar estado" — así nunca queda "pegado"
-  // en una opción que en realidad no se aplicó.
-  if (selectElement) selectElement.value = '';
-
-  if (!confirmado) return;
+    if (!confirmado) return;
 
     const estadoAnterior = lote.estado;
 

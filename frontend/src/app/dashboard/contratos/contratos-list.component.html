@@ -1,29 +1,42 @@
 <div class="contratos-page">
-  <div class="page-header">
-    <div>
+
+  <!-- ============ ENCABEZADO ============ -->
+  <header class="page-header">
+    <div class="titulo-bloque">
       <h1>Contratos</h1>
       <p class="subtitle">Gestiona ventas, cronogramas y pagos</p>
     </div>
-    <button class="btn-primary" (click)="abrirNuevoContrato()">
-      <span>+</span> Nuevo contrato
+    <button type="button" class="btn-primary" (click)="abrirNuevoContrato()">
+      <span class="icono-mas" aria-hidden="true">+</span> Nuevo contrato
     </button>
-  </div>
+  </header>
 
-  <div class="selector-proyecto">
-    <label>Proyecto</label>
-    <select [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
-      @for (p of proyectos(); track p.id) {
-        <option [ngValue]="p.id">{{ p.nombre }}</option>
-      }
-    </select>
-  </div>
+  <!-- ============ BARRA DE FILTRO ============ -->
+  <section class="toolbar">
+    <div class="selector-proyecto">
+      <label for="selProyecto">Proyecto</label>
+      <select id="selProyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+        @for (p of proyectos(); track p.id) {
+          <option [ngValue]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+    </div>
+    @if (!cargando() && contratos().length > 0) {
+      <span class="contador">{{ contratos().length }} {{ contratos().length === 1 ? 'contrato' : 'contratos' }}</span>
+    }
+  </section>
 
+  <!-- ============ LISTADO ============ -->
   @if (cargando()) {
-    <div class="estado-carga">Cargando contratos...</div>
+    <div class="estado-carga" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Cargando contratos...</span>
+    </div>
   } @else if (contratos().length === 0) {
     <div class="estado-vacio">
+      <div class="vacio-icono" aria-hidden="true">📄</div>
       <p>Aún no hay contratos en este proyecto.</p>
-      <button class="btn-primary" (click)="abrirNuevoContrato()">Crear el primero</button>
+      <button type="button" class="btn-primary" (click)="abrirNuevoContrato()">Crear el primero</button>
     </div>
   } @else {
     <div class="tabla-card">
@@ -33,26 +46,33 @@
             <th>Contrato</th>
             <th>Lote</th>
             <th>Cliente</th>
-            <th>Monto</th>
+            <th class="th-derecha">Monto</th>
             <th>Forma</th>
             <th>Estado</th>
           </tr>
         </thead>
         <tbody>
           @for (c of contratos(); track c.id) {
-            <tr class="fila-contrato" (click)="abrirDrawer(c)">
-              <td>
+            <tr class="fila-contrato" tabindex="0" (click)="abrirDrawer(c)" (keydown.enter)="abrirDrawer(c)">
+              <td data-label="Contrato" class="celda-principal">
                 <span class="numero">{{ c.numero_contrato }}</span>
                 <span class="fecha">{{ c.fecha_contrato }}</span>
               </td>
-              <td>{{ c.lote?.codigo ?? '—' }}</td>
-              <td>
-                <span class="valor">{{ clienteTitular(c)?.nombres }} {{ clienteTitular(c)?.apellidos }}</span>
-                <span class="documento">{{ clienteTitular(c)?.numero_documento }}</span>
+              <td data-label="Lote">
+                <span class="lote-tag">{{ c.lote?.codigo ?? '—' }}</span>
               </td>
-              <td class="monto">S/ {{ c.precio_total }}</td>
-              <td><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
-              <td><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
+              <td data-label="Cliente">
+                <div class="cliente-celda">
+                  <span class="avatar" aria-hidden="true">{{ clienteTitular(c)?.nombres?.charAt(0) }}</span>
+                  <div>
+                    <span class="valor">{{ clienteTitular(c)?.nombres }} {{ clienteTitular(c)?.apellidos }}</span>
+                    <span class="documento">{{ clienteTitular(c)?.numero_documento }}</span>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Monto" class="monto">S/ {{ c.precio_total }}</td>
+              <td data-label="Forma"><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
+              <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
             </tr>
           }
         </tbody>
@@ -60,55 +80,58 @@
     </div>
   }
 
-  <!-- Drawer de detalle del contrato -->
-  @if (contratoDrawer()) {
+  <!-- ============ DRAWER DE DETALLE ============ -->
+  @if (contratoDrawer(); as ct) {
     <div class="drawer-overlay" [class.visible]="drawerAbierto()" (click)="cerrarDrawer()"></div>
 
-    <div class="drawer" [class.visible]="drawerAbierto()">
+    <aside class="drawer" [class.visible]="drawerAbierto()" role="dialog" aria-modal="true" [attr.aria-label]="'Contrato ' + ct.numero_contrato">
       <div class="drawer-header">
-        <div>
-          <h2>{{ contratoDrawer()!.numero_contrato }}</h2>
+        <div class="drawer-titulo">
+          <span class="etiqueta-mini">Contrato</span>
+          <h2>{{ ct.numero_contrato }}</h2>
           <div class="drawer-subtitulo">
-            <span class="chip chip-forma">{{ contratoDrawer()!.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span>
-            <span class="chip" [ngClass]="'chip-' + contratoDrawer()!.estado">{{ contratoDrawer()!.estado }}</span>
+            <span class="chip chip-forma">{{ ct.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span>
+            <span class="chip" [ngClass]="'chip-' + ct.estado">{{ ct.estado }}</span>
           </div>
         </div>
-        <button class="btn-cerrar" (click)="cerrarDrawer()">✕</button>
+        <button type="button" class="btn-cerrar" (click)="cerrarDrawer()" aria-label="Cerrar">✕</button>
       </div>
 
       <div class="drawer-body">
+
+        <!-- Ficha rápida -->
         <div class="ficha-rapida">
           <div class="ficha-item">
             <span class="etiqueta-mini">Lote</span>
-            <span class="valor">{{ contratoDrawer()!.lote?.codigo ?? '—' }}</span>
+            <span class="valor">{{ ct.lote?.codigo ?? '—' }}</span>
           </div>
-          <div class="ficha-item">
+          <div class="ficha-item ficha-compradores">
             <span class="etiqueta-mini">Compradores</span>
-            @for (cl of contratoDrawer()!.clientes; track cl.id_cliente) {
+            @for (cl of ct.clientes; track cl.id_cliente) {
               <span class="valor">{{ cl.nombres }} {{ cl.apellidos }}</span>
               <span class="documento">{{ cl.numero_documento }} · {{ cl.rol }}</span>
             }
           </div>
           <div class="ficha-item">
             <span class="etiqueta-mini">Precio total</span>
-            <span class="valor">S/ {{ contratoDrawer()!.precio_total }}</span>
+            <span class="valor valor-cifra">S/ {{ ct.precio_total }}</span>
           </div>
           <div class="ficha-item">
             <span class="etiqueta-mini">Inicial abonado</span>
-            <span class="valor">S/ {{ contratoDrawer()!.inicial_abonado }}</span>
+            <span class="valor valor-cifra">S/ {{ ct.inicial_abonado }}</span>
           </div>
         </div>
 
         <!-- Documentos de la venta -->
-        <div class="bloque-docs">
+        <section class="bloque-docs">
           <h4>Documentos de la venta</h4>
-          @if (ventaPorContrato()[contratoDrawer()!.id]; as venta) {
+          @if (ventaPorContrato()[ct.id]; as venta) {
             <div class="doc-fila">
               <span>{{ venta.forma_pago === 'contado' ? 'Minuta' : 'Contrato Preparatorio' }}</span>
               @if (venta.documento_generado_url) {
                 <a [href]="venta.documento_generado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
               } @else {
-                <span class="texto-tenue">Sin generar</span>
+                <span class="texto-tenue-inline">Sin generar</span>
               }
             </div>
             <div class="doc-fila">
@@ -116,202 +139,240 @@
               @if (venta.documento_firmado_url) {
                 <a [href]="venta.documento_firmado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
               } @else {
-                <span class="texto-tenue">Pendiente</span>
+                <span class="texto-tenue-inline">Pendiente</span>
               }
             </div>
             <div class="doc-fila">
               <span>Estado de la venta</span>
-              <span class="chip">{{ venta.estado }}</span>
+              <span class="chip chip-forma">{{ venta.estado }}</span>
             </div>
             @for (u of venta.ubicaciones; track u.id) {
               <div class="doc-fila">
                 <span>{{ u.tipo_documento }} · {{ u.ubicacion }}{{ u.notaria_nombre ? ' (' + u.notaria_nombre + ')' : '' }}</span>
-                <span class="chip">{{ u.estado_tramite }}</span>
+                <span class="chip chip-forma">{{ u.estado_tramite }}</span>
               </div>
             }
-            <button class="btn-secundario-sm" style="margin-top:8px;" (click)="abrirVenta(venta.id)">Abrir venta completa →</button>
+            <button type="button" class="btn-secundario-sm btn-abrir-venta" (click)="abrirVenta(venta.id)">Abrir venta completa →</button>
           } @else {
             <p class="texto-tenue">Este contrato no proviene del flujo de ventas, así que no tiene documentos asociados.</p>
           }
-        </div>
+        </section>
 
         <!-- Acciones de cobranza -->
         @if (puedeGestionarCobranza) {
           <div class="acciones-cobranza">
-            @if (contratoDrawer()!.forma_pago === 'credito' && contratoDrawer()!.estado !== 'cancelado' && contratoDrawer()!.estado !== 'anulado') {
-              <button class="btn-secundario-sm" (click)="recalcularCuotas(contratoDrawer()!)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
-              <button class="btn-secundario-sm" (click)="cancelarContrato(contratoDrawer()!)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
+            @if (ct.forma_pago === 'credito' && ct.estado !== 'cancelado' && ct.estado !== 'anulado') {
+              <button type="button" class="btn-secundario-sm" (click)="recalcularCuotas(ct)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
+              <button type="button" class="btn-secundario-sm btn-peligro" (click)="cancelarContrato(ct)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
             }
-            @if (contratoDrawer()!.estado === 'cancelado' && ventaPorContrato()[contratoDrawer()!.id] && ventaPorContrato()[contratoDrawer()!.id]!.estado !== 'finalizada') {
-              <button class="btn-secundario-sm" (click)="finalizarVenta(contratoDrawer()!)" [disabled]="procesandoCobranza()">Finalizar venta</button>
+            @if (ct.estado === 'cancelado' && ventaPorContrato()[ct.id] && ventaPorContrato()[ct.id]!.estado !== 'finalizada') {
+              <button type="button" class="btn-secundario-sm" (click)="finalizarVenta(ct)" [disabled]="procesandoCobranza()">Finalizar venta</button>
             }
           </div>
         }
 
-        @if (contratoDrawer()!.forma_pago === 'contado') {
+        <!-- Cronograma / pagos -->
+        @if (ct.forma_pago === 'contado') {
           <p class="texto-tenue">Contrato al contado — no genera cronograma de cuotas.</p>
-        } @else if (cargandoCronograma() === contratoDrawer()!.id) {
-          <p class="texto-tenue">Cargando cronograma...</p>
+        } @else if (cargandoCronograma() === ct.id) {
+          <div class="estado-carga estado-carga-sm" role="status">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Cargando cronograma...</span>
+          </div>
         } @else {
-          <!-- Resumen general -->
-          <div class="resumen-grid">
-            <div class="resumen-item">
-              <span class="resumen-label">Total pagado</span>
-              <span class="resumen-valor valor-positivo">S/ {{ resumen(contratoDrawer()!).totalPagado.toFixed(2) }}</span>
-            </div>
-            <div class="resumen-item">
-              <span class="resumen-label">Saldo pendiente</span>
-              <span class="resumen-valor">S/ {{ resumen(contratoDrawer()!).saldoPendiente.toFixed(2) }}</span>
-            </div>
-            <div class="resumen-item">
-              <span class="resumen-label">Cuotas pagadas</span>
-              <span class="resumen-valor">{{ resumen(contratoDrawer()!).cuotasPagadas }}</span>
-            </div>
-            <div class="resumen-item">
-              <span class="resumen-label">Cuotas pendientes</span>
-              <span class="resumen-valor">{{ resumen(contratoDrawer()!).cuotasPendientes }}</span>
-            </div>
-            @if (resumen(contratoDrawer()!).cuotasVencidas > 0) {
-              <div class="resumen-item">
-                <span class="resumen-label">Cuotas vencidas</span>
-                <span class="resumen-valor valor-negativo">{{ resumen(contratoDrawer()!).cuotasVencidas }}</span>
-              </div>
-            }
-            <div class="resumen-item">
-              <span class="resumen-label">Interés total</span>
-              <span class="resumen-valor">S/ {{ resumen(contratoDrawer()!).interesTotal.toFixed(2) }}</span>
-            </div>
-            @if (resumen(contratoDrawer()!).proximaFecha) {
-              <div class="resumen-item">
-                <span class="resumen-label">Próximo pago</span>
-                <span class="resumen-valor">{{ resumen(contratoDrawer()!).proximaFecha }}</span>
-              </div>
-            }
-          </div>
+          @if (resumen(ct); as r) {
 
-          <div class="cronograma-header">
-            <h4>Cronograma de cuotas</h4>
-            @if (contratoDrawer()!.frecuencia_cuota === 'anual') {
-              <button class="btn-toggle-detalle" (click)="toggleDetalleMensual(contratoDrawer()!.id)">
-                {{ detalleMensual()[contratoDrawer()!.id] ? 'Ver solo cuotas de pago' : 'Ver detalle mensual' }}
-              </button>
-            }
-          </div>
-
-          <div class="tabla-scroll">
-            <table class="tabla-cronograma">
-              <thead>
-                <tr>
-                  <th>N°</th>
-                  <th>Fecha</th>
-                  <th>Capital</th>
-                  <th>Amortiz.</th>
-                  <th>Interés</th>
-                  @if (contratoDrawer()!.frecuencia_cuota === 'anual' && detalleMensual()[contratoDrawer()!.id]) {
-                    <th>Int. acum.</th>
-                  }
-                  <th>Cuota</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (cuota of cuotasVisibles(contratoDrawer()!); track cuota.id) {
-                  <tr [class.fila-sin-pago]="!cuota.requiere_pago">
-                    <td>{{ cuota.numero_cuota }}</td>
-                    <td>{{ cuota.fecha_pago_programada }}</td>
-                    <td>S/ {{ cuota.capital }}</td>
-                    <td>{{ cuota.requiere_pago ? 'S/ ' + cuota.amortizacion : '—' }}</td>
-                    <td>S/ {{ cuota.interes_mensual }}</td>
-                    @if (contratoDrawer()!.frecuencia_cuota === 'anual' && detalleMensual()[contratoDrawer()!.id]) {
-                      <td>S/ {{ cuota.interes_acumulado }}</td>
-                    }
-                    <td>{{ cuota.requiere_pago ? 'S/ ' + cuota.monto_cuota : '—' }}</td>
-                    <td>
-                      @if (cuota.requiere_pago) {
-                        <span class="chip" [ngClass]="'chip-' + cuota.estado">{{ cuota.estado }}</span>
-                      } @else {
-                        <span class="etiqueta-solo-interes">interés</span>
-                      }
-                    </td>
-                    <td>
-                      @if (cuota.requiere_pago && cuota.estado !== 'pagada') {
-                        @if (pagoEnProceso(contratoDrawer()!.id, cuota.id)) {
-                          <span class="chip chip-pago-pendiente_caja">En validación</span>
-                        } @else if (puedeRegistrarPago) {
-                          <button class="btn-secundario-sm" (click)="abrirRegistrarPago(contratoDrawer()!.id, cuota)">
-                            Pagar
-                          </button>
-                        }
-                      }
-                    </td>
-                  </tr>
+            <!-- Tarjeta principal: saldo y avance -->
+            <section class="hero-saldo">
+              <div class="hero-top">
+                <div class="hero-bloque">
+                  <span class="hero-label">Saldo pendiente</span>
+                  <span class="hero-monto">S/ {{ r.saldoPendiente.toFixed(2) }}</span>
+                </div>
+                @if (r.proximaFecha) {
+                  <div class="hero-proximo">
+                    <span class="hero-label">Próximo pago</span>
+                    <span class="hero-fecha">{{ r.proximaFecha }}</span>
+                  </div>
                 }
-              </tbody>
-            </table>
-          </div>
+              </div>
 
-          <h4 class="titulo-historial">Historial de pagos</h4>
-          @if ((pagosPorContrato()[contratoDrawer()!.id] ?? []).length === 0) {
-            <p class="texto-tenue">Todavía no se ha registrado ningún pago.</p>
-          } @else {
+              <div class="progreso"
+                   role="progressbar"
+                   aria-valuemin="0"
+                   aria-valuemax="100"
+                   [attr.aria-valuenow]="((r.totalPagado / (r.totalPagado + r.saldoPendiente)) * 100 || 0).toFixed(0)">
+                <div class="progreso-barra" [style.width.%]="((r.totalPagado / (r.totalPagado + r.saldoPendiente)) * 100 || 0)"></div>
+              </div>
+              <div class="progreso-leyenda">
+                <span>Pagado: <strong>S/ {{ r.totalPagado.toFixed(2) }}</strong></span>
+                <span><strong>{{ ((r.totalPagado / (r.totalPagado + r.saldoPendiente)) * 100 || 0).toFixed(0) }}%</strong> completado</span>
+              </div>
+            </section>
+
+            <!-- Indicadores -->
+            <div class="resumen-grid">
+              <div class="resumen-item">
+                <span class="resumen-label">Cuotas pagadas</span>
+                <span class="resumen-valor valor-positivo">{{ r.cuotasPagadas }}</span>
+              </div>
+              <div class="resumen-item">
+                <span class="resumen-label">Cuotas pendientes</span>
+                <span class="resumen-valor">{{ r.cuotasPendientes }}</span>
+              </div>
+              @if (r.cuotasVencidas > 0) {
+                <div class="resumen-item resumen-alerta">
+                  <span class="resumen-label">Cuotas vencidas</span>
+                  <span class="resumen-valor valor-negativo">{{ r.cuotasVencidas }}</span>
+                </div>
+              }
+              <div class="resumen-item">
+                <span class="resumen-label">Interés total</span>
+                <span class="resumen-valor">S/ {{ r.interesTotal.toFixed(2) }}</span>
+              </div>
+            </div>
+
+            <!-- Cronograma -->
+            <div class="cronograma-header">
+              <div>
+                <h4>Cronograma de cuotas</h4>
+                <ul class="leyenda" aria-label="Leyenda de estados">
+                  <li><span class="punto punto-pagada"></span>Pagada</li>
+                  <li><span class="punto punto-pendiente"></span>Pendiente</li>
+                  <li><span class="punto punto-vencida"></span>Vencida</li>
+                  <li><span class="punto punto-interes"></span>Solo interés</li>
+                </ul>
+              </div>
+              @if (ct.frecuencia_cuota === 'anual') {
+                <button type="button" class="btn-toggle-detalle" (click)="toggleDetalleMensual(ct.id)">
+                  {{ detalleMensual()[ct.id] ? 'Ver solo cuotas de pago' : 'Ver detalle mensual' }}
+                </button>
+              }
+            </div>
+
             <div class="tabla-scroll">
-              <table class="tabla-historial">
+              <table class="tabla-cronograma">
                 <thead>
                   <tr>
-                    <th>Cuota</th>
-                    <th>Fecha</th>
-                    <th>Monto</th>
-                    <th>Método</th>
-                    <th>N° op.</th>
-                    <th>Comp.</th>
+                    <th>N°</th>
+                    <th>Vencimiento</th>
+                    <th class="th-derecha">Capital</th>
+                    <th class="th-derecha">Amortiz.</th>
+                    <th class="th-derecha">Interés</th>
+                    @if (ct.frecuencia_cuota === 'anual' && detalleMensual()[ct.id]) {
+                      <th class="th-derecha">Int. acum.</th>
+                    }
+                    <th class="th-derecha">Cuota</th>
                     <th>Estado</th>
+                    <th class="th-accion"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (pago of pagosPorContrato()[contratoDrawer()!.id]; track pago.id) {
-                    <tr>
-                      <td>{{ pago.id_cuota ?? '—' }}</td>
-                      <td>{{ pago.fecha_pago }}</td>
-                      <td>S/ {{ pago.monto }}</td>
-                      <td class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>
-                      <td>{{ pago.numero_operacion ?? '—' }}</td>
-                      <td>
-                        @if (pago.comprobante_url) {
-                          <button class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)">📎</button>
+                  @for (cuota of cuotasVisibles(ct); track cuota.id) {
+                    <tr
+                      [class.fila-sin-pago]="!cuota.requiere_pago"
+                      [class.fila-pagada]="cuota.estado === 'pagada'"
+                      [class.fila-vencida]="cuota.requiere_pago && cuota.estado === 'vencida'"
+                      [class.fila-proxima]="cuota.requiere_pago && cuota.estado !== 'pagada' && cuota.fecha_pago_programada === r.proximaFecha">
+                      <td data-label="N°" class="celda-num">
+                        <span class="punto" [ngClass]="cuota.requiere_pago ? 'punto-' + cuota.estado : 'punto-interes'"></span>
+                        {{ cuota.numero_cuota }}
+                      </td>
+                      <td data-label="Vencimiento">{{ cuota.fecha_pago_programada }}</td>
+                      <td data-label="Capital" class="num">S/ {{ cuota.capital }}</td>
+                      <td data-label="Amortiz." class="num">{{ cuota.requiere_pago ? 'S/ ' + cuota.amortizacion : '—' }}</td>
+                      <td data-label="Interés" class="num">S/ {{ cuota.interes_mensual }}</td>
+                      @if (ct.frecuencia_cuota === 'anual' && detalleMensual()[ct.id]) {
+                        <td data-label="Int. acum." class="num">S/ {{ cuota.interes_acumulado }}</td>
+                      }
+                      <td data-label="Cuota" class="num celda-cuota">{{ cuota.requiere_pago ? 'S/ ' + cuota.monto_cuota : '—' }}</td>
+                      <td data-label="Estado">
+                        @if (cuota.requiere_pago) {
+                          <span class="chip" [ngClass]="'chip-' + cuota.estado">{{ cuota.estado }}</span>
                         } @else {
-                          <span class="sin-comprobante">—</span>
+                          <span class="etiqueta-solo-interes">interés</span>
                         }
                       </td>
-                      <td>
-                        <span class="chip" [ngClass]="'chip-pago-' + pago.estado" [attr.title]="pago.motivo_rechazo ?? ''">
-                          {{ etiquetaPago(pago.estado) }}
-                        </span>
+                      <td data-label="" class="celda-accion">
+                        @if (cuota.requiere_pago && cuota.estado !== 'pagada') {
+                          @if (pagoEnProceso(ct.id, cuota.id)) {
+                            <span class="chip chip-pago-pendiente_caja">En validación</span>
+                          } @else if (puedeRegistrarPago) {
+                            <button type="button" class="btn-pagar" (click)="abrirRegistrarPago(ct.id, cuota)">Pagar</button>
+                          }
+                        }
                       </td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
+
+            <!-- Historial -->
+            <h4 class="titulo-historial">Historial de pagos</h4>
+            @if ((pagosPorContrato()[ct.id] ?? []).length === 0) {
+              <p class="texto-tenue">Todavía no se ha registrado ningún pago.</p>
+            } @else {
+              <div class="tabla-scroll">
+                <table class="tabla-historial">
+                  <thead>
+                    <tr>
+                      <th>Cuota</th>
+                      <th>Fecha</th>
+                      <th class="th-derecha">Monto</th>
+                      <th>Método</th>
+                      <th>N° op.</th>
+                      <th>Comp.</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pago of pagosPorContrato()[ct.id]; track pago.id) {
+                      <tr>
+                        <td data-label="Cuota">{{ pago.id_cuota ?? '—' }}</td>
+                        <td data-label="Fecha">{{ pago.fecha_pago }}</td>
+                        <td data-label="Monto" class="num celda-cuota">S/ {{ pago.monto }}</td>
+                        <td data-label="Método" class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>
+                        <td data-label="N° op.">{{ pago.numero_operacion ?? '—' }}</td>
+                        <td data-label="Comp.">
+                          @if (pago.comprobante_url) {
+                            <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">📎</button>
+                          } @else {
+                            <span class="sin-comprobante">—</span>
+                          }
+                        </td>
+                        <td data-label="Estado">
+                          <span class="chip" [ngClass]="'chip-pago-' + pago.estado" [attr.title]="pago.motivo_rechazo ?? ''">
+                            {{ etiquetaPago(pago.estado) }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
           }
         }
       </div>
-    </div>
+    </aside>
   }
 
-  <!-- Modal: nuevo contrato -->
+  <!-- ============ MODAL: NUEVO CONTRATO ============ -->
   @if (modalAbierto()) {
     <div class="modal-overlay" (click)="cerrarModal()">
-      <div class="modal modal-grande" (click)="$event.stopPropagation()">
+      <div class="modal modal-grande" role="dialog" aria-modal="true" aria-label="Nuevo contrato" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Nuevo contrato</h2>
-          <button class="btn-cerrar" (click)="cerrarModal()">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModal()" aria-label="Cerrar">✕</button>
         </div>
 
         <div class="modal-body">
           @if (error()) {
-            <div class="mensaje-error">{{ error() }}</div>
+            <div class="mensaje-error" role="alert">{{ error() }}</div>
           }
+
+          <h4 class="seccion-titulo seccion-primera">Datos del contrato</h4>
 
           <div class="campo">
             <label>Lote (solo lotes libres)</label>
@@ -335,6 +396,13 @@
           </div>
 
           <div class="campo">
+            <label>Tipo de contrato (opcional)</label>
+            <input [(ngModel)]="tipoContrato" type="text" placeholder="Ej. Compra venta" />
+          </div>
+
+          <h4 class="seccion-titulo">Condiciones de pago</h4>
+
+          <div class="campo">
             <label>Forma de pago</label>
             <select [(ngModel)]="formaPago" (ngModelChange)="onFormaPagoChange()">
               <option value="contado">Contado</option>
@@ -345,11 +413,11 @@
           <div class="campo-doble">
             <div class="campo">
               <label>Precio total (S/)</label>
-              <input [(ngModel)]="precioTotal" type="number" />
+              <input [(ngModel)]="precioTotal" type="number" inputmode="decimal" />
             </div>
             <div class="campo">
               <label>Inicial abonado (S/)</label>
-              <input [(ngModel)]="inicialAbonado" type="number" />
+              <input [(ngModel)]="inicialAbonado" type="number" inputmode="decimal" />
             </div>
           </div>
 
@@ -369,7 +437,7 @@
               </div>
               <div class="campo">
                 <label>N° de {{ frecuenciaCuota === 'anual' ? 'pagos anuales' : 'cuotas' }}</label>
-                <input [(ngModel)]="numeroCuotas" type="number" />
+                <input [(ngModel)]="numeroCuotas" type="number" inputmode="numeric" />
               </div>
             </div>
 
@@ -395,7 +463,7 @@
                 <div class="campo-doble">
                   <div class="campo">
                     <label>TEM (% mensual)</label>
-                    <input [(ngModel)]="tem" type="number" step="0.01" placeholder="Ej. 1.5" />
+                    <input [(ngModel)]="tem" type="number" step="0.01" inputmode="decimal" placeholder="Ej. 1.5" />
                   </div>
                   <div class="campo">
                     <label>Inicio de interés</label>
@@ -407,16 +475,11 @@
           }
 
           <div class="campo">
-            <label>Tipo de contrato (opcional)</label>
-            <input [(ngModel)]="tipoContrato" type="text" placeholder="Ej. Compra venta" />
-          </div>
-
-          <div class="campo">
             <label>Observaciones</label>
             <textarea [(ngModel)]="observaciones" rows="2"></textarea>
           </div>
 
-          <h4 class="subseccion">Cliente titular</h4>
+          <h4 class="seccion-titulo">Cliente titular</h4>
 
           <div class="campo-doble">
             <div class="campo">
@@ -429,7 +492,7 @@
             </div>
             <div class="campo">
               <label>N° de documento</label>
-              <input [(ngModel)]="numeroDocumento" type="text" />
+              <input [(ngModel)]="numeroDocumento" type="text" inputmode="numeric" />
             </div>
           </div>
 
@@ -451,7 +514,7 @@
             </div>
             <div class="campo">
               <label>Teléfono (opcional)</label>
-              <input [(ngModel)]="telefonoCliente" type="text" />
+              <input [(ngModel)]="telefonoCliente" type="text" inputmode="tel" />
             </div>
           </div>
 
@@ -462,8 +525,8 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
-          <button class="btn-primary" (click)="guardarContrato()" [disabled]="guardando()">
+          <button type="button" class="btn-secundario" (click)="cerrarModal()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="guardarContrato()" [disabled]="guardando()">
             {{ guardando() ? 'Guardando...' : 'Guardar contrato' }}
           </button>
         </div>
@@ -471,26 +534,42 @@
     </div>
   }
 
-  <!-- Modal: registrar pago -->
+  <!-- ============ MODAL: REGISTRAR PAGO ============ -->
   @if (modalPagoAbierto()) {
     <div class="modal-overlay" (click)="cerrarModalPago()">
-      <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Registrar pago" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>Registrar pago — cuota {{ cuotaSeleccionada?.numero_cuota }}</h2>
-          <button class="btn-cerrar" (click)="cerrarModalPago()">✕</button>
+          <h2>Registrar pago</h2>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalPago()" aria-label="Cerrar">✕</button>
         </div>
 
         <div class="modal-body">
           @if (errorPago()) {
-            <div class="mensaje-error">{{ errorPago() }}</div>
+            <div class="mensaje-error" role="alert">{{ errorPago() }}</div>
           }
+
+          <div class="cuota-resumen">
+            <div>
+              <span class="etiqueta-mini">Cuota</span>
+              <span class="cuota-resumen-valor">N° {{ cuotaSeleccionada?.numero_cuota }}</span>
+            </div>
+            <div>
+              <span class="etiqueta-mini">Vence</span>
+              <span class="cuota-resumen-valor">{{ cuotaSeleccionada?.fecha_pago_programada }}</span>
+            </div>
+            <div>
+              <span class="etiqueta-mini">Monto de cuota</span>
+              <span class="cuota-resumen-valor">S/ {{ cuotaSeleccionada?.monto_cuota }}</span>
+            </div>
+          </div>
+
           <div class="aviso-info">
             El pago pasará primero a <strong>Caja</strong> y luego a <strong>Facturación</strong>. Se aplicará a la cuota cuando Facturación suba el comprobante.
           </div>
 
           <div class="campo">
             <label>Monto (S/)</label>
-            <input [(ngModel)]="montoPago" type="number" />
+            <input [(ngModel)]="montoPago" type="number" inputmode="decimal" />
           </div>
 
           <div class="campo-doble">
@@ -530,8 +609,8 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn-secundario" (click)="cerrarModalPago()">Cancelar</button>
-          <button class="btn-primary" (click)="guardarPago()" [disabled]="guardandoPago()">
+          <button type="button" class="btn-secundario" (click)="cerrarModalPago()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="guardarPago()" [disabled]="guardandoPago()">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
           </button>
         </div>
@@ -539,24 +618,24 @@
     </div>
   }
 
-  <!-- Modal: visor de comprobante -->
+  <!-- ============ MODAL: VISOR DE COMPROBANTE ============ -->
   @if (modalComprobanteAbierto()) {
     <div class="modal-overlay" (click)="cerrarComprobante()">
-      <div class="modal modal-visor" (click)="$event.stopPropagation()">
+      <div class="modal modal-visor" role="dialog" aria-modal="true" aria-label="Comprobante de pago" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Comprobante de pago</h2>
-          <button class="btn-cerrar" (click)="cerrarComprobante()">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarComprobante()" aria-label="Cerrar">✕</button>
         </div>
         <div class="modal-body modal-body-visor">
           @if (comprobanteUrlActual() && esImagen(comprobanteUrlActual()!)) {
             <img [src]="comprobanteUrlActual()" alt="Comprobante de pago" class="imagen-comprobante" />
           } @else if (comprobanteUrlActual()) {
-            <iframe [src]="comprobanteUrlActual()" class="pdf-comprobante"></iframe>
+            <iframe [src]="comprobanteUrlActual()" class="pdf-comprobante" title="Comprobante de pago"></iframe>
           }
         </div>
         <div class="modal-footer">
-          <a [href]="comprobanteUrlActual()" target="_blank" class="btn-secundario">Abrir en otra pestaña</a>
-          <button class="btn-primary" (click)="cerrarComprobante()">Cerrar</button>
+          <a [href]="comprobanteUrlActual()" target="_blank" rel="noopener" class="btn-secundario btn-enlace">Abrir en otra pestaña</a>
+          <button type="button" class="btn-primary" (click)="cerrarComprobante()">Cerrar</button>
         </div>
       </div>
     </div>

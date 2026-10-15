@@ -430,3 +430,31 @@
   font-size: 0.86rem;
   margin-bottom: 16px;
 }
+
+.fila-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  .fila-2 { grid-template-columns: 1fr; }
+}
+
+.alerta-reglas {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.alerta-reglas h3 { color: #92660a; }
+
+.alerta-reglas ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 0.88rem;
+  color: #92660a;
+}
+
+.resumen-fin {
+  background: #f4faf8;
+}

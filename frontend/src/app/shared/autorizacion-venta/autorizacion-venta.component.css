@@ -1,0 +1,32 @@
+.auth-wrap {
+  background: #fff;
+  border: 1px solid #e1ece8;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.auth-wrap h3 { margin: 0 0 12px; font-size: 1rem; color: #0b3d33; }
+
+.auth-item { border: 1px solid #e1ece8; border-radius: 12px; padding: 14px; margin-bottom: 10px; background: #f9fbfa; }
+.auth-pendiente { background: #fffbeb; border-color: #fde68a; }
+.auth-aprobada { background: #f0fdf4; border-color: #bbf7d0; }
+.auth-rechazada { background: #fef2f2; border-color: #fecaca; }
+
+.auth-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.auth-cab small { color: #697386; font-size: 0.78rem; }
+.auth-chip { padding: 4px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; background: #eef1f0; color: #44514d; }
+
+.auth-motivos { margin: 0 0 8px; padding-left: 18px; font-size: 0.86rem; color: #92660a; }
+.auth-resumen { display: flex; flex-direction: column; gap: 2px; font-size: 0.84rem; color: #142622; margin-bottom: 8px; }
+.auth-resp { font-size: 0.86rem; margin: 6px 0; }
+
+.auth-item textarea { width: 100%; padding: 8px 10px; border: 1px solid #e1ece8; border-radius: 8px; font-family: inherit; font-size: 0.86rem; box-sizing: border-box; margin-top: 6px; }
+
+.auth-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.btn-ok, .btn-no, .btn-sec { border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+.btn-ok { background: #0f8f73; color: #fff; }
+.btn-ok:hover:not(:disabled) { background: #0b3d33; }
+.btn-no { background: #fee2e2; color: #b91c1c; }
+.btn-sec { background: #eef1f0; color: #0b3d33; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }

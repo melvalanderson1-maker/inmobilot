@@ -1,0 +1,49 @@
+@if (lista().length > 0) {
+  <div class="auth-wrap">
+    <h3>Autorizaciones de venta</h3>
+    @for (a of lista(); track a.id) {
+      <div class="auth-item" [ngClass]="'auth-' + a.estado">
+        <div class="auth-cab">
+          <span class="auth-chip">{{ etiqueta(a.estado) }}</span>
+          <small>Solicitada por {{ a.solicitado_por_nombre ?? '—' }} · {{ a.created_at | date:'dd/MM/yyyy HH:mm' }}</small>
+        </div>
+
+        <ul class="auth-motivos">
+          @for (mo of a.motivos; track mo.codigo) {
+            <li>{{ mo.mensaje }}</li>
+          }
+        </ul>
+
+        <div class="auth-resumen">
+          @for (l of resumen(a); track $index) {
+            <span>{{ l }}</span>
+          }
+        </div>
+
+        @if (a.respuesta) {
+          <p class="auth-resp"><strong>Respuesta{{ a.resuelto_por_nombre ? ' de ' + a.resuelto_por_nombre : '' }}:</strong> {{ a.respuesta }}</p>
+        }
+
+        @if (a.estado === 'pendiente' && puedeResolver) {
+          <textarea rows="2" [(ngModel)]="respuestas[a.id]" placeholder="Comentario (opcional)"></textarea>
+          <div class="auth-acciones">
+            <button class="btn-no" (click)="resolver(a, false)" [disabled]="procesando()">Rechazar</button>
+            <button class="btn-ok" (click)="resolver(a, true)" [disabled]="procesando()">Aprobar</button>
+          </div>
+        }
+
+        @if (a.estado === 'aprobada') {
+          <div class="auth-acciones">
+            <button class="btn-ok" (click)="crearVenta(a)" [disabled]="procesando()">Crear venta con estas condiciones</button>
+          </div>
+        }
+
+        @if (a.estado === 'usada' && a.id_venta) {
+          <div class="auth-acciones">
+            <button class="btn-sec" (click)="irAVenta(a)">Ver la venta →</button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

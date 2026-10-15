@@ -27,6 +27,11 @@ def _total_pagado(db: Session, id_contrato: int) -> Decimal:
     return Decimal(str(total))
 
 
+def _total_a_cobrar(contrato: m.Contrato) -> Decimal:
+    """Suma de las cuotas (incluye interés, si lo hay)."""
+    return sum((q.monto_cuota for q in contrato.cronograma if q.requiere_pago), CERO)
+
+
 def _cargar_contrato(db: Session, id_contrato: int, usuario: m.Usuario) -> m.Contrato:
     contrato = (
         db.query(m.Contrato)
@@ -109,7 +114,7 @@ def resumen_cobranza(
             precio_total=c.precio_total,
             inicial_abonado=c.inicial_abonado or CERO,
             total_pagado=total_pagado,
-            saldo_pendiente=max(c.saldo_financiado - total_pagado, CERO),
+            saldo_pendiente=max(sum((q.monto_cuota for q in cuotas), CERO) - total_pagado, CERO),
             monto_vencido=monto_vencido,
             cuotas_total=len(cuotas),
             cuotas_pagadas=len(cuotas) - len(pendientes),
@@ -190,7 +195,7 @@ async def cancelar_contrato(
     if en_tramite:
         raise _conflicto("Hay pagos pendientes de Caja o Facturación. Espera a que se apliquen antes de cancelar")
 
-    saldo = contrato.saldo_financiado - _total_pagado(db, contrato.id)
+    saldo = _total_a_cobrar(contrato) - _total_pagado(db, contrato.id)
     if saldo > 0:
         raise _conflicto(f"Aún falta cobrar S/ {saldo:,.2f}. Registra el pago antes de cancelar el contrato")
 

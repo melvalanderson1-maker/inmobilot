@@ -105,6 +105,25 @@
       <aside class="col-lateral">
         <section class="card panel">
           <div class="panel-bloque">
+            <h3>Condiciones</h3>
+            <dl class="dato-lista">
+              <div class="dato-item"><dt>Forma de pago</dt><dd>{{ venta()!.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</dd></div>
+              @if (venta()!.datos_credito; as dc) {
+                <div class="dato-item"><dt>Inicial</dt><dd>S/ {{ dc.inicial_monto | number:'1.2-2' }}</dd></div>
+                <div class="dato-item"><dt>Plazo</dt><dd>{{ dc.plazo_meses ?? (dc.plazo_anios * 12) }} meses</dd></div>
+                <div class="dato-item"><dt>Pagos</dt><dd>{{ dc.frecuencia_cuota }}</dd></div>
+                <div class="dato-item"><dt>Interés</dt><dd>{{ (dc.tea_financiamiento ?? ((dc.plazo_meses ?? dc.plazo_anios * 12) > 24 ? 20 : 0)) }}% anual</dd></div>
+              }
+            </dl>
+            @if (venta()!.datos_credito?.observaciones) {
+              <p class="dato-secundario">{{ venta()!.datos_credito.observaciones }}</p>
+            }
+            @if (venta()!.id_contrato) {
+              <button class="btn-secundario btn-sm" style="margin-top:10px;" (click)="verCronogramaYPagos()">Ver cronograma y pagos →</button>
+            }
+          </div>
+
+          <div class="panel-bloque">
             <h3>Compradores</h3>
             @for (c of venta()!.clientes; track c.id_cliente) {
               <div class="cliente-fila">

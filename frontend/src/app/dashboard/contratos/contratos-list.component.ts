@@ -236,7 +236,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   }
 
   abrirVenta(idVenta: number): void {
-    this.router.navigate(['/dashboard/ventas', idVenta]);
+    this.router.navigate(['/dashboard/contratos/venta', idVenta]);
   }
 
   recalcularCuotas(contrato: Contrato): void {
@@ -308,6 +308,13 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** El historial guardaba el id interno de la cuota; aquí se muestra su N° en el cronograma. */
+  numeroCuota(idContrato: number, idCuota?: number | null): string {
+    if (!idCuota) return '—';
+    const cuota = (this.cronogramaPorContrato()[idContrato] ?? []).find((q) => q.id === idCuota);
+    return cuota ? String(cuota.numero_cuota) : '—';
+  }
+
   etiquetaPago(estado: string): string {
     const mapa: Record<string, string> = {
       pendiente_caja: 'En Caja',
@@ -352,7 +359,8 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const pagos = (this.pagosPorContrato()[contrato.id] ?? []).filter((p) => p.estado === 'validado');
 
     const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
-    const saldoPendiente = Math.max(Number(contrato.saldo_financiado) - totalPagado, 0);
+    const totalCuotas = cuotas.reduce((acc, c) => acc + Number(c.monto_cuota), 0);
+    const saldoPendiente = Math.max(totalCuotas - totalPagado, 0);
     const cuotasPagadas = cuotas.filter((c) => c.estado === 'pagada').length;
     const cuotasPendientes = cuotas.filter((c) => c.estado === 'pendiente' || c.estado === 'parcial').length;
     const cuotasVencidas = cuotas.filter((c) => c.estado === 'vencida').length;

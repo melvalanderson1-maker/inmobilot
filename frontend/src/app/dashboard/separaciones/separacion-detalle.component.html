@@ -146,6 +146,8 @@
           }
         </section>
 
+        <app-autorizacion-venta [idSeparacion]="idSeparacion" />
+
         @if (separacion()!.comprobantes.length > 0) {
           <section class="card">
             <h3>Comprobantes</h3>
@@ -166,6 +168,9 @@
                 <div class="devolucion-cabecera">
                   <strong>S/ {{ d.monto | number:'1.2-2' }}</strong>
                   <span class="chip" [ngClass]="'chip-' + d.estado">{{ d.estado }}</span>
+                  @if (d.continua_venta) {
+                    <span class="chip">Continúa con la venta</span>
+                  }
                 </div>
                 <p class="dato-secundario">{{ d.sustento }}</p>
                 @if (d.respuesta) {
@@ -413,6 +418,13 @@
         <div class="campo">
           <label>Monto (S/)</label>
           <input type="number" [(ngModel)]="devolucionForm.monto" />
+        </div>
+        <div class="campo">
+          <label>¿Qué pasará con la separación?</label>
+          <select [(ngModel)]="devolucionForm.continua_venta" [disabled]="separacion()!.estado === 'convertida'">
+            <option [ngValue]="false">El cliente NO continúa: liberar el lote</option>
+            <option [ngValue]="true">El cliente continúa con la compra: devolver el monto y mantener el lote</option>
+          </select>
         </div>
         <div class="campo">
           <label>Sustento</label>

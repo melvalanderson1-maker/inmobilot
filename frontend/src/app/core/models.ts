@@ -483,6 +483,7 @@ export interface Comprobante {
 export interface DevolucionCreate {
   monto: number;
   sustento: string;
+  continua_venta?: boolean;
 }
 
 export interface DevolucionResolver {
@@ -498,6 +499,7 @@ export interface Devolucion {
   fecha_solicitud?: string;
   fecha_resolucion?: string;
   respuesta?: string;
+  continua_venta?: boolean;
 }
 
 export interface SeparacionCreate {
@@ -668,8 +670,9 @@ export interface Venta {
   lote?: VentaLoteInfo;
   clientes: VentaClienteInfo[];
   ubicaciones: DocumentoUbicacion[];
+  pagos_previos?: { monto: number; fecha: string }[];
+  datos_credito?: any;
 }
-
 
 // -------------------------------------------------- CONFIGURACIÓN LEGAL --
 
@@ -695,9 +698,11 @@ export interface DatosCredito {
   inicial_monto: number;
   fecha_deposito: string;
   numero_operacion: string;
-  plazo_anios: number;
-  tasa_interes: number;
+  plazo_meses: number;
   frecuencia_cuota: string;
+  tasa_interes: number;
+  tea_financiamiento?: number;
+  observaciones?: string;
 }
 
 
@@ -753,4 +758,30 @@ export interface PagoComprobanteIn {
   tipo: string;
   numero: string;
   archivo_url: string;
+}
+
+
+
+export interface EvaluacionVenta {
+  motivos: { codigo: string; mensaje: string }[];
+  requiere_autorizacion: boolean;
+  plazo_meses: number;
+  numero_cuotas: number;
+  tea_aplicable: number | string;
+  monto_financiar: number | string;
+  cuota_estimada: number | string;
+}
+
+export interface AutorizacionVenta {
+  id: number;
+  id_separacion: number;
+  estado: string; // pendiente | aprobada | rechazada | usada
+  motivos: { codigo: string; mensaje: string }[];
+  propuesta: any;
+  respuesta?: string;
+  solicitado_por_nombre?: string;
+  resuelto_por_nombre?: string;
+  id_venta?: number;
+  created_at: string;
+  resuelto_at?: string;
 }

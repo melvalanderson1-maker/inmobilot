@@ -7,7 +7,7 @@ import { SeparacionService } from '../../core/services/separacion.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { VentaService } from '../../core/services/venta.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Separacion, FormaPago, Cliente, VentaClienteIn } from '../../core/models';
+import { Separacion, FormaPago, Cliente, VentaClienteIn, VentaCreate, EvaluacionVenta } from '../../core/models';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 type RolExtra = 'conyuge' | 'copropietario';
@@ -24,7 +24,7 @@ interface CompradorExtra {
   styleUrl: './venta-form.component.css',
 })
 export class VentaFormComponent implements OnInit {
-  readonly MAX_EXTRAS = 3; // titular + 3 = 4 compradores (máximo del proceso)
+  readonly MAX_EXTRAS = 3; // titular + 3 = 4 compradores
 
   idSeparacion!: number;
   separacion = signal<Separacion | null>(null);
@@ -41,11 +41,27 @@ export class VentaFormComponent implements OnInit {
     inicial_monto: null as number | null,
     fecha_deposito: '',
     numero_operacion: '',
-    plazo_anios: 2,
-    tasa_interes: 25,
+    plazo_meses: 24,
     frecuencia_cuota: 'mensual',
+    tasa_interes: 25,
+    tea_financiamiento: null as number | null,
+    observaciones: '',
   };
 
+  frecuencias = [
+    { valor: 'mensual', etiqueta: 'Mensual' },
+    { valor: 'bimestral', etiqueta: 'Bimestral' },
+    { valor: 'trimestral', etiqueta: 'Trimestral' },
+    { valor: 'semestral', etiqueta: 'Semestral' },
+    { valor: 'unico', etiqueta: 'Pago único al vencimiento' },
+  ];
+
+  // ---- Vista previa de reglas (la calcula el backend) ----
+  evaluacion = signal<EvaluacionVenta | null>(null);
+  errorEvaluacion = signal<string | null>(null);
+  private timer: ReturnType<typeof setTimeout> | null = null;
+
+  // ---- Compradores adicionales ----
   extras = signal<CompradorExtra[]>([]);
   agregando = signal(false);
   conyugeTitular = signal<{ nombres: string; apellidos: string; numero_documento: string } | null>(null);
@@ -117,12 +133,12 @@ export class VentaFormComponent implements OnInit {
         if (res.tipo_pago) this.formaPago = res.tipo_pago;
         this.restaurarBorrador();
         this.cargando.set(false);
+        this.reevaluar();
 
         this.clienteService.obtener(res.id_cliente).subscribe((titular) => {
           this.conyugeTitular.set(titular.conyuge ?? null);
         });
 
-        // Volvemos de "Crear cliente nuevo": queda agregado como comprador
         const idNuevo = Number(this.route.snapshot.queryParamMap.get('id_cliente'));
         if (idNuevo && idNuevo !== res.id_cliente) {
           this.clienteService.obtener(idNuevo).subscribe((c) => this.agregarComprador(c));
@@ -130,6 +146,77 @@ export class VentaFormComponent implements OnInit {
       },
       error: () => this.cargando.set(false),
     });
+  }
+
+  // ---- Reglas ----
+
+  get plazoTexto(): string {
+    const m = Number(this.datosCredito.plazo_meses) || 0;
+    if (m <= 0) return '';
+    if (m % 12 === 0) return `${m / 12} año${m / 12 === 1 ? '' : 's'}`;
+    return m > 12 ? `${Math.floor(m / 12)} año(s) y ${m % 12} mes(es)` : `${m} mes(es)`;
+  }
+
+  reevaluar(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.evaluarAhora(), 350);
+  }
+
+  private armarPayload(paraEvaluar: boolean): VentaCreate {
+    const sep = this.separacion()!;
+    const clientes: VentaClienteIn[] = [
+      { id_cliente: sep.id_cliente, rol: 'titular' },
+      ...this.extras().map((e) => ({ id_cliente: e.cliente.id, rol: e.rol })),
+    ];
+    const dc = this.datosCredito;
+    const hoy = new Date().toISOString().slice(0, 10);
+    const pagosValidos = this.pagosPrevios.filter((p) => p.monto && p.fecha);
+
+    return {
+      forma_pago: this.formaPago,
+      precio_total: this.precioTotal ?? 0,
+      clientes,
+      pagos_previos: this.formaPago === 'contado' ? (pagosValidos as any) : undefined,
+      datos_credito:
+        this.formaPago === 'credito' && dc.inicial_monto
+          ? {
+              inicial_monto: dc.inicial_monto,
+              fecha_deposito: dc.fecha_deposito || (paraEvaluar ? hoy : ''),
+              numero_operacion: dc.numero_operacion || (paraEvaluar ? '-' : ''),
+              plazo_meses: Number(dc.plazo_meses),
+              frecuencia_cuota: dc.frecuencia_cuota,
+              tasa_interes: dc.tasa_interes,
+              tea_financiamiento: Number(dc.plazo_meses) > 24 && dc.tea_financiamiento != null ? dc.tea_financiamiento : undefined,
+              observaciones: dc.observaciones || undefined,
+            }
+          : undefined,
+    };
+  }
+
+  private evaluarAhora(): void {
+    if (!this.separacion() || !this.precioTotal || this.precioTotal <= 0) {
+      this.evaluacion.set(null);
+      return;
+    }
+    if (this.formaPago === 'credito' && !this.datosCredito.inicial_monto) {
+      this.evaluacion.set(null);
+      return;
+    }
+    this.ventaService.evaluar(this.idSeparacion, this.armarPayload(true)).subscribe({
+      next: (r) => {
+        this.evaluacion.set(r);
+        this.errorEvaluacion.set(null);
+      },
+      error: (err) => {
+        this.evaluacion.set(null);
+        const detalle = err?.error?.detail;
+        this.errorEvaluacion.set(typeof detalle === 'string' ? detalle : null);
+      },
+    });
+  }
+
+  get requiereAutorizacion(): boolean {
+    return !!this.evaluacion()?.requiere_autorizacion;
   }
 
   // ---- Compradores adicionales ----
@@ -196,6 +283,8 @@ export class VentaFormComponent implements OnInit {
     this.pagosPrevios.splice(index, 1);
   }
 
+  // ---- Guardar ----
+
   mensajeFaltante(): string | null {
     if (!this.precioTotal || this.precioTotal <= 0) return 'Indica el precio total de la venta';
     if (this.formaPago === 'credito') {
@@ -203,9 +292,7 @@ export class VentaFormComponent implements OnInit {
       if (!dc.inicial_monto || !dc.fecha_deposito || !dc.numero_operacion.trim()) {
         return 'Completa la inicial, la fecha del depósito y el N° de operación del crédito';
       }
-      if (dc.plazo_anios < 1 || dc.plazo_anios > 2) {
-        return 'El plazo máximo es de 2 años; si es mayor requiere autorización';
-      }
+      if (!dc.plazo_meses || dc.plazo_meses < 1) return 'Indica el plazo en meses';
     }
     return null;
   }
@@ -216,50 +303,46 @@ export class VentaFormComponent implements OnInit {
       this.error.set(faltante);
       return;
     }
-    const sep = this.separacion();
-    if (!sep) return;
+    if (!this.separacion()) return;
 
     this.error.set(null);
     this.guardando.set(true);
 
-    const clientes: VentaClienteIn[] = [
-      { id_cliente: sep.id_cliente, rol: 'titular' },
-      ...this.extras().map((e) => ({ id_cliente: e.cliente.id, rol: e.rol })),
-    ];
+    // Se evalúa de nuevo en el servidor para no depender de una vista previa desactualizada
+    this.ventaService.evaluar(this.idSeparacion, this.armarPayload(false)).subscribe({
+      next: (ev) => (ev.requiere_autorizacion ? this.pedirAutorizacion() : this.crear()),
+      error: (err) => this.fallo(err, 'No se pudo validar las condiciones'),
+    });
+  }
 
-    const pagosValidos = this.pagosPrevios.filter((p) => p.monto && p.fecha);
+  private crear(): void {
+    this.ventaService.crearDesdeSeparacion(this.idSeparacion, this.armarPayload(false)).subscribe({
+      next: (venta) => {
+        this.guardando.set(false);
+        this.toastService.exito('Venta iniciada correctamente');
+        this.router.navigate(['/dashboard/contratos/venta', venta.id]);
+      },
+      error: (err) => this.fallo(err, 'No se pudo iniciar la venta'),
+    });
+  }
 
-    this.ventaService
-      .crearDesdeSeparacion(this.idSeparacion, {
-        forma_pago: this.formaPago,
-        precio_total: this.precioTotal!,
-        clientes,
-        pagos_previos: this.formaPago === 'contado' ? (pagosValidos as any) : undefined,
-        datos_credito:
-          this.formaPago === 'credito' && this.datosCredito.inicial_monto
-            ? {
-                inicial_monto: this.datosCredito.inicial_monto,
-                fecha_deposito: this.datosCredito.fecha_deposito,
-                numero_operacion: this.datosCredito.numero_operacion,
-                plazo_anios: this.datosCredito.plazo_anios,
-                tasa_interes: this.datosCredito.tasa_interes,
-                frecuencia_cuota: this.datosCredito.frecuencia_cuota,
-              }
-            : undefined,
-      })
-      .subscribe({
-        next: (venta) => {
-          this.guardando.set(false);
-          this.toastService.exito('Venta iniciada correctamente');
-          this.router.navigate(['/dashboard/ventas', venta.id]);
-        },
-        error: (err) => {
-          this.guardando.set(false);
-          const mensaje = err?.error?.detail ?? 'No se pudo iniciar la venta';
-          this.error.set(mensaje);
-          this.toastService.error(mensaje);
-        },
-      });
+  private pedirAutorizacion(): void {
+    this.ventaService.solicitarAutorizacion(this.idSeparacion, this.armarPayload(false)).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.toastService.exito('Solicitud enviada a gerencia. Te avisaremos cuando la resuelva.');
+        this.router.navigate(['/dashboard/separaciones', this.idSeparacion]);
+      },
+      error: (err) => this.fallo(err, 'No se pudo solicitar la autorización'),
+    });
+  }
+
+  private fallo(err: any, porDefecto: string): void {
+    this.guardando.set(false);
+    const detalle = err?.error?.detail;
+    const mensaje = typeof detalle === 'string' ? detalle : porDefecto;
+    this.error.set(mensaje);
+    this.toastService.error(mensaje);
   }
 
   cancelar(): void {

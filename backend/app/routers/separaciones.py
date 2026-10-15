@@ -355,6 +355,12 @@ async def solicitar_devolucion(
         raise _conflicto("Solo se puede pedir devolución de una separación vigente, vencida o convertida")
     if any(d.estado == "pendiente" for d in sep.devoluciones):
         raise _conflicto("Ya hay una devolución pendiente para esta separación")
+    tiene_venta_activa = db.query(m.Venta.id).filter(
+        m.Venta.id_separacion == sep.id,
+        m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+    ).first() is not None
+    if (tiene_venta_activa or sep.estado == E.convertida) and not payload.continua_venta:
+        raise _conflicto("La venta ya está en marcha: la devolución debe registrarse indicando que el cliente continúa con la compra")
     ya_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
     disponible = sep.importe - ya_devuelto
     if payload.monto > disponible:
@@ -365,7 +371,7 @@ async def solicitar_devolucion(
 
     db.add(m.Devolucion(
         id_separacion=sep.id, monto=payload.monto, sustento=sustento,
-        solicitado_por=usuario.id, estado="pendiente",
+        solicitado_por=usuario.id, estado="pendiente", continua_venta=payload.continua_venta,
     ))
 
 
@@ -409,6 +415,9 @@ async def resolver_devolucion(
     if payload.aprobar:
         dev.estado = "aprobada"
         total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+        # Si el cliente continúa con la compra, solo se registra el pago: el lote y la separación NO cambian
+        if dev.continua_venta:
+            total_devuelto = Decimal("0")
         tiene_venta = db.query(m.Venta.id).filter(
             m.Venta.id_separacion == sep.id,
             m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
@@ -445,22 +454,34 @@ async def liberar_lote(
     usuario: m.Usuario = Depends(require_permiso("liberar_lote")),
     db: Session = Depends(get_db),
 ):
-    """Confirma la liberación del lote de una separación vencida."""
+    """Libera el lote de una separación vencida, o de una vigente ya devuelta por completo
+    cuyo cliente finalmente no continúa con la compra."""
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado != E.vencida:
-        raise _conflicto("Solo se libera el lote de una separación vencida")
+    total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+    ya_devuelta = total_devuelto >= sep.importe
+
+    if not (sep.estado == E.vencida or (sep.estado == E.vigente and ya_devuelta)):
+        raise _conflicto("Solo se libera el lote de una separación vencida, o vigente ya devuelta por completo")
+    tiene_venta = db.query(m.Venta.id).filter(
+        m.Venta.id_separacion == sep.id,
+        m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+    ).first() is not None
+    if tiene_venta:
+        raise _conflicto("Esta separación ya tiene una venta iniciada")
     if sep.lote.estado != LOTE.separado:
         raise _conflicto("El lote ya no está en estado separado")
 
     cambio = svc.cambiar_estado_lote(
-        db, sep.lote, LOTE.libre, usuario, f"Separación #{sep.id} vencida: lote liberado"
+        db, sep.lote, LOTE.libre, usuario, f"Separación #{sep.id}: lote liberado"
     )
+    if ya_devuelta:
+        sep.estado = E.devuelta
     notifs = svc.crear_notificaciones(
         db, sep.id_empresa, svc.unicos([sep.ejecutivo], excluir_id=usuario.id),
         "lote_liberado",
         "Lote liberado",
-        f"El lote {sep.lote.codigo} volvió a libre por separación vencida.",
-        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "vencida"},
+        f"El lote {sep.lote.codigo} volvió a libre.",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": sep.estado.value},
     )
     db.commit()
 

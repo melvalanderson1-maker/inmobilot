@@ -731,6 +731,7 @@ class ComprobanteOut(ORMBase):
 class DevolucionCreate(BaseModel):
     monto: Decimal = Field(gt=0)
     sustento: str
+    continua_venta: bool = False
 
 
 class DevolucionResolver(BaseModel):
@@ -746,7 +747,7 @@ class DevolucionOut(ORMBase):
     fecha_solicitud: Optional[date] = None
     fecha_resolucion: Optional[datetime] = None
     respuesta: Optional[str] = None
-
+    continua_venta: bool = False
 
 class SeparacionClienteOut(ORMBase):
     id: int
@@ -825,9 +826,11 @@ class DatosCreditoIn(BaseModel):
     inicial_monto: Decimal
     fecha_deposito: date
     numero_operacion: str
-    plazo_anios: int = 2
-    tasa_interes: Decimal = Decimal("25")
-    frecuencia_cuota: str = "mensual"  # mensual | semestral | unico
+    plazo_meses: int = 24
+    frecuencia_cuota: str = "mensual"  # mensual | bimestral | trimestral | semestral | unico
+    tasa_interes: Decimal = Decimal("25")  # interés compensatorio por mora (aparece en el documento)
+    tea_financiamiento: Optional[Decimal] = None  # interés del financiamiento; vacío = según regla
+    observaciones: Optional[str] = None
 
 
 class VentaCreate(BaseModel):
@@ -905,6 +908,8 @@ class VentaOut(ORMBase):
     lote: Optional[VentaLoteOut] = None
     clientes: list[VentaClienteOut] = []
     ubicaciones: list[DocumentoUbicacionOut] = []
+    pagos_previos: Optional[list] = None
+    datos_credito: Optional[dict] = None
 
     @staticmethod
     def desde_venta(venta) -> "VentaOut":
@@ -978,3 +983,41 @@ class CobranzaFilaOut(BaseModel):
     proxima_monto: Optional[Decimal] = None
     dias_atraso: int = 0
     estado: str
+
+
+# ------------------------------------------------- EVALUACIÓN Y AUTORIZACIÓN --
+
+class EvaluacionVentaOut(BaseModel):
+    motivos: list[dict]
+    requiere_autorizacion: bool
+    plazo_meses: int = 0
+    numero_cuotas: int = 0
+    tea_aplicable: Decimal = Decimal("0")
+    monto_financiar: Decimal = Decimal("0")
+    cuota_estimada: Decimal = Decimal("0")
+
+
+class AutorizacionResolver(BaseModel):
+    aprobar: bool
+    respuesta: Optional[str] = None
+
+
+class AutorizacionVentaOut(ORMBase):
+    id: int
+    id_separacion: int
+    estado: str
+    motivos: list[dict]
+    propuesta: dict
+    respuesta: Optional[str] = None
+    solicitado_por_nombre: Optional[str] = None
+    resuelto_por_nombre: Optional[str] = None
+    id_venta: Optional[int] = None
+    created_at: datetime
+    resuelto_at: Optional[datetime] = None
+
+    @staticmethod
+    def desde_autorizacion(a) -> "AutorizacionVentaOut":
+        data = AutorizacionVentaOut.model_validate(a)
+        data.solicitado_por_nombre = a.solicitante.nombre if a.solicitante else None
+        data.resuelto_por_nombre = a.resolutor.nombre if a.resolutor else None
+        return data

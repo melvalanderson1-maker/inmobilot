@@ -10,6 +10,7 @@ import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FormaPago, Separacion } from '../../core/models';
+import { AutorizacionVentaComponent } from '../../shared/autorizacion-venta/autorizacion-venta.component';
 
 
 type TabDocClave = 'proforma' | 'contrato' | 'contrato_firmado' | 'dni_frente' | 'dni_reverso' | 'voucher';
@@ -23,7 +24,7 @@ interface DocTab {
 @Component({
   selector: 'app-separacion-detalle',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AutorizacionVentaComponent],
   templateUrl: './separacion-detalle.component.html',
   styleUrl: './separacion-detalle.component.css',
 })
@@ -42,7 +43,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   subiendoArchivoComprobante = signal(false);
 
   mostrarDevolucion = signal(false);
-  devolucionForm = { monto: null as number | null, sustento: '' };
+  devolucionForm = { monto: null as number | null, sustento: '', continua_venta: false };
 
   mostrarResolverDevolucion = signal(false);
   respuestaDevolucion = '';
@@ -277,13 +278,21 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeSolicitarDevolucion(): boolean {
     const sep = this.separacion();
-    return !!sep && ['vigente', 'vencida', 'convertida'].includes(sep.estado)
-      && !sep.devoluciones.some((d) => d.estado === 'pendiente');
+    if (!sep || !['vigente', 'vencida', 'convertida'].includes(sep.estado)) return false;
+    const devuelto = (sep.devoluciones ?? [])
+      .filter((d) => d.estado === 'aprobada')
+      .reduce((a, d) => a + Number(d.monto), 0);
+    const pendiente = (sep.devoluciones ?? []).some((d) => d.estado === 'pendiente');
+    return !pendiente && devuelto < Number(sep.importe);
   }
 
   abrirDevolucion(): void {
     const sep = this.separacion();
-    this.devolucionForm = { monto: sep ? Number(sep.importe) : null, sustento: '' };
+    this.devolucionForm = {
+      monto: sep ? Number(sep.importe) : null,
+      sustento: '',
+      continua_venta: sep?.estado === 'convertida',
+    };
     this.mostrarDevolucion.set(true);
   }
 
@@ -297,6 +306,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       .solicitarDevolucion(this.idSeparacion, {
         monto: this.devolucionForm.monto,
         sustento: this.devolucionForm.sustento.trim(),
+        continua_venta: this.devolucionForm.continua_venta,
       })
       .subscribe({
         next: () => {
@@ -342,7 +352,11 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeLiberar(): boolean {
     const sep = this.separacion();
-    return !!sep && sep.estado === 'vencida' && ['admin', 'gerencia', 'supervisor'].includes(this.rolClave);
+    if (!sep || !['admin', 'gerencia', 'supervisor'].includes(this.rolClave)) return false;
+    const devuelto = (sep.devoluciones ?? [])
+      .filter((d) => d.estado === 'aprobada')
+      .reduce((a, d) => a + Number(d.monto), 0);
+    return sep.estado === 'vencida' || (sep.estado === 'vigente' && devuelto >= Number(sep.importe));
   }
 
   liberar(): void {

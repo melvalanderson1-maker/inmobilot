@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.deps import get_ids_proyectos_usuario
 from app.core.config import settings
 from app.models import models as m
+from app.services import reglas_venta as reglas
 from decimal import Decimal, ROUND_HALF_UP
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
@@ -254,17 +255,24 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
 
     if venta.datos_credito:
         dc = venta.datos_credito
-        fecha_deposito = date.fromisoformat(dc["fecha_deposito"]) if isinstance(dc["fecha_deposito"], str) else dc["fecha_deposito"]
-        plazo_anios = int(dc.get("plazo_anios", 2))
-        fecha_maxima = fecha_deposito + relativedelta(years=plazo_anios)
+        fecha_deposito = date.fromisoformat(str(dc["fecha_deposito"]))
+        plazo_meses = reglas.plazo_meses_de(dc)
+        fecha_maxima = fecha_deposito + relativedelta(months=plazo_meses)
+        tea = reglas.tea_aplicable(plazo_meses, dc.get("tea_financiamiento"))
+        if plazo_meses % 12 == 0:
+            anios = plazo_meses // 12
+            plazo_texto = f"{numero_a_letras(anios)} AÑO" + ("S" if anios != 1 else "")
+        else:
+            plazo_texto = f"{numero_a_letras(plazo_meses)} MESES"
         ctx.update({
             "inicial_monto": f"{float(dc['inicial_monto']):,.2f}",
             "inicial_monto_texto": numero_a_letras(dc["inicial_monto"]),
             "fecha_deposito": _fecha_texto(fecha_deposito),
             "numero_operacion": dc.get("numero_operacion", ""),
-            "plazo_texto": f"{numero_a_letras(plazo_anios)} AÑO" + ("S" if plazo_anios != 1 else ""),
+            "plazo_texto": plazo_texto,
             "fecha_maxima_pago": _fecha_texto(fecha_maxima),
             "tasa_interes_compensatorio": f"{dc.get('tasa_interes', 25)}",
+            "texto_intereses": "SIN INTERESES" if tea == 0 else f"CON INTERESES A UNA TASA EFECTIVA ANUAL DEL {tea}%",
         })
 
     tpl = DocxTemplate(ruta_plantilla)
@@ -304,12 +312,8 @@ def guardar_documento_pdf(id_venta: int, contenido: bytes) -> str:
 
 # ------------------------------------------------------- contrato formal --
 
-MESES_POR_FRECUENCIA = {"mensual": 1, "semestral": 6}
-
-
 def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario) -> "m.Contrato":
-    """Crea el Contrato formal (módulo Contratos) al iniciar la venta, con su
-    cronograma si es a crédito. El lote pasa a 'vendido'."""
+    """Crea el Contrato formal (módulo Ventas y Contratos) con su cronograma. El lote pasa a 'vendido'."""
     if venta.id_contrato:
         raise HTTPException(status_code=409, detail="Esta venta ya tiene un contrato registrado")
 
@@ -317,8 +321,9 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
     fecha_abono = date.today()
     frecuencia = "mensual"
     numero_cuotas = 0
-    meses_por_cuota = 1
-    plazo_meses = 0
+    tea = Decimal("0")
+    observaciones = None
+    filas: list[dict] = []
 
     if venta.forma_pago == m.FormaPagoEnum.contado:
         inicial_abonado = sum(
@@ -329,18 +334,28 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
     else:
         dc = venta.datos_credito or {}
         inicial_abonado = Decimal(str(dc.get("inicial_monto", 0)))
-        saldo = venta.precio_total - inicial_abonado
-        estado_contrato = m.EstadoContratoEnum.vigente
+        saldo = max(venta.precio_total - inicial_abonado, Decimal("0"))
+        observaciones = (dc.get("observaciones") or None)
         if dc.get("fecha_deposito"):
             fecha_abono = date.fromisoformat(str(dc["fecha_deposito"]))
-        plazo_meses = int(dc.get("plazo_anios", 2)) * 12
+        plazo_meses = reglas.plazo_meses_de(dc)
         frecuencia = dc.get("frecuencia_cuota", "mensual")
-        meses_por_cuota = MESES_POR_FRECUENCIA.get(frecuencia, plazo_meses)
+        if frecuencia not in reglas.FRECUENCIAS:
+            frecuencia = "mensual"
+
         if saldo > 0:
-            numero_cuotas = max(1, plazo_meses // meses_por_cuota)
+            numero_cuotas = reglas.numero_cuotas(frecuencia, plazo_meses)
+            tea = reglas.tea_aplicable(plazo_meses, dc.get("tea_financiamiento"))
+            filas = reglas.generar_cuotas(
+                saldo, numero_cuotas, reglas.meses_por_cuota(frecuencia, plazo_meses), tea, fecha_abono
+            )
+            estado_contrato = m.EstadoContratoEnum.vigente
         else:
-            saldo = Decimal("0")
             estado_contrato = m.EstadoContratoEnum.cancelado
+
+    tem = None
+    if tea > 0:
+        tem = Decimal(str(((1 + float(tea) / 100) ** (1 / 12) - 1) * 100)).quantize(Decimal("0.001"))
 
     contrato = m.Contrato(
         numero_contrato=numero_contrato,
@@ -355,8 +370,12 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         frecuencia_cuota=frecuencia,
         saldo_financiado=saldo,
         numero_cuotas=numero_cuotas,
-        tiene_interes=False,
+        tiene_interes=tea > 0,
+        tea=tea if tea > 0 else None,
+        tem=tem,
+        fecha_inicio_interes=fecha_abono if tea > 0 else None,
         tipo_contrato="Minuta" if venta.forma_pago == m.FormaPagoEnum.contado else "Contrato Preparatorio",
+        observaciones=observaciones[:300] if observaciones else None,
         estado=estado_contrato,
         id_usuario_registro=usuario.id,
     )
@@ -366,24 +385,18 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
     for vc in venta.clientes_rel:
         db.add(m.ContratoCliente(id_contrato=contrato.id, id_cliente=vc.id_cliente, rol=vc.rol))
 
-    # ---- Cronograma: cuotas iguales sin interés; la última absorbe el redondeo ----
-    if numero_cuotas > 0:
-        monto = (saldo / numero_cuotas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        restante = saldo
-        for i in range(1, numero_cuotas + 1):
-            amortizacion = monto if i < numero_cuotas else restante
-            restante -= amortizacion
-            db.add(m.CronogramaPago(
-                id_contrato=contrato.id,
-                numero_cuota=i,
-                fecha_pago_programada=fecha_abono + relativedelta(months=i * meses_por_cuota),
-                capital=restante,
-                amortizacion=amortizacion,
-                interes_mensual=Decimal("0"),
-                interes_acumulado=Decimal("0"),
-                monto_cuota=amortizacion,
-                requiere_pago=True,
-            ))
+    for f in filas:
+        db.add(m.CronogramaPago(
+            id_contrato=contrato.id,
+            numero_cuota=f["numero"],
+            fecha_pago_programada=f["fecha"],
+            capital=f["capital"],
+            amortizacion=f["amortizacion"],
+            interes_mensual=f["interes"],
+            interes_acumulado=f["acumulado"],
+            monto_cuota=f["monto"],
+            requiere_pago=True,
+        ))
 
     venta.id_contrato = contrato.id
 

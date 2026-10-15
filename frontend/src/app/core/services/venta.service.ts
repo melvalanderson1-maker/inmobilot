@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Venta, VentaCreate, DocumentoUbicacion, DocumentoUbicacionCreate } from '../models';
+import { Venta, VentaCreate, DocumentoUbicacion, DocumentoUbicacionCreate, EvaluacionVenta, AutorizacionVenta } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class VentaService {
@@ -28,6 +28,26 @@ export class VentaService {
 
   subirArchivo(formData: FormData) {
     return this.api.post<{ url: string }>('/uploads/comprobante', formData);
+  }
+
+  evaluar(idSeparacion: number, payload: VentaCreate) {
+    return this.api.post<EvaluacionVenta>(`/ventas/evaluar/${idSeparacion}`, payload);
+  }
+
+  solicitarAutorizacion(idSeparacion: number, payload: VentaCreate) {
+    return this.api.post<AutorizacionVenta>(`/ventas/solicitar-autorizacion/${idSeparacion}`, payload);
+  }
+
+  listarAutorizaciones(idSeparacion: number) {
+    return this.api.get<AutorizacionVenta[]>('/ventas/autorizaciones', { id_separacion: idSeparacion });
+  }
+
+  resolverAutorizacion(id: number, aprobar: boolean, respuesta?: string) {
+    return this.api.post<AutorizacionVenta>(`/ventas/autorizaciones/${id}/resolver`, { aprobar, respuesta });
+  }
+
+  crearDesdeAutorizacion(id: number) {
+    return this.api.post<Venta>(`/ventas/autorizaciones/${id}/crear-venta`, {});
   }
 
   ventaDeContrato(idContrato: number) {

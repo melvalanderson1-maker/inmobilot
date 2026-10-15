@@ -723,10 +723,10 @@ class Devolucion(Base):
     resuelto_por = Column(Integer, ForeignKey("usuarios.id"))
     fecha_resolucion = Column(DateTime)
     respuesta = Column(String(300))
+    continua_venta = Column(Boolean, nullable=False, default=False, server_default="false")
     created_at = Column(DateTime, server_default=func.now())
 
     separacion = relationship("Separacion", back_populates="devoluciones")
-
 
 
 # =========================================================================
@@ -799,3 +799,27 @@ class DocumentoUbicacion(Base):
 
     venta = relationship("Venta", back_populates="ubicaciones")
 
+
+
+class AutorizacionVenta(Base):
+    __tablename__ = "autorizaciones_venta"
+
+    id = Column(Integer, primary_key=True)
+    id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    id_proyecto = Column(Integer, ForeignKey("proyectos.id"), nullable=False)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=False)
+    solicitado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente | aprobada | rechazada | usada
+    motivos = Column(JSONB, nullable=False)
+    propuesta = Column(JSONB, nullable=False)
+    respuesta = Column(String(300))
+    resuelto_por = Column(Integer, ForeignKey("usuarios.id"))
+    resuelto_at = Column(DateTime)
+    id_venta = Column(Integer, ForeignKey("ventas.id", ondelete="SET NULL"))
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (Index("idx_autorizaciones_venta_sep", "id_separacion", "estado"),)
+
+    solicitante = relationship("Usuario", foreign_keys=[solicitado_por])
+    resolutor = relationship("Usuario", foreign_keys=[resuelto_por])
+    separacion = relationship("Separacion")

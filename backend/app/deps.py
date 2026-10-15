@@ -122,6 +122,7 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "validar_pago": {"admin", "caja"},
     "facturar_pago": {"admin", "facturacion"},
     "ver_pagos": {"admin", "gerencia", "supervisor", "contabilidad", "cobranza", "caja", "facturacion"},
+    "aprobar_autorizacion": {"admin", "gerencia"},
     "gestionar_rrpp": {"admin", "gerencia", "legal"},
 }
 

@@ -1,19 +1,23 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.deps import require_permiso
 from app.models import models as m
 from app.schemas import schemas as s
-from app.services import venta_service as svc
-import logging
-
-from sqlalchemy.orm import joinedload
+from app.services import reglas_venta as reglas
 from app.services import separacion_service as sep_svc
-from app.sockets import notificar_venta, notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_usuarios
+from app.services import venta_service as svc
+from app.sockets import (
+    notificar_venta,
+    notificar_cambio_estado_lote,
+    notificar_nuevo_contrato,
+    notificar_usuarios,
+)
 
 logger = logging.getLogger(__name__)
-
 
 router = APIRouter(prefix="/ventas", tags=["ventas"])
 
@@ -23,8 +27,7 @@ def _resumen_socket(venta: m.Venta) -> dict:
 
 
 async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta, usuario: m.Usuario):
-    """Tiempo real: venta nueva + contrato nuevo (lista de Contratos) + lote vendido.
-    Si el aviso falla, NO debe romper la operación: los datos ya están guardados."""
+    """Tiempo real: venta nueva + contrato nuevo + lote vendido. Si falla, NO rompe la operación."""
     try:
         contrato = (
             db.query(m.Contrato)
@@ -56,8 +59,7 @@ async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta,
 
 async def _avisar_roles(db: Session, usuario: m.Usuario, venta: m.Venta, roles: list[str],
                         tipo: str, titulo: str, mensaje: str):
-    """Notificación (campana + sonido) a los usuarios de esos roles con acceso al proyecto.
-    Si falla no rompe la operación principal."""
+    """Notificación (campana + sonido) a los usuarios de esos roles. Si falla no rompe la operación."""
     try:
         destinatarios = sep_svc.usuarios_por_roles(
             db, usuario.id_empresa, venta.id_proyecto, roles, excluir_id=usuario.id
@@ -72,35 +74,36 @@ async def _avisar_roles(db: Session, usuario: m.Usuario, venta: m.Venta, roles: 
         db.rollback()
         logger.exception("No se pudo notificar a %s por la venta %s", roles, venta.id)
 
-@router.post("/desde-separacion/{id_separacion}", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
-async def crear_venta_desde_separacion(
-    id_separacion: int,
-    payload: s.VentaCreate,
-    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
-    db: Session = Depends(get_db),
-):
-    sep = db.query(m.Separacion).filter(
-        m.Separacion.id == id_separacion, m.Separacion.id_empresa == usuario.id_empresa
-    ).first()
-    if not sep:
-        raise HTTPException(status_code=404, detail="Separación no encontrada")
+
+# ----------------------------------------------------------------- helpers --
+
+def _separacion_convertida(db: Session, usuario: m.Usuario, id_separacion: int) -> m.Separacion:
+    sep = sep_svc.cargar_separacion(db, id_separacion, usuario)
     if sep.estado != m.EstadoSeparacionEnum.convertida:
         raise HTTPException(status_code=409, detail="La separación debe estar convertida antes de iniciar la venta")
+    return sep
 
-    existente = db.query(m.Venta).filter(m.Venta.id_separacion == id_separacion).first()
-    if existente:
+
+def _datos_credito(payload: s.VentaCreate) -> dict | None:
+    return payload.datos_credito.model_dump(mode="json") if payload.datos_credito else None
+
+
+def _evaluar(sep: m.Separacion, payload: s.VentaCreate) -> dict:
+    dc = _datos_credito(payload)
+    reglas.validar_estructura(payload.forma_pago, payload.precio_total, dc)
+    return reglas.evaluar(payload.precio_total, payload.forma_pago, dc, sep.lote)
+
+
+async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, payload: s.VentaCreate) -> m.Venta:
+    """Crea la venta, sus compradores y el contrato (con cronograma). No evalúa reglas."""
+    if db.query(m.Venta).filter(m.Venta.id_separacion == sep.id).first():
         raise HTTPException(status_code=409, detail="Esta separación ya tiene una venta iniciada")
-    if payload.forma_pago == m.FormaPagoEnum.credito:
-        if not payload.datos_credito:
-            raise HTTPException(status_code=422, detail="Completa los datos del crédito (inicial, fecha, operación y plazo)")
-        if payload.datos_credito.frecuencia_cuota not in ("mensual", "semestral", "unico"):
-            raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, semestral o pago único")
-        if not (1 <= payload.datos_credito.plazo_anios <= 2):
-            raise HTTPException(status_code=422, detail="El plazo máximo es de 2 años; si es mayor requiere autorización")
-    if len(payload.clientes) > 4:
+
+    clientes_in = payload.clientes or [s.VentaClienteIn(id_cliente=sep.id_cliente)]
+    if len(clientes_in) > 4:
         raise HTTPException(status_code=422, detail="Una venta admite como máximo 4 compradores")
-    ids_compradores = [i.id_cliente for i in payload.clientes if i.id_cliente]
-    if len(ids_compradores) != len(set(ids_compradores)):
+    ids = [i.id_cliente for i in clientes_in if i.id_cliente]
+    if len(ids) != len(set(ids)):
         raise HTTPException(status_code=422, detail="Un mismo cliente no puede figurar dos veces como comprador")
 
     venta = m.Venta(
@@ -112,12 +115,12 @@ async def crear_venta_desde_separacion(
         precio_total=payload.precio_total,
         id_usuario_registro=usuario.id,
         pagos_previos=[p.model_dump(mode="json") for p in payload.pagos_previos] if payload.pagos_previos else None,
-        datos_credito=payload.datos_credito.model_dump(mode="json") if payload.datos_credito else None,
+        datos_credito=_datos_credito(payload),
     )
     db.add(venta)
     db.flush()
 
-    for item in payload.clientes or [s.VentaClienteIn(id_cliente=sep.id_cliente)]:
+    for item in clientes_in:
         if item.id_cliente:
             cliente = db.query(m.Cliente).filter(
                 m.Cliente.id == item.id_cliente, m.Cliente.id_empresa == usuario.id_empresa
@@ -134,15 +137,185 @@ async def crear_venta_desde_separacion(
 
     db.commit()
 
-    # El contrato se crea ahora: aparece en Contratos y el lote pasa a vendido
+    # El contrato se crea ahora: aparece en Ventas y Contratos y el lote pasa a vendido
     venta_completa = svc.cargar_venta(db, venta.id, usuario)
     contrato = svc.generar_contrato_desde_venta(db, venta_completa, usuario)
     db.commit()
 
     venta_completa = svc.cargar_venta(db, venta.id, usuario)
     await _emitir_contrato_creado(db, contrato.id, venta_completa, usuario)
-    return s.VentaOut.desde_venta(venta_completa)
+    return venta_completa
 
+
+def _cargar_autorizacion(db: Session, usuario: m.Usuario, id_autorizacion: int) -> m.AutorizacionVenta:
+    aut = (
+        db.query(m.AutorizacionVenta)
+        .options(joinedload(m.AutorizacionVenta.solicitante), joinedload(m.AutorizacionVenta.resolutor))
+        .filter(m.AutorizacionVenta.id == id_autorizacion, m.AutorizacionVenta.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not aut:
+        raise HTTPException(status_code=404, detail="Autorización no encontrada")
+    svc.validar_acceso_proyecto(db, usuario, aut.id_proyecto)
+    return aut
+
+
+# ------------------------------------------------------- evaluar / crear ----
+
+@router.post("/evaluar/{id_separacion}", response_model=s.EvaluacionVentaOut)
+def evaluar_venta(
+    id_separacion: int,
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    """Vista previa: reglas incumplidas, cuotas, interés y cuota estimada. No guarda nada."""
+    sep = _separacion_convertida(db, usuario, id_separacion)
+    return s.EvaluacionVentaOut(**_evaluar(sep, payload))
+
+
+@router.post("/desde-separacion/{id_separacion}", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
+async def crear_venta_desde_separacion(
+    id_separacion: int,
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    sep = _separacion_convertida(db, usuario, id_separacion)
+    evaluacion = _evaluar(sep, payload)
+    if evaluacion["motivos"]:
+        detalle = "; ".join(mo["mensaje"] for mo in evaluacion["motivos"])
+        raise HTTPException(status_code=409, detail=f"Estas condiciones requieren autorización de gerencia: {detalle}")
+
+    venta = await _crear_venta(db, usuario, sep, payload)
+    return s.VentaOut.desde_venta(venta)
+
+
+# ---------------------------------------------------------- autorizaciones --
+
+@router.post("/solicitar-autorizacion/{id_separacion}", response_model=s.AutorizacionVentaOut, status_code=status.HTTP_201_CREATED)
+async def solicitar_autorizacion(
+    id_separacion: int,
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    sep = _separacion_convertida(db, usuario, id_separacion)
+    if db.query(m.Venta).filter(m.Venta.id_separacion == sep.id).first():
+        raise HTTPException(status_code=409, detail="Esta separación ya tiene una venta iniciada")
+
+    evaluacion = _evaluar(sep, payload)
+    if not evaluacion["motivos"]:
+        raise HTTPException(status_code=422, detail="Estas condiciones no requieren autorización: inicia la venta directamente")
+
+    pendiente = db.query(m.AutorizacionVenta).filter(
+        m.AutorizacionVenta.id_separacion == sep.id, m.AutorizacionVenta.estado == "pendiente"
+    ).first()
+    if pendiente:
+        raise HTTPException(status_code=409, detail="Ya hay una solicitud de autorización pendiente para esta separación")
+
+    aut = m.AutorizacionVenta(
+        id_empresa=usuario.id_empresa,
+        id_proyecto=sep.id_proyecto,
+        id_separacion=sep.id,
+        solicitado_por=usuario.id,
+        estado="pendiente",
+        motivos=evaluacion["motivos"],
+        propuesta=payload.model_dump(mode="json"),
+    )
+    db.add(aut)
+    db.flush()
+
+    destinatarios = sep_svc.usuarios_por_roles(
+        db, usuario.id_empresa, sep.id_proyecto, ["gerencia", "admin"], excluir_id=usuario.id
+    )
+    notifs = sep_svc.crear_notificaciones(
+        db, usuario.id_empresa, destinatarios,
+        "autorizacion_pendiente",
+        "Autorización de venta por aprobar",
+        f"{usuario.nombre} solicita autorización para el lote {sep.lote.codigo}: "
+        + "; ".join(mo["mensaje"] for mo in evaluacion["motivos"]),
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_autorizacion": aut.id},
+    )
+    db.commit()
+
+    await notificar_venta("autorizacion:actualizada", {"id_separacion": sep.id, "estado": "pendiente"}, id_proyecto=sep.id_proyecto)
+    await notificar_usuarios(sep_svc.notificaciones_a_dict(notifs))
+    return s.AutorizacionVentaOut.desde_autorizacion(_cargar_autorizacion(db, usuario, aut.id))
+
+
+@router.get("/autorizaciones", response_model=list[s.AutorizacionVentaOut])
+def listar_autorizaciones(
+    id_separacion: int,
+    usuario: m.Usuario = Depends(require_permiso("ver_ventas")),
+    db: Session = Depends(get_db),
+):
+    sep_svc.cargar_separacion(db, id_separacion, usuario)  # valida acceso
+    lista = (
+        db.query(m.AutorizacionVenta)
+        .options(joinedload(m.AutorizacionVenta.solicitante), joinedload(m.AutorizacionVenta.resolutor))
+        .filter(m.AutorizacionVenta.id_separacion == id_separacion, m.AutorizacionVenta.id_empresa == usuario.id_empresa)
+        .order_by(m.AutorizacionVenta.created_at.desc())
+        .all()
+    )
+    return [s.AutorizacionVentaOut.desde_autorizacion(a) for a in lista]
+
+
+@router.post("/autorizaciones/{id_autorizacion}/resolver", response_model=s.AutorizacionVentaOut)
+async def resolver_autorizacion(
+    id_autorizacion: int,
+    payload: s.AutorizacionResolver,
+    usuario: m.Usuario = Depends(require_permiso("aprobar_autorizacion")),
+    db: Session = Depends(get_db),
+):
+    aut = _cargar_autorizacion(db, usuario, id_autorizacion)
+    if aut.estado != "pendiente":
+        raise HTTPException(status_code=409, detail="Esta solicitud ya fue resuelta")
+
+    aut.estado = "aprobada" if payload.aprobar else "rechazada"
+    aut.respuesta = (payload.respuesta or "").strip() or None
+    aut.resuelto_por = usuario.id
+    aut.resuelto_at = sep_svc.ahora_utc()
+
+    sep = db.query(m.Separacion).options(joinedload(m.Separacion.lote)).filter(m.Separacion.id == aut.id_separacion).first()
+    notifs = sep_svc.crear_notificaciones(
+        db, usuario.id_empresa, sep_svc.unicos([aut.solicitante], excluir_id=usuario.id),
+        "autorizacion_resuelta",
+        "Autorización aprobada" if payload.aprobar else "Autorización rechazada",
+        f"Lote {sep.lote.codigo if sep and sep.lote else ''}"
+        + (f": {aut.respuesta}" if aut.respuesta else (". Ya puedes crear la venta." if payload.aprobar else ".")),
+        {"id_separacion": aut.id_separacion, "id_proyecto": aut.id_proyecto, "id_autorizacion": aut.id},
+    )
+    db.commit()
+
+    await notificar_venta("autorizacion:actualizada", {"id_separacion": aut.id_separacion, "estado": aut.estado}, id_proyecto=aut.id_proyecto)
+    await notificar_usuarios(sep_svc.notificaciones_a_dict(notifs))
+    return s.AutorizacionVentaOut.desde_autorizacion(_cargar_autorizacion(db, usuario, id_autorizacion))
+
+
+@router.post("/autorizaciones/{id_autorizacion}/crear-venta", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
+async def crear_venta_autorizada(
+    id_autorizacion: int,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    """Crea la venta con EXACTAMENTE las condiciones que gerencia aprobó."""
+    aut = _cargar_autorizacion(db, usuario, id_autorizacion)
+    if aut.estado != "aprobada":
+        raise HTTPException(status_code=409, detail="Esta autorización no está aprobada o ya fue utilizada")
+    if aut.solicitado_por != usuario.id and usuario.rol.clave not in ("admin", "gerencia"):
+        raise HTTPException(status_code=403, detail="Solo quien solicitó la autorización puede crear la venta")
+
+    sep = _separacion_convertida(db, usuario, aut.id_separacion)
+    venta = await _crear_venta(db, usuario, sep, s.VentaCreate(**aut.propuesta))
+
+    aut.estado = "usada"
+    aut.id_venta = venta.id
+    db.commit()
+    return s.VentaOut.desde_venta(venta)
+
+
+# ----------------------------------------------------------------- consultas --
 
 @router.get("/por-separacion/{id_separacion}")
 def venta_de_separacion(
@@ -178,6 +351,8 @@ def obtener_venta(
 ):
     return s.VentaOut.desde_venta(svc.cargar_venta(db, id_venta, usuario))
 
+
+# ----------------------------------------------------------------- documentos --
 
 @router.post("/{id_venta}/generar-documento", response_model=s.VentaOut)
 async def generar_documento(
@@ -244,6 +419,7 @@ async def registrar_contrato(
     usuario: m.Usuario = Depends(require_permiso("crear_venta")),
     db: Session = Depends(get_db),
 ):
+    """Para ventas antiguas que quedaron sin contrato."""
     venta = svc.cargar_venta(db, id_venta, usuario)
     contrato = svc.generar_contrato_desde_venta(db, venta, usuario)
     db.commit()

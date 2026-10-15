@@ -3,8 +3,8 @@
   <!-- ============ ENCABEZADO ============ -->
   <header class="page-header">
     <div class="titulo-bloque">
-      <h1>Contratos</h1>
-      <p class="subtitle">Gestiona ventas, cronogramas y pagos</p>
+      <h1>Ventas y contratos</h1>
+      <p class="subtitle">Expedientes de venta: documentos, cronogramas y pagos</p>
     </div>
     <button type="button" class="btn-primary" (click)="abrirNuevoContrato()">
       <span class="icono-mas" aria-hidden="true">+</span> Nuevo contrato
@@ -329,7 +329,7 @@
                   <tbody>
                     @for (pago of pagosPorContrato()[ct.id]; track pago.id) {
                       <tr>
-                        <td data-label="Cuota">{{ pago.id_cuota ?? '—' }}</td>
+                        <td data-label="Cuota">{{ numeroCuota(contratoDrawer()!.id, pago.id_cuota) }}</td>
                         <td data-label="Fecha">{{ pago.fecha_pago }}</td>
                         <td data-label="Monto" class="num celda-cuota">S/ {{ pago.monto }}</td>
                         <td data-label="Método" class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>

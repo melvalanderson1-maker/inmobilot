@@ -136,7 +136,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       this.router.navigate(['/dashboard/separaciones', d['id_separacion']]);
     } else if (d['id_venta']) {
       this.panelNotifAbierto.set(false);
-      this.router.navigate(['/dashboard/ventas', d['id_venta']]);
+      this.router.navigate(['/dashboard/contratos/venta', d['id_venta']]);
     }
   }
 

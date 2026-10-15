@@ -75,7 +75,12 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   }
 
   volver(): void {
-    this.router.navigate(['/dashboard/separaciones']);
+    this.router.navigate(['/dashboard/contratos']);
+  }
+
+  verCronogramaYPagos(): void {
+    const id = this.venta()?.id_contrato;
+    if (id) this.router.navigate(['/dashboard/contratos'], { queryParams: { abrir: id } });
   }
 
   nombreDocumento(): string {

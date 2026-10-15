@@ -66,11 +66,12 @@ export const routes: Routes = [
           import('./dashboard/ventas/venta-form.component').then((c) => c.VentaFormComponent),
       },
       {
-        path: 'ventas/:id',
+        path: 'contratos/venta/:id',
         canActivate: [moduloGuard('contratos')],
         loadComponent: () =>
           import('./dashboard/ventas/venta-detalle.component').then((c) => c.VentaDetalleComponent),
       },
+      { path: 'ventas/:id', redirectTo: 'contratos/venta/:id' },
       {
         path: 'cobranza',
         canActivate: [moduloGuard('cobranza')],

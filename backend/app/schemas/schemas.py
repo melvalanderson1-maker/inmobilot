@@ -694,13 +694,16 @@ class SeparacionCreate(BaseModel):
     medio_pago: str = Field(min_length=1, max_length=40)
     proforma_url: Optional[str] = None
     agenda_fecha: Optional[datetime] = None
+    precio_valido_hasta: date
+    precio_descontado: Optional[Decimal] = Field(default=None, gt=0)
 
     @model_validator(mode="after")
     def _validar_fechas(self):
         if self.fecha_vencimiento < self.fecha_inicio:
             raise ValueError("La fecha de vencimiento no puede ser anterior a la fecha inicial")
+        if self.precio_valido_hasta < self.fecha_inicio:
+            raise ValueError("La validez del precio no puede ser anterior a la fecha inicial")
         return self
-
 
 class SeparacionUpdate(BaseModel):
     fecha_vencimiento: Optional[date] = None
@@ -709,6 +712,8 @@ class SeparacionUpdate(BaseModel):
     agenda_fecha: Optional[datetime] = None
     proforma_url: Optional[str] = None
     contrato_firmado_url: Optional[str] = None
+    precio_valido_hasta: Optional[date] = None
+    precio_descontado: Optional[Decimal] = Field(default=None, gt=0)
 
 
 class SeparacionRechazo(BaseModel):
@@ -789,6 +794,8 @@ class SeparacionOut(ORMBase):
     voucher_url: str
     voucher_numero: Optional[str] = None
     medio_pago: Optional[str] = None
+    precio_valido_hasta: Optional[date] = None
+    precio_descontado: Optional[Decimal] = None
     proforma_url: Optional[str] = None
     contrato_url: Optional[str] = None
     contrato_firmado_url: Optional[str] = None

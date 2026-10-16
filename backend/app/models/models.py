@@ -670,6 +670,8 @@ class Separacion(Base):
     voucher_url = Column(String(300), nullable=False)
     voucher_numero = Column(String(60), nullable=True)
     medio_pago = Column(String(40), nullable=True)
+    precio_valido_hasta = Column(Date, nullable=True)
+    precio_descontado = Column(Numeric(12, 2), nullable=True)
     proforma_url = Column(String(300))
     contrato_url = Column(String(300))
     contrato_firmado_url = Column(String(300))

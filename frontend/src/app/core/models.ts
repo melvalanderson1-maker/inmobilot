@@ -518,6 +518,8 @@ export interface SeparacionCreate {
   medio_pago: string;
   proforma_url?: string;
   agenda_fecha?: string;
+  precio_valido_hasta: string;
+  precio_descontado?: number;
 }
 
 export interface SeparacionUpdate {
@@ -528,6 +530,8 @@ export interface SeparacionUpdate {
   proforma_url?: string;
   contrato_url?: string;
   contrato_firmado_url?: string;
+  precio_valido_hasta?: string;
+  precio_descontado?: number;
 }
 
 export interface SeparacionClienteInfo {
@@ -569,6 +573,8 @@ export interface Separacion {
   voucher_url: string;
   voucher_numero?: string;
   medio_pago?: string;
+  precio_valido_hasta?: string;
+  precio_descontado?: number | string;
   proforma_url?: string;
   contrato_url?: string;
   contrato_firmado_url?: string;

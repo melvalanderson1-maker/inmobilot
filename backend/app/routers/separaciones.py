@@ -99,6 +99,16 @@ async def crear_separacion(
     if lote.estado != LOTE.libre:
         raise _conflicto(f"El lote {lote.codigo} no está libre (estado actual: {lote.estado.value})")
 
+    if (
+        payload.precio_descontado is not None
+        and lote.precio_total_base is not None
+        and payload.precio_descontado > lote.precio_total_base
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"El precio descontado no puede superar el precio regular (S/ {lote.precio_total_base:,.2f})",
+        )
+
     cliente = (
         db.query(m.Cliente)
         .filter(m.Cliente.id == payload.id_cliente, m.Cliente.id_empresa == usuario.id_empresa)

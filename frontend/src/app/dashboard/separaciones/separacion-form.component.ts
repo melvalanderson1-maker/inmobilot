@@ -44,6 +44,8 @@ export class SeparacionFormComponent implements OnInit {
     agenda_fecha: '',
     voucher_numero: '',
     medio_pago: '',
+    precio_valido_hasta: '',
+    precio_descontado: null as number | null,
   };
 
   subiendoDniFrente = signal(false);
@@ -106,7 +108,9 @@ export class SeparacionFormComponent implements OnInit {
     });
   }
   onLoteSeleccionado(): void {
-    this.loteSeleccionado.set(this.lotesTodos().find((l) => l.id === this.form.id_lote) ?? null);
+    const lote = this.lotesTodos().find((l) => l.id === this.form.id_lote) ?? null;
+    this.loteSeleccionado.set(lote);
+    this.form.precio_descontado = lote?.precio_total_contado != null ? Number(lote.precio_total_contado) : null;
   }
   nombreManzana(lote: Lote): string {
     const manzana = this.manzanas().find((m) => m.id === lote.id_manzana);
@@ -273,6 +277,8 @@ export class SeparacionFormComponent implements OnInit {
         voucher_url: this.voucherUrl,
         voucher_numero: this.form.voucher_numero.trim(),
         medio_pago: this.form.medio_pago.trim(),
+        precio_valido_hasta: this.form.precio_valido_hasta,
+        precio_descontado: this.form.precio_descontado ?? undefined,
       })
       .subscribe({
         next: (sep) => {
@@ -293,6 +299,14 @@ export class SeparacionFormComponent implements OnInit {
     if (!this.clienteEncontrado()) return 'Busca o crea el cliente antes de continuar';
     if (!this.form.id_lote) return 'Selecciona el lote';
     if (!this.form.fecha_vencimiento) return 'Indica la fecha de vencimiento de la separación';
+    if (!this.form.precio_valido_hasta) return 'Indica hasta qué fecha es válido el precio de la proforma';
+    if (this.form.precio_valido_hasta < this.form.fecha_inicio) {
+      return 'La validez del precio no puede ser anterior a la fecha inicial';
+    }
+    const regular = Number(this.loteSeleccionado()?.precio_total_base ?? 0);
+    if (this.form.precio_descontado && regular && this.form.precio_descontado > regular) {
+      return 'El precio descontado no puede superar el precio regular';
+    }
     if (!this.form.medio_pago.trim()) return 'Indica el medio de pago (ej. Transferencia Yape)';
     if (!this.form.voucher_numero.trim()) return 'Indica el número de voucher';
     if (!this.dniFrenteUrl || !this.dniReversoUrl || !this.voucherUrl) {

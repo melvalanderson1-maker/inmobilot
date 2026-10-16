@@ -112,11 +112,14 @@ def construir_datos(sep, proyecto_nombre: str) -> dict:
         "PARTIDA": lote.partida_registral or "-",
         "PROYECTO": f"PROYECTO INMOBILIARIO “{proyecto_nombre.upper()}”",
         "PRECIO_REGULAR": _fmt_monto(lote.precio_total_base),
-        "PRECIO_DESCONTADO": _fmt_monto(lote.precio_total_contado),
+        "PRECIO_DESCONTADO": _fmt_monto(
+            sep.precio_descontado if sep.precio_descontado is not None else lote.precio_total_contado
+        ),
         "MANZANA": (lote.manzana_nombre or "-").upper(),
         "LOTE": lote.codigo,
         "AREA": f"{Decimal(lote.area_m2):,.2f}",
         "VENCIMIENTO": _fmt_fecha(sep.fecha_vencimiento),
+        "PRECIO_VALIDO_HASTA": _fmt_fecha(sep.precio_valido_hasta or sep.fecha_vencimiento),
     }
 
 
@@ -124,6 +127,12 @@ def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
     doc = docx.Document(RUTA_PLANTILLA)
     datos = construir_datos(sep, proyecto_nombre)
     datos["TITULO"] = "CONTRATO" if con_clausulas else "PROFORMA"
+    if con_clausulas:
+        datos["ETIQUETA_FECHA"] = "VENCIMIENTO DE CONTRATO DE SEPARACIÓN"
+        datos["FECHA_LIMITE"] = datos["VENCIMIENTO"]
+    else:
+        datos["ETIQUETA_FECHA"] = "PRECIO VÁLIDO HASTA"
+        datos["FECHA_LIMITE"] = datos["PRECIO_VALIDO_HASTA"]
     for p in _recorrer_parrafos(doc):
         _reemplazar_en_parrafo(p, datos)
 

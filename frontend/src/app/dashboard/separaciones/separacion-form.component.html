@@ -101,6 +101,12 @@
                 <div class="lote-detalle-fila"><span>Lote</span><strong>{{ loteSeleccionado()!.codigo }}</strong></div>
                 <div class="lote-detalle-fila"><span>N° Partida</span><strong>{{ loteSeleccionado()!.partida_registral || 'Sin registrar' }}</strong></div>
                 <div class="lote-detalle-fila"><span>Área</span><strong>{{ loteSeleccionado()!.area_m2 }} m²</strong></div>
+                @if (loteSeleccionado()!.precio_total_base) {
+                  <div class="lote-detalle-fila"><span>Precio regular</span><strong>S/ {{ loteSeleccionado()!.precio_total_base | number: '1.2-2' }}</strong></div>
+                }
+                @if (loteSeleccionado()!.precio_total_contado) {
+                  <div class="lote-detalle-fila"><span>Precio contado (lista)</span><strong>S/ {{ loteSeleccionado()!.precio_total_contado | number: '1.2-2' }}</strong></div>
+                }
                 @if (loteSeleccionado()!.perimetro) {
                   <div class="lote-detalle-fila"><span>Perímetro</span><strong>{{ loteSeleccionado()!.perimetro }} m</strong></div>
                 }
@@ -152,10 +158,25 @@
             </div>
 
             <div class="campo">
-              <label>Fecha de vencimiento</label>
+              <label>Vencimiento de la separación</label>
               <input type="date" [(ngModel)]="form.fecha_vencimiento" />
             </div>
 
+            <div class="campo">
+              <label>Precio válido hasta</label>
+              <input type="date" [(ngModel)]="form.precio_valido_hasta" />
+            </div>
+
+            <div class="campo campo-span-2">
+              <label>Precio descontado final</label>
+              <div class="input-prefix">
+                <span>S/</span>
+                <input type="number" [(ngModel)]="form.precio_descontado" placeholder="0.00" />
+              </div>
+              @if (loteSeleccionado() && loteSeleccionado()!.precio_total_contado) {
+                <small class="ayuda">Precio contado de lista: S/ {{ loteSeleccionado()!.precio_total_contado | number: '1.2-2' }}. Modifícalo si das una rebaja.</small>
+              }
+            </div>
             <div class="campo campo-span-2">
               <label>Agendamiento (depósito o firma) <em>· opcional</em></label>
               <input type="datetime-local" [(ngModel)]="form.agenda_fecha" />

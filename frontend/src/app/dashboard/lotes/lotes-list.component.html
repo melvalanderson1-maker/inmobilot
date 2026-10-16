@@ -729,8 +729,17 @@
         <div class="modal-body">
           <p class="mapa-ayuda">Haz clic sobre el punto exacto del lote en la imagen.</p>
           @if (urlMaqueta()) {
-            <div class="mapa-contenedor" (click)="onClickMaqueta($event)">
-              <img [src]="urlMaqueta()" class="mapa-img" alt="Maqueta del proyecto" />
+            <div
+              class="mapa-contenedor"
+              [style.--ratio]="mapaRatio()"
+              (click)="onClickMaqueta($event)"
+            >
+              <img
+                [src]="urlMaqueta()"
+                class="mapa-img"
+                alt="Maqueta del proyecto"
+                (load)="onMapaCargado($event)"
+              />
               @if (loteUbicando()?.mapa_x != null) {
                 <div
                   class="mapa-pin"

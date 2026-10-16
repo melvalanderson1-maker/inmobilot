@@ -184,6 +184,16 @@ export class LotesListComponent implements OnInit, OnDestroy {
   modalMapaAbierto = signal(false);
   loteUbicando = signal<Lote | null>(null);
   guardandoUbicacion = signal(false);
+  
+  // Proporción real (ancho/alto) del plano: el modal la usa para mostrar el plano completo sin scroll
+  mapaRatio = signal(1.5);
+
+  onMapaCargado(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      this.mapaRatio.set(img.naturalWidth / img.naturalHeight);
+    }
+  }
 
   urlMaqueta(): string | null {
     const url = this.tenant.config()?.mapa_url;
@@ -227,7 +237,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
         error: () => this.guardandoUbicacion.set(false),
       });
   }
-  
+
   ngOnInit(): void {
     this.api.get<Proyecto[]>('/proyectos').subscribe((proyectos) => {
       this.proyectos.set(proyectos);

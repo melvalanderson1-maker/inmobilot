@@ -1494,21 +1494,26 @@ select:focus-visible {
 }
 
 .mapa-contenedor {
+  --ratio: 1.5; /* el valor real lo pone Angular cuando carga la imagen */
+  --alto-disponible: calc(100dvh - 260px); /* alto de la pantalla menos header, footer y textos del modal */
   position: relative;
   display: block;
-  flex: none; /* NO se encoge: siempre mide lo mismo que la imagen completa */
-  width: 100%;
+  flex: none;
+  aspect-ratio: var(--ratio);
+  width: min(100%, calc(var(--alto-disponible) * var(--ratio)));
+  margin: 0 auto;
   line-height: 0;
   cursor: crosshair;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 0 0 1px var(--border-fuerte, #e2e8f0); /* en vez de border, para no sumar píxeles */
+  box-shadow: 0 0 0 1px var(--border-fuerte, #e2e8f0);
 }
 
 .mapa-img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill; /* el contenedor ya tiene la proporción exacta de la imagen */
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -1709,5 +1714,19 @@ select:focus-visible {
   .btn-primary {
     animation: none;
     transition: none;
+  }
+}
+
+
+/* ===== Plano completo sin scroll (modal "Ubicar lote en el mapa") ===== */
+@media (max-width: 900px) {
+  .mapa-contenedor {
+    --alto-disponible: calc(100dvh - 300px);
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .mapa-contenedor {
+    --alto-disponible: calc(100dvh - 170px);
   }
 }

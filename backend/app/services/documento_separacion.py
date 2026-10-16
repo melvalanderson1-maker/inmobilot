@@ -145,3 +145,38 @@ def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
+
+
+
+def _convertir_a_pdf(contenido_docx: bytes) -> bytes | None:
+    """Convierte el .docx a PDF con LibreOffice. Devuelve None si no está disponible."""
+    exe = shutil.which("soffice") or shutil.which("libreoffice")
+    if not exe:
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        origen = os.path.join(tmp, "doc.docx")
+        with open(origen, "wb") as f:
+            f.write(contenido_docx)
+        try:
+            subprocess.run(
+                [exe, "--headless", "--convert-to", "pdf", "--outdir", tmp, origen],
+                check=True, timeout=90, capture_output=True,
+                env={**os.environ, "HOME": tmp},
+            )
+        except Exception:
+            return None
+        destino = os.path.join(tmp, "doc.pdf")
+        if not os.path.isfile(destino):
+            return None
+        with open(destino, "rb") as f:
+            return f.read()
+
+
+def guardar_documento(prefijo: str, id_separacion: int, contenido: bytes, url_base: str) -> str:
+    """Guarda el documento (PDF si se puede, si no .docx) y devuelve su URL pública."""
+    pdf = _convertir_a_pdf(contenido)
+    extension, datos = ("pdf", pdf) if pdf else ("docx", contenido)
+    nombre = f"{prefijo}_{id_separacion}_{uuid.uuid4().hex[:8]}.{extension}"
+    with open(os.path.join(DIR_DOCUMENTOS, nombre), "wb") as f:
+        f.write(datos)
+    return f"{url_base.rstrip('/')}/static/separaciones/{nombre}"

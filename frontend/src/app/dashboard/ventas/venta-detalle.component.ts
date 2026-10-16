@@ -1,7 +1,8 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy, signal } from '@angular/core';
+import { DecimalPipe, TitleCasePipe } from '@angular/common';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 import { VentaService } from '../../core/services/venta.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -9,14 +10,25 @@ import { ToastService } from '../../core/services/toast.service';
 import { ContratoService } from '../../core/services/contrato.service';
 import { Venta, DocumentoUbicacionCreate, CronogramaCuota } from '../../core/models';
 
+type EstadoPaso = 'hecho' | 'actual' | 'pendiente';
+
 @Component({
   selector: 'app-venta-detalle',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule, DecimalPipe, TitleCasePipe],
   templateUrl: './venta-detalle.component.html',
   styleUrl: './venta-detalle.component.css',
 })
 export class VentaDetalleComponent implements OnInit, OnDestroy {
+  private readonly ventaService = inject(VentaService);
+  private readonly contratoService = inject(ContratoService);
+  private readonly socket = inject(SocketService);
+  private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  private suscripcionSocket?: Subscription;
+
   venta = signal<Venta | null>(null);
   cronograma = signal<CronogramaCuota[]>([]);
   cargando = signal(false);
@@ -32,21 +44,82 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   subiendoFirmado = signal(false);
 
-  constructor(
-    private ventaService: VentaService,
-    private contratoService: ContratoService,
-    private socket: SocketService,
-    private toastService: ToastService,
-    private route: ActivatedRoute,
-    private router: Router
-  ) {}
+  // ---------- Datos derivados ----------
+
+  /** Línea de tiempo del trámite */
+  pasos = computed<{ etiqueta: string; estado: EstadoPaso }[]>(() => {
+    const v = this.venta();
+    if (!v) return [];
+    const orden = ['iniciada', 'documento_generado', 'documento_firmado', 'escriturada', 'finalizada'];
+    const etiquetas = ['Iniciada', 'Documento generado', 'Documento firmado', 'Escriturada', 'Finalizada'];
+    const idx = orden.indexOf(v.estado);
+    const ultimo = orden.length - 1;
+    return etiquetas.map((etiqueta, i) => {
+      let estado: EstadoPaso = 'pendiente';
+      if (idx >= 0) {
+        if (i < idx || (idx === ultimo && i === idx)) estado = 'hecho';
+        else if (i === idx) estado = 'actual';
+      }
+      return { etiqueta, estado };
+    });
+  });
+
+  anulada = computed(() => {
+    const e = this.venta()?.estado;
+    return e === 'cancelada' || e === 'anulada';
+  });
+
+  pagosPrevios = computed(() => (this.venta()?.pagos_previos ?? []).map((p) => ({ monto: Number(p.monto), fecha: p.fecha })));
+
+  totalPagado = computed(() => this.pagosPrevios().reduce((acc, p) => acc + p.monto, 0));
+
+  saldo = computed(() => {
+    const v = this.venta();
+    if (!v) return 0;
+    return Math.max(Number(v.precio_total) - this.totalPagado(), 0);
+  });
+
+  porcentajePagado = computed(() => {
+    const v = this.venta();
+    const total = Number(v?.precio_total ?? 0);
+    if (!total) return 0;
+    return Math.min(Math.round((this.totalPagado() / total) * 100), 100);
+  });
+
+  plazoMeses = computed<number | null>(() => {
+    const dc = this.venta()?.datos_credito;
+    if (!dc) return null;
+    if (dc.plazo_meses != null) return Number(dc.plazo_meses);
+    if (dc.plazo_anios != null) return Number(dc.plazo_anios) * 12;
+    return null;
+  });
+
+  interesAnual = computed<number>(() => {
+    const dc = this.venta()?.datos_credito;
+    if (!dc) return 0;
+    if (dc.tea_financiamiento != null) return Number(dc.tea_financiamiento);
+    return (this.plazoMeses() ?? 0) > 24 ? 20 : 0;
+  });
+
+  cuotasPagadas = computed(() => this.cronograma().filter((c) => c.estado === 'pagada').length);
+
+  progresoCuotas = computed(() => {
+    const total = this.cronograma().length;
+    return total ? Math.round((this.cuotasPagadas() / total) * 100) : 0;
+  });
+
+  totalCronograma = computed(() => this.cronograma().reduce((acc, c) => acc + Number(c.monto_cuota), 0));
+
+  totalCobrado = computed(() => this.cronograma().reduce((acc, c) => acc + Number(c.monto_pagado ?? 0), 0));
+
+  // ---------- Ciclo de vida ----------
 
   ngOnInit(): void {
     this.idVenta = Number(this.route.snapshot.paramMap.get('id'));
     this.cargar();
 
     this.socket.conectar();
-    this.socket.onEvento.subscribe((evento) => {
+    this.suscripcionSocket = this.socket.onEvento.subscribe((evento) => {
       if (evento.evento === 'venta:nueva' || evento.evento === 'venta:actualizada') {
         const data = evento.data as { id?: number };
         if (data?.id === this.idVenta) this.cargar();
@@ -55,6 +128,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.suscripcionSocket?.unsubscribe();
     this.socket.desconectar();
   }
 
@@ -74,14 +148,23 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ---------- Navegación ----------
+
   volver(): void {
     this.router.navigate(['/dashboard/contratos']);
+  }
+
+  verSeparacion(): void {
+    const id = this.venta()?.id_separacion;
+    if (id) this.router.navigate(['/dashboard/separaciones', id]);
   }
 
   verCronogramaYPagos(): void {
     const id = this.venta()?.id_contrato;
     if (id) this.router.navigate(['/dashboard/contratos'], { queryParams: { abrir: id } });
   }
+
+  // ---------- Documento ----------
 
   nombreDocumento(): string {
     const v = this.venta();
@@ -135,6 +218,23 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     input.value = '';
   }
 
+  registrarContrato(): void {
+    this.procesando.set(true);
+    this.ventaService.registrarContrato(this.idVenta).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.toastService.exito('Contrato registrado. El lote pasó a vendido.');
+        this.cargar();
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el contrato');
+      },
+    });
+  }
+
+  // ---------- Ubicación física ----------
+
   abrirUbicacion(): void {
     this.ubicacionForm = {
       tipo_documento: this.venta()?.forma_pago === 'contado' ? 'minuta' : 'contrato_preparatorio',
@@ -164,12 +264,15 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ---------- Etiquetas ----------
+
   etiquetaEstado(estado: string): string {
     const mapa: Record<string, string> = {
       iniciada: 'Iniciada',
       documento_generado: 'Documento generado',
       documento_firmado: 'Documento firmado',
       escriturada: 'Escriturada',
+      finalizada: 'Finalizada',
       cancelada: 'Cancelada',
       anulada: 'Anulada',
     };
@@ -178,24 +281,47 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   etiquetaUbicacion(u: string): string {
     const mapa: Record<string, string> = {
-      notaria: 'Notaría', juez_de_paz: 'Juez de Paz',
-      municipalidad: 'Municipalidad', archivo_central: 'Archivo Central', otro: 'Otro',
+      notaria: 'Notaría',
+      juez_de_paz: 'Juez de Paz',
+      municipalidad: 'Municipalidad',
+      archivo_central: 'Archivo Central',
+      otro: 'Otro',
     };
     return mapa[u] ?? u;
   }
 
-    registrarContrato(): void {
-    this.procesando.set(true);
-    this.ventaService.registrarContrato(this.idVenta).subscribe({
-      next: () => {
-        this.procesando.set(false);
-        this.toastService.exito('Contrato registrado. El lote pasó a vendido.');
-        this.cargar();
-      },
-      error: (err) => {
-        this.procesando.set(false);
-        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el contrato');
-      },
-    });
+  etiquetaTipoDocumento(t: string): string {
+    const mapa: Record<string, string> = {
+      minuta: 'Minuta',
+      contrato_preparatorio: 'Contrato Preparatorio',
+      escritura: 'Escritura Pública',
+      titulo: 'Título',
+    };
+    return mapa[t] ?? t;
+  }
+
+  etiquetaTramite(t: string): string {
+    const mapa: Record<string, string> = {
+      en_proceso: 'En proceso',
+      pendiente: 'Pendiente',
+      concretado: 'Concretado',
+    };
+    return mapa[t] ?? t;
+  }
+
+  etiquetaRol(rol: string): string {
+    const mapa: Record<string, string> = { titular: 'Titular', conyuge: 'Cónyuge', copropietario: 'Copropietario' };
+    return mapa[rol] ?? rol;
+  }
+
+  etiquetaFrecuencia(f: string | undefined): string {
+    const mapa: Record<string, string> = {
+      mensual: 'Mensual',
+      bimestral: 'Bimestral',
+      trimestral: 'Trimestral',
+      semestral: 'Semestral',
+      unico: 'Pago único',
+    };
+    return f ? (mapa[f] ?? f) : '—';
   }
 }

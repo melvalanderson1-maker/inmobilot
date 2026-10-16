@@ -1,175 +1,321 @@
-<div class="detalle-page">
-  @if (cargando()) {
-    <div class="estado-carga"><span class="spinner"></span> Cargando venta...</div>
+<div class="vd">
+  @if (cargando() && !venta()) {
+    <div class="vd-state" role="status" aria-live="polite"><span class="vd-spinner" aria-hidden="true"></span> Cargando venta...</div>
   } @else if (!venta()) {
-    <div class="estado-vacio">No se encontró la venta</div>
+    <div class="vd-state">No se encontró la venta</div>
   } @else {
-    <header class="page-header">
-      <button class="btn-volver" (click)="volver()">← Volver</button>
-      <div class="header-fila">
-        <div class="header-titulo">
+
+    <!-- ===================== ENCABEZADO ===================== -->
+    <header class="vd-header">
+      <button type="button" class="vd-back" (click)="volver()">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l-5 5 5 5" /></svg>
+        Volver
+      </button>
+
+      <div class="vd-headline">
+        <div class="vd-title">
+          <span class="vd-eyebrow">Venta n.º {{ venta()!.id }}</span>
           <h1>Lote {{ venta()!.lote?.codigo }}</h1>
-          <span class="chip chip-grande" [ngClass]="'chip-' + venta()!.estado">
-            {{ etiquetaEstado(venta()!.estado) }}
-          </span>
+          <p class="vd-sub">
+            @if (venta()!.lote?.manzana_nombre) { <span>Mz. {{ venta()!.lote?.manzana_nombre }}</span> }
+            <span>{{ venta()!.lote?.area_m2 }} m²</span>
+            <span>{{ venta()!.forma_pago === 'contado' ? 'Al contado' : 'Crédito directo' }}</span>
+          </p>
         </div>
-        <div class="header-importe">
-          <span>Precio total</span>
-          <strong>S/ {{ venta()!.precio_total | number:'1.2-2' }}</strong>
+
+        <div class="vd-headline-side">
+          <span class="vd-chip" [attr.data-estado]="venta()!.estado">{{ etiquetaEstado(venta()!.estado) }}</span>
+          <div class="vd-price">
+            <span>Precio total</span>
+            <strong>S/ {{ venta()!.precio_total | number:'1.2-2' }}</strong>
+          </div>
         </div>
       </div>
+
+      @if (anulada()) {
+        <div class="vd-banner" role="alert">Esta venta está {{ etiquetaEstado(venta()!.estado).toLowerCase() }}. Ya no admite cambios en el trámite.</div>
+      } @else {
+        <ol class="vd-timeline" aria-label="Avance del trámite">
+          @for (p of pasos(); track p.etiqueta; let i = $index) {
+            <li class="vd-tl-item" [attr.data-estado]="p.estado">
+              <span class="vd-tl-dot">{{ p.estado === 'hecho' ? '✓' : i + 1 }}</span>
+              <span class="vd-tl-label">{{ p.etiqueta }}</span>
+            </li>
+          }
+        </ol>
+      }
     </header>
 
-    <div class="detalle-grid">
-      <div class="col-visor">
-        <section class="card">
-          <h3>{{ nombreDocumento() }}</h3>
+    <div class="vd-grid">
+      <!-- ===================== COLUMNA PRINCIPAL ===================== -->
+      <div class="vd-main">
 
-          @if (venta()!.documento_generado_url) {
-            <a [href]="venta()!.documento_generado_url!" target="_blank" class="btn-secundario btn-doc">
-              Ver {{ nombreDocumento() }} generado ↗
-            </a>
-          } @else {
-            <p class="dato-secundario">El documento aún no se ha generado.</p>
-            <button class="btn-primary" (click)="generarDocumento()" [disabled]="procesando()">
-              {{ procesando() ? 'Generando...' : 'Generar ' + nombreDocumento() }}
-            </button>
-          }
+        <!-- DOCUMENTO -->
+        <section class="vd-card">
+          <header class="vd-card-head">
+            <div>
+              <h2>{{ nombreDocumento() }}</h2>
+              <p>Genera, firma y registra el documento de la venta.</p>
+            </div>
+          </header>
 
-          @if (venta()!.documento_generado_url) {
-            <div style="margin-top: 16px;">
-              @if (venta()!.documento_firmado_url) {
-                <a [href]="venta()!.documento_firmado_url!" target="_blank" class="btn-secundario btn-doc">
-                  Ver documento firmado ↗
-                </a>
-              } @else {
-                <label class="btn-primary btn-doc" [class.btn-deshabilitado]="subiendoFirmado()">
-                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoFirmadoSeleccionado($event)" [disabled]="subiendoFirmado()" hidden />
-                  {{ subiendoFirmado() ? 'Subiendo...' : 'Subir documento firmado' }}
-                </label>
+          <ol class="vd-flow">
+            <!-- 1 generar -->
+            <li class="vd-flow-item" [class.is-done]="!!venta()!.documento_generado_url">
+              <span class="vd-flow-dot">{{ venta()!.documento_generado_url ? '✓' : '1' }}</span>
+              <div class="vd-flow-body">
+                <strong>Generar {{ nombreDocumento() }}</strong>
+                <span class="vd-muted">{{ venta()!.documento_generado_url ? 'Documento listo para imprimir y firmar.' : 'Aún no se ha generado.' }}</span>
+                <div class="vd-actions">
+                  @if (venta()!.documento_generado_url) {
+                    <a class="vd-btn vd-btn-ghost vd-btn-sm" [href]="venta()!.documento_generado_url!" target="_blank" rel="noopener">Ver documento ↗</a>
+                  } @else {
+                    <button type="button" class="vd-btn vd-btn-primary vd-btn-sm" (click)="generarDocumento()" [disabled]="procesando() || anulada()">
+                      {{ procesando() ? 'Generando...' : 'Generar ' + nombreDocumento() }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </li>
+
+            <!-- 2 firmado -->
+            <li class="vd-flow-item" [class.is-done]="!!venta()!.documento_firmado_url" [class.is-locked]="!venta()!.documento_generado_url">
+              <span class="vd-flow-dot">{{ venta()!.documento_firmado_url ? '✓' : '2' }}</span>
+              <div class="vd-flow-body">
+                <strong>Documento firmado</strong>
+                <span class="vd-muted">{{ venta()!.documento_firmado_url ? 'El documento firmado ya fue subido.' : 'Sube el documento con las firmas (JPG, PNG o PDF).' }}</span>
+                @if (venta()!.documento_generado_url) {
+                  <div class="vd-actions">
+                    @if (venta()!.documento_firmado_url) {
+                      <a class="vd-btn vd-btn-ghost vd-btn-sm" [href]="venta()!.documento_firmado_url!" target="_blank" rel="noopener">Ver firmado ↗</a>
+                    } @else {
+                      <label class="vd-btn vd-btn-primary vd-btn-sm" [class.is-disabled]="subiendoFirmado() || anulada()">
+                        <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoFirmadoSeleccionado($event)" [disabled]="subiendoFirmado() || anulada()" hidden />
+                        {{ subiendoFirmado() ? 'Subiendo...' : 'Subir documento firmado' }}
+                      </label>
+                    }
+                  </div>
+                }
+              </div>
+            </li>
+
+            <!-- 3 registrar -->
+            <li class="vd-flow-item" [class.is-done]="!!venta()!.id_contrato">
+              <span class="vd-flow-dot">{{ venta()!.id_contrato ? '✓' : '3' }}</span>
+              <div class="vd-flow-body">
+                <strong>Registrar en Contratos</strong>
+                <span class="vd-muted">{{ venta()!.id_contrato ? 'Ya está registrado. El lote figura como vendido.' : 'Al registrarlo, el lote pasará a vendido.' }}</span>
+                @if (!venta()!.id_contrato) {
+                  <div class="vd-actions">
+                    <button type="button" class="vd-btn vd-btn-primary vd-btn-sm" (click)="registrarContrato()" [disabled]="procesando() || anulada()">
+                      {{ procesando() ? 'Registrando...' : 'Registrar en Contratos' }}
+                    </button>
+                  </div>
+                }
+              </div>
+            </li>
+          </ol>
+
+          @if (venta()!.escritura_url || venta()!.titulo_url) {
+            <div class="vd-docs">
+              @if (venta()!.escritura_url) {
+                <a class="vd-doc-link" [href]="venta()!.escritura_url!" target="_blank" rel="noopener">Escritura pública ↗</a>
+              }
+              @if (venta()!.titulo_url) {
+                <a class="vd-doc-link" [href]="venta()!.titulo_url!" target="_blank" rel="noopener">Título de propiedad ↗</a>
               }
             </div>
           }
-
-          @if (!venta()!.id_contrato) {
-            <button class="btn-primary" style="margin-top:12px;" (click)="registrarContrato()" [disabled]="procesando()">
-              {{ procesando() ? 'Registrando...' : 'Registrar en Contratos (el lote pasará a vendido)' }}
-            </button>
-          }
-          @if (venta()!.id_contrato) {
-            <p class="dato-secundario" style="margin-top:12px;">✓ Ya está registrado en el módulo de Contratos.</p>
-          }
         </section>
 
+        <!-- CRONOGRAMA -->
         @if (cronograma().length > 0) {
-          <section class="card">
-            <h3>Cronograma de pagos</h3>
-            <table class="tabla-cuotas">
-              <thead>
-                <tr><th>N°</th><th>Vence</th><th>Monto</th><th>Estado</th></tr>
-              </thead>
-              <tbody>
-                @for (c of cronograma(); track c.id) {
-                  <tr>
-                    <td>{{ c.numero_cuota }}</td>
-                    <td>{{ c.fecha_pago_programada }}</td>
-                    <td>S/ {{ c.monto_cuota | number:'1.2-2' }}</td>
-                    <td><span class="chip">{{ c.estado }}</span></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+          <section class="vd-card">
+            <header class="vd-card-head">
+              <div>
+                <h2>Cronograma de pagos</h2>
+                <p>{{ cuotasPagadas() }} de {{ cronograma().length }} cuotas pagadas</p>
+              </div>
+              @if (venta()!.id_contrato) {
+                <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm" (click)="verCronogramaYPagos()">Ver pagos →</button>
+              }
+            </header>
+
+            <div class="vd-progress" role="progressbar" [attr.aria-valuenow]="progresoCuotas()" aria-valuemin="0" aria-valuemax="100" aria-label="Cuotas pagadas">
+              <span [style.width.%]="progresoCuotas()"></span>
+            </div>
+            <p class="vd-progress-note">
+              Cobrado S/ {{ totalCobrado() | number:'1.2-2' }} de S/ {{ totalCronograma() | number:'1.2-2' }}
+            </p>
+
+            <div class="vd-table" role="table" aria-label="Cuotas">
+              <div class="vd-tr vd-th" role="row">
+                <span role="columnheader">N°</span>
+                <span role="columnheader">Vence</span>
+                <span role="columnheader">Monto</span>
+                <span role="columnheader">Estado</span>
+              </div>
+              @for (c of cronograma(); track c.id) {
+                <div class="vd-tr" role="row">
+                  <span role="cell" data-label="N°">{{ c.numero_cuota }}</span>
+                  <span role="cell" data-label="Vence">{{ c.fecha_pago_programada }}</span>
+                  <span role="cell" data-label="Monto">S/ {{ c.monto_cuota | number:'1.2-2' }}</span>
+                  <span role="cell" data-label="Estado"><span class="vd-mini" [attr.data-cuota]="c.estado">{{ c.estado | titlecase }}</span></span>
+                </div>
+              }
+            </div>
           </section>
         }
 
-        <section class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>Ubicación física de documentos</h3>
-            <button class="btn-secundario btn-sm" (click)="abrirUbicacion()">+ Registrar</button>
-          </div>
+        <!-- UBICACIÓN FÍSICA -->
+        <section class="vd-card">
+          <header class="vd-card-head">
+            <div>
+              <h2>Ubicación física de documentos</h2>
+              <p>Dónde está cada documento y el estado de su trámite.</p>
+            </div>
+            <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm" (click)="abrirUbicacion()" [disabled]="anulada()">+ Registrar</button>
+          </header>
 
           @if (venta()!.ubicaciones.length === 0) {
-            <p class="dato-secundario">Sin registros de ubicación todavía.</p>
+            <p class="vd-muted">Sin registros de ubicación todavía.</p>
           } @else {
-            @for (u of venta()!.ubicaciones; track u.id) {
-              <div class="fila-comprobante">
-                <span class="comprobante-nombre">{{ u.tipo_documento | titlecase }} — {{ etiquetaUbicacion(u.ubicacion) }}</span>
-                <span class="chip">{{ u.estado_tramite }}</span>
-              </div>
-              @if (u.observaciones) { <p class="dato-secundario">{{ u.observaciones }}</p> }
-            }
+            <ul class="vd-locs">
+              @for (u of venta()!.ubicaciones; track u.id) {
+                <li class="vd-loc">
+                  <div class="vd-loc-main">
+                    <strong>{{ etiquetaTipoDocumento(u.tipo_documento) }}</strong>
+                    <span>{{ etiquetaUbicacion(u.ubicacion) }}@if (u.notaria_nombre) { · {{ u.notaria_nombre }} }</span>
+                    @if (u.numero_tramite) { <span>Trámite {{ u.numero_tramite }}</span> }
+                    @if (u.observaciones) { <span class="vd-loc-note">{{ u.observaciones }}</span> }
+                  </div>
+                  <span class="vd-mini" [attr.data-tramite]="u.estado_tramite">{{ etiquetaTramite(u.estado_tramite) }}</span>
+                </li>
+              }
+            </ul>
           }
         </section>
       </div>
 
-      <aside class="col-lateral">
-        <section class="card panel">
-          <div class="panel-bloque">
-            <h3>Condiciones</h3>
-            <dl class="dato-lista">
-              <div class="dato-item"><dt>Forma de pago</dt><dd>{{ venta()!.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</dd></div>
-              @if (venta()!.datos_credito; as dc) {
-                <div class="dato-item"><dt>Inicial</dt><dd>S/ {{ dc.inicial_monto | number:'1.2-2' }}</dd></div>
-                <div class="dato-item"><dt>Plazo</dt><dd>{{ dc.plazo_meses ?? (dc.plazo_anios * 12) }} meses</dd></div>
-                <div class="dato-item"><dt>Pagos</dt><dd>{{ dc.frecuencia_cuota }}</dd></div>
-                <div class="dato-item"><dt>Interés</dt><dd>{{ (dc.tea_financiamiento ?? ((dc.plazo_meses ?? dc.plazo_anios * 12) > 24 ? 20 : 0)) }}% anual</dd></div>
+      <!-- ===================== LATERAL ===================== -->
+      <aside class="vd-aside">
+
+        <!-- ECONOMÍA -->
+        <section class="vd-card">
+          <h2 class="vd-side-title">Resumen económico</h2>
+
+          <div class="vd-total">
+            <span>Precio total</span>
+            <strong>S/ {{ venta()!.precio_total | number:'1.2-2' }}</strong>
+          </div>
+
+          @if (venta()!.forma_pago === 'contado') {
+            <div class="vd-progress" role="progressbar" [attr.aria-valuenow]="porcentajePagado()" aria-valuemin="0" aria-valuemax="100" aria-label="Porcentaje pagado">
+              <span [style.width.%]="porcentajePagado()"></span>
+            </div>
+            <p class="vd-progress-note">{{ porcentajePagado() }}% pagado</p>
+
+            @if (pagosPrevios().length > 0) {
+              <ul class="vd-pays">
+                @for (p of pagosPrevios(); track $index) {
+                  <li><span>{{ p.fecha }}</span><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></li>
+                }
+              </ul>
+            }
+            <dl class="vd-lines">
+              <div><dt>Total pagado</dt><dd>S/ {{ totalPagado() | number:'1.2-2' }}</dd></div>
+              <div class="is-strong"><dt>Saldo por cobrar</dt><dd>S/ {{ saldo() | number:'1.2-2' }}</dd></div>
+            </dl>
+          } @else {
+            @if (venta()!.datos_credito; as dc) {
+              <dl class="vd-lines">
+                <div><dt>Inicial</dt><dd>S/ {{ dc.inicial_monto | number:'1.2-2' }}</dd></div>
+                @if (plazoMeses() !== null) {
+                  <div><dt>Plazo</dt><dd>{{ plazoMeses() }} meses</dd></div>
+                }
+                <div><dt>Frecuencia</dt><dd>{{ etiquetaFrecuencia(dc.frecuencia_cuota) }}</dd></div>
+                <div><dt>Interés financiamiento</dt><dd>{{ interesAnual() }}% anual</dd></div>
+                @if (dc.tasa_interes != null) {
+                  <div><dt>Interés por mora</dt><dd>{{ dc.tasa_interes }}% anual</dd></div>
+                }
+              </dl>
+              @if (dc.observaciones) {
+                <p class="vd-note">{{ dc.observaciones }}</p>
               }
-            </dl>
-            @if (venta()!.datos_credito?.observaciones) {
-              <p class="dato-secundario">{{ venta()!.datos_credito.observaciones }}</p>
             }
-            @if (venta()!.id_contrato) {
-              <button class="btn-secundario btn-sm" style="margin-top:10px;" (click)="verCronogramaYPagos()">Ver cronograma y pagos →</button>
-            }
-          </div>
-
-          <div class="panel-bloque">
-            <h3>Compradores</h3>
-            @for (c of venta()!.clientes; track c.id_cliente) {
-              <div class="cliente-fila">
-                <div class="avatar">{{ c.nombres.charAt(0) }}</div>
-                <div class="cliente-datos">
-                  <strong>{{ c.nombres }} {{ c.apellidos }}</strong>
-                  <span class="dato-linea">{{ c.numero_documento }} · {{ c.rol }}</span>
-                </div>
-              </div>
-            }
-          </div>
-
-          <div class="panel-bloque">
-            <h3>Lote</h3>
-            <dl class="dato-lista">
-              <div class="dato-item"><dt>Manzana</dt><dd>{{ venta()!.lote?.manzana_nombre || '—' }}</dd></div>
-              <div class="dato-item"><dt>Lote</dt><dd>{{ venta()!.lote?.codigo }}</dd></div>
-              <div class="dato-item"><dt>Partida</dt><dd>{{ venta()!.lote?.partida_registral || '—' }}</dd></div>
-              <div class="dato-item"><dt>Área</dt><dd>{{ venta()!.lote?.area_m2 }} m²</dd></div>
-            </dl>
-          </div>
+          }
         </section>
+
+        <!-- COMPRADORES -->
+        <section class="vd-card">
+          <h2 class="vd-side-title">Compradores</h2>
+          <ul class="vd-people">
+            @for (c of venta()!.clientes; track c.id_cliente) {
+              <li class="vd-person">
+                <span class="vd-avatar" aria-hidden="true">{{ c.nombres.charAt(0) }}</span>
+                <div class="vd-person-info">
+                  <strong>{{ c.nombres }} {{ c.apellidos }}</strong>
+                  <span>{{ c.numero_documento }}</span>
+                </div>
+                <span class="vd-tag" [class.is-main]="c.rol === 'titular'">{{ etiquetaRol(c.rol) }}</span>
+              </li>
+            }
+          </ul>
+        </section>
+
+        <!-- LOTE -->
+        <section class="vd-card">
+          <h2 class="vd-side-title">Lote</h2>
+          <dl class="vd-lines">
+            <div><dt>Manzana</dt><dd>{{ venta()!.lote?.manzana_nombre || '—' }}</dd></div>
+            <div><dt>Lote</dt><dd>{{ venta()!.lote?.codigo }}</dd></div>
+            <div><dt>Partida</dt><dd>{{ venta()!.lote?.partida_registral || '—' }}</dd></div>
+            <div><dt>Área</dt><dd>{{ venta()!.lote?.area_m2 }} m²</dd></div>
+            @if (venta()!.lote?.perimetro) {
+              <div><dt>Perímetro</dt><dd>{{ venta()!.lote?.perimetro }} m</dd></div>
+            }
+            @if (venta()!.lote?.frontis) {
+              <div><dt>Frontis</dt><dd>{{ venta()!.lote?.frontis }}</dd></div>
+            }
+          </dl>
+          @if (venta()!.lote?.sunarp_url) {
+            <a class="vd-btn vd-btn-ghost vd-btn-sm vd-btn-block" [href]="venta()!.lote!.sunarp_url!" target="_blank" rel="noopener">Ver partida registral ↗</a>
+          }
+        </section>
+
+        <!-- ORIGEN -->
+        @if (venta()!.id_separacion) {
+          <section class="vd-card">
+            <h2 class="vd-side-title">Origen</h2>
+            <p class="vd-muted">Esta venta nació de la separación n.º {{ venta()!.id_separacion }}.</p>
+            <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm vd-btn-block" (click)="verSeparacion()">Ver separación →</button>
+          </section>
+        }
       </aside>
     </div>
   }
 </div>
 
+<!-- ===================== MODAL UBICACIÓN ===================== -->
 @if (mostrarUbicacion()) {
-  <div class="modal-overlay" (click)="mostrarUbicacion.set(false)">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2>Registrar ubicación del documento</h2>
-        <button class="modal-cerrar" (click)="mostrarUbicacion.set(false)">×</button>
+  <div class="vd-overlay" (click)="mostrarUbicacion.set(false)">
+    <div class="vd-modal" role="dialog" aria-modal="true" aria-labelledby="vd-modal-title" (click)="$event.stopPropagation()">
+      <div class="vd-modal-head">
+        <h2 id="vd-modal-title">Registrar ubicación del documento</h2>
+        <button type="button" class="vd-close" (click)="mostrarUbicacion.set(false)" aria-label="Cerrar">×</button>
       </div>
-      <div class="modal-body">
-        <div class="campo">
-          <label>Tipo de documento</label>
+      <div class="vd-modal-body">
+        <label class="vd-field">
+          <span>Tipo de documento</span>
           <select [(ngModel)]="ubicacionForm.tipo_documento">
             <option value="minuta">Minuta</option>
             <option value="contrato_preparatorio">Contrato Preparatorio</option>
             <option value="escritura">Escritura Pública</option>
             <option value="titulo">Título</option>
           </select>
-        </div>
-        <div class="campo">
-          <label>Ubicación</label>
+        </label>
+        <label class="vd-field">
+          <span>Ubicación</span>
           <select [(ngModel)]="ubicacionForm.ubicacion">
             <option value="notaria">Notaría</option>
             <option value="juez_de_paz">Juez de Paz</option>
@@ -177,33 +323,33 @@
             <option value="archivo_central">Archivo Central</option>
             <option value="otro">Otro</option>
           </select>
-        </div>
+        </label>
         @if (ubicacionForm.ubicacion === 'notaria') {
-          <div class="campo">
-            <label>Nombre de la notaría</label>
+          <label class="vd-field">
+            <span>Nombre de la notaría</span>
             <input type="text" [(ngModel)]="ubicacionForm.notaria_nombre" placeholder="Notaría Mazamari" />
-          </div>
+          </label>
         }
-        <div class="campo">
-          <label>Estado del trámite</label>
+        <label class="vd-field">
+          <span>Estado del trámite</span>
           <select [(ngModel)]="ubicacionForm.estado_tramite">
             <option value="en_proceso">En proceso</option>
             <option value="pendiente">Pendiente</option>
             <option value="concretado">Concretado</option>
           </select>
-        </div>
-        <div class="campo">
-          <label>N° de trámite <em>· opcional</em></label>
+        </label>
+        <label class="vd-field">
+          <span>N° de trámite <em>· opcional</em></span>
           <input type="text" [(ngModel)]="ubicacionForm.numero_tramite" />
-        </div>
-        <div class="campo">
-          <label>Observaciones</label>
+        </label>
+        <label class="vd-field">
+          <span>Observaciones</span>
           <textarea rows="2" [(ngModel)]="ubicacionForm.observaciones"></textarea>
-        </div>
+        </label>
       </div>
-      <div class="modal-footer">
-        <button class="btn-secundario" (click)="mostrarUbicacion.set(false)">Cancelar</button>
-        <button class="btn-primary" (click)="guardarUbicacion()" [disabled]="procesando()">Guardar</button>
+      <div class="vd-modal-foot">
+        <button type="button" class="vd-btn vd-btn-ghost" (click)="mostrarUbicacion.set(false)">Cancelar</button>
+        <button type="button" class="vd-btn vd-btn-primary" (click)="guardarUbicacion()" [disabled]="procesando()">Guardar</button>
       </div>
     </div>
   </div>

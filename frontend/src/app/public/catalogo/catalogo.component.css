@@ -1527,10 +1527,11 @@
 }
 .gv-maqueta-imagen {
   position: relative;
+  flex: none;
+  line-height: 0;
   border-radius: var(--gv-radio);
   overflow: hidden;
-  box-shadow: var(--gv-sombra);
-  border: 1px solid var(--gv-borde);
+  box-shadow: var(--gv-sombra), 0 0 0 1px var(--gv-borde);
 }
 
 .gv-maqueta-imagen img {

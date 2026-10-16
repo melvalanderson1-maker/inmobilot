@@ -1495,15 +1495,22 @@ select:focus-visible {
 
 .mapa-contenedor {
   position: relative;
+  display: block;
+  flex: none; /* NO se encoge: siempre mide lo mismo que la imagen completa */
+  width: 100%;
+  line-height: 0;
   cursor: crosshair;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--border-fuerte, #e2e8f0);
+  box-shadow: 0 0 0 1px var(--border-fuerte, #e2e8f0); /* en vez de border, para no sumar píxeles */
 }
 
 .mapa-img {
-  width: 100%;
   display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .mapa-pin {

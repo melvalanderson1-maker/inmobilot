@@ -205,10 +205,16 @@ export class LotesListComponent implements OnInit, OnDestroy {
   onClickMaqueta(event: MouseEvent): void {
     const lote = this.loteUbicando();
     if (!lote) return;
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+    // Se mide contra la IMAGEN real (no contra el contenedor), así el % es exacto
+    // y coincide con el plano del sitio público.
+    const contenedor = event.currentTarget as HTMLElement;
+    const img = contenedor.querySelector('img') as HTMLImageElement | null;
+    const rect = (img ?? contenedor).getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const x = Math.min(100, Math.max(0, ((event.clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((event.clientY - rect.top) / rect.height) * 100));
 
     this.guardandoUbicacion.set(true);
     this.loteService.actualizar(lote.id, { mapa_x: Math.round(x * 100) / 100, mapa_y: Math.round(y * 100) / 100 } as any)
@@ -221,7 +227,7 @@ export class LotesListComponent implements OnInit, OnDestroy {
         error: () => this.guardandoUbicacion.set(false),
       });
   }
-
+  
   ngOnInit(): void {
     this.api.get<Proyecto[]>('/proyectos').subscribe((proyectos) => {
       this.proyectos.set(proyectos);

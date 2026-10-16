@@ -690,6 +690,8 @@ class SeparacionCreate(BaseModel):
     dni_frente_url: str
     dni_reverso_url: str
     voucher_url: str
+    voucher_numero: str = Field(min_length=1, max_length=60)
+    medio_pago: str = Field(min_length=1, max_length=40)
     proforma_url: Optional[str] = None
     agenda_fecha: Optional[datetime] = None
 
@@ -706,7 +708,6 @@ class SeparacionUpdate(BaseModel):
     notas: Optional[str] = None
     agenda_fecha: Optional[datetime] = None
     proforma_url: Optional[str] = None
-    contrato_url: Optional[str] = None
     contrato_firmado_url: Optional[str] = None
 
 
@@ -786,6 +787,8 @@ class SeparacionOut(ORMBase):
     dni_frente_url: str
     dni_reverso_url: str
     voucher_url: str
+    voucher_numero: Optional[str] = None
+    medio_pago: Optional[str] = None
     proforma_url: Optional[str] = None
     contrato_url: Optional[str] = None
     contrato_firmado_url: Optional[str] = None

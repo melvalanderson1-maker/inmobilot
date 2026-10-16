@@ -322,6 +322,7 @@ async def convertir_separacion(
 
 
 # --------------------------------------------------------------- proforma --
+# ------------------------------------------------------------- documentos --
 
 @router.post("/{id_separacion}/proforma", response_model=s.SeparacionOut)
 async def generar_proforma(
@@ -333,8 +334,26 @@ async def generar_proforma(
     if sep.estado in svc.ESTADOS_CERRADOS:
         raise _conflicto("La separación ya está cerrada, no se puede generar la proforma")
 
-    pdf_bytes = svc.generar_pdf_proforma(sep)
-    sep.proforma_url = svc.guardar_proforma_pdf(sep.id, pdf_bytes)
+    sep.proforma_url = svc.generar_documento(db, sep, con_clausulas=False)
+    db.commit()
+
+    await _emitir(db, sep, usuario, [])
+    return _detalle(db, id_separacion, usuario)
+
+
+@router.post("/{id_separacion}/contrato", response_model=s.SeparacionOut)
+async def generar_contrato(
+    id_separacion: int,
+    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
+    db: Session = Depends(get_db),
+):
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if sep.estado in svc.ESTADOS_CERRADOS:
+        raise _conflicto("La separación ya está cerrada, no se puede generar el contrato")
+    if sep.estado in (E.pendiente_caja, E.rechazada):
+        raise _conflicto("El contrato se genera una vez que Caja valide el voucher")
+
+    sep.contrato_url = svc.generar_documento(db, sep, con_clausulas=True)
     db.commit()
 
     await _emitir(db, sep, usuario, [])

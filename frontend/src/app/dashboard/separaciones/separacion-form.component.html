@@ -259,6 +259,27 @@
             }
           </div>
         </div>
+
+        <div class="sep-grid" style="margin-top: 16px;">
+          <div class="campo">
+            <label>Medio de pago</label>
+            <div class="select-wrap">
+              <select [(ngModel)]="form.medio_pago">
+                <option value="" disabled>Selecciona el medio de pago</option>
+                <option value="Transferencia (Yape)">Transferencia (Yape)</option>
+                <option value="Transferencia (Plin)">Transferencia (Plin)</option>
+                <option value="Transferencia bancaria">Transferencia bancaria</option>
+                <option value="Depósito en cuenta">Depósito en cuenta</option>
+                <option value="Efectivo">Efectivo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>N° de voucher / operación</label>
+            <input type="text" [(ngModel)]="form.voucher_numero" placeholder="Ej: 26086944" maxlength="60" />
+          </div>
+        </div>
       </section>
     </div>
 

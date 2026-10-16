@@ -64,6 +64,10 @@ export class SeparacionService {
     return this.api.post<Separacion>(`/separaciones/${id}/proforma`, {});
   }
 
+  generarContrato(id: number) {
+    return this.api.post<Separacion>(`/separaciones/${id}/contrato`, {});
+  }
+
   subirArchivo(formData: FormData) {
     return this.api.post<{ url: string }>('/uploads/comprobante', formData);
   }

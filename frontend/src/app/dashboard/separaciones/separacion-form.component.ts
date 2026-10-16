@@ -42,6 +42,8 @@ export class SeparacionFormComponent implements OnInit {
     tipo_pago: null as FormaPago | null,
     notas: '',
     agenda_fecha: '',
+    voucher_numero: '',
+    medio_pago: '',
   };
 
   subiendoDniFrente = signal(false);
@@ -243,6 +245,8 @@ export class SeparacionFormComponent implements OnInit {
       !cliente ||
       !this.form.id_lote ||
       !this.form.importe ||
+      !this.form.voucher_numero.trim() ||
+      !this.form.medio_pago.trim() ||
       !this.dniFrenteUrl ||
       !this.dniReversoUrl ||
       !this.voucherUrl
@@ -267,6 +271,8 @@ export class SeparacionFormComponent implements OnInit {
         dni_frente_url: this.dniFrenteUrl,
         dni_reverso_url: this.dniReversoUrl,
         voucher_url: this.voucherUrl,
+        voucher_numero: this.form.voucher_numero.trim(),
+        medio_pago: this.form.medio_pago.trim(),
       })
       .subscribe({
         next: (sep) => {
@@ -287,7 +293,8 @@ export class SeparacionFormComponent implements OnInit {
     if (!this.clienteEncontrado()) return 'Busca o crea el cliente antes de continuar';
     if (!this.form.id_lote) return 'Selecciona el lote';
     if (!this.form.fecha_vencimiento) return 'Indica la fecha de vencimiento de la separación';
-    if (!this.form.importe || this.form.importe <= 0) return 'Indica el importe separado';
+    if (!this.form.medio_pago.trim()) return 'Indica el medio de pago (ej. Transferencia Yape)';
+    if (!this.form.voucher_numero.trim()) return 'Indica el número de voucher';
     if (!this.dniFrenteUrl || !this.dniReversoUrl || !this.voucherUrl) {
       return 'Sube el DNI (ambas caras) y el voucher antes de guardar';
     }

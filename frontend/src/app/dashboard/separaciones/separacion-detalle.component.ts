@@ -51,7 +51,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   mostrarEditar = signal(false);
   editarForm = { fecha_vencimiento: '', tipo_pago: null as FormaPago | null, notas: '', agenda_fecha: '' };
 
-  subiendoContrato = signal(false);
+
   subiendoContratoFirmado = signal(false);
   generandoProforma = signal(false);
 
@@ -414,33 +414,22 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       });
   }
 
-  onContratoSeleccionado(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const archivo = input.files?.[0];
-    if (!archivo) return;
-    const formData = new FormData();
-    formData.append('archivo', archivo);
-    this.subiendoContrato.set(true);
-    this.separacionService.subirArchivo(formData).subscribe({
-      next: (res) => {
-        this.separacionService.actualizar(this.idSeparacion, { contrato_url: res.url }).subscribe({
-          next: () => {
-            this.subiendoContrato.set(false);
-            this.toastService.exito('Contrato de separación subido');
-            this.cargar();
-          },
-          error: (err) => {
-            this.subiendoContrato.set(false);
-            this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el contrato');
-          },
-        });
+  generandoContrato = signal(false);
+
+  generarContrato(): void {
+    this.generandoContrato.set(true);
+    this.separacionService.generarContrato(this.idSeparacion).subscribe({
+      next: () => {
+        this.generandoContrato.set(false);
+        this.toastService.exito('Contrato generado');
+        this.tabActiva.set('contrato');
+        this.cargar();
       },
       error: (err) => {
-        this.subiendoContrato.set(false);
-        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+        this.generandoContrato.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo generar el contrato');
       },
     });
-    input.value = '';
   }
 
   onContratoFirmadoSeleccionado(event: Event): void {
@@ -506,7 +495,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
    mensajeVacio(clave: TabDocClave): string {
     const mapa: Record<TabDocClave, string> = {
       proforma: 'La proforma aún no se ha generado. Usa el botón "Generar".',
-      contrato: 'El contrato de separación aún no se ha subido.',
+      contrato: 'El contrato aún no se ha generado. Usa el botón "Generar".',
       contrato_firmado: 'El contrato firmado aún no se ha subido.',
       dni_frente: 'No hay foto del DNI (frente).',
       dni_reverso: 'No hay foto del DNI (reverso).',

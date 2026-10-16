@@ -514,6 +514,8 @@ export interface SeparacionCreate {
   dni_frente_url: string;
   dni_reverso_url: string;
   voucher_url: string;
+  voucher_numero: string;
+  medio_pago: string;
   proforma_url?: string;
   agenda_fecha?: string;
 }
@@ -565,6 +567,8 @@ export interface Separacion {
   dni_frente_url: string;
   dni_reverso_url: string;
   voucher_url: string;
+  voucher_numero?: string;
+  medio_pago?: string;
   proforma_url?: string;
   contrato_url?: string;
   contrato_firmado_url?: string;

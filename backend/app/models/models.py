@@ -668,6 +668,8 @@ class Separacion(Base):
     dni_frente_url = Column(String(300), nullable=False)
     dni_reverso_url = Column(String(300), nullable=False)
     voucher_url = Column(String(300), nullable=False)
+    voucher_numero = Column(String(60), nullable=True)
+    medio_pago = Column(String(40), nullable=True)
     proforma_url = Column(String(300))
     contrato_url = Column(String(300))
     contrato_firmado_url = Column(String(300))

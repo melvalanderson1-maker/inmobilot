@@ -177,6 +177,17 @@ async def actualizar_separacion(
     if nueva_venc is not None and nueva_venc < sep.fecha_inicio:
         raise HTTPException(status_code=422, detail="El vencimiento no puede ser anterior a la fecha inicial")
 
+    nuevo_desc = datos.get("precio_descontado")
+    if (
+        nuevo_desc is not None
+        and sep.lote.precio_total_base is not None
+        and nuevo_desc > sep.lote.precio_total_base
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=f"El precio descontado no puede superar el precio regular (S/ {sep.lote.precio_total_base:,.2f})",
+        )
+
     for campo, valor in datos.items():
         setattr(sep, campo, valor)
 

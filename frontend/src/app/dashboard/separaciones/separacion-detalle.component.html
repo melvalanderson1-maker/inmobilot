@@ -279,8 +279,20 @@
                 <dd>{{ separacion()!.fecha_inicio }}</dd>
               </div>
               <div class="dato-item">
-                <dt>Vencimiento</dt>
+                <dt>Vencimiento de la separación</dt>
                 <dd>{{ separacion()!.fecha_vencimiento }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Precio válido hasta</dt>
+                <dd>{{ separacion()!.precio_valido_hasta || '—' }}</dd>
+              </div>
+              <div class="dato-item">
+                <dt>Precio descontado</dt>
+                <dd>
+                  @if (separacion()!.precio_descontado) {
+                    S/ {{ separacion()!.precio_descontado | number:'1.2-2' }}
+                  } @else { — }
+                </dd>
               </div>
               <div class="dato-item">
                 <dt>Ejecutivo</dt>
@@ -482,8 +494,16 @@
       </div>
       <div class="modal-body">
         <div class="campo">
-          <label>Fecha de vencimiento</label>
+          <label>Vencimiento de la separación</label>
           <input type="date" [(ngModel)]="editarForm.fecha_vencimiento" />
+        </div>
+        <div class="campo">
+          <label>Precio válido hasta</label>
+          <input type="date" [(ngModel)]="editarForm.precio_valido_hasta" />
+        </div>
+        <div class="campo">
+          <label>Precio descontado final (S/)</label>
+          <input type="number" [(ngModel)]="editarForm.precio_descontado" placeholder="0.00" />
         </div>
         <div class="campo">
           <label>Tipo de pago previsto</label>

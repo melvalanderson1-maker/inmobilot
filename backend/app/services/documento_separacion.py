@@ -128,10 +128,10 @@ def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
     datos = construir_datos(sep, proyecto_nombre)
     datos["TITULO"] = "CONTRATO" if con_clausulas else "PROFORMA"
     if con_clausulas:
-        datos["ETIQUETA_FECHA"] = "VENCIMIENTO DE CONTRATO DE SEPARACIÓN"
+        datos["ETIQUETA_FECHA"] = "Vencimiento de contrato de separación"
         datos["FECHA_LIMITE"] = datos["VENCIMIENTO"]
     else:
-        datos["ETIQUETA_FECHA"] = "PRECIO VÁLIDO HASTA"
+        datos["ETIQUETA_FECHA"] = "Precio válido hasta"
         datos["FECHA_LIMITE"] = datos["PRECIO_VALIDO_HASTA"]
     for p in _recorrer_parrafos(doc):
         _reemplazar_en_parrafo(p, datos)
@@ -145,34 +145,3 @@ def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
-
-
-def docx_a_pdf(contenido: bytes) -> bytes | None:
-    """Convierte con LibreOffice si está instalado en el servidor; si no, devuelve None."""
-    soffice = shutil.which("soffice") or shutil.which("libreoffice")
-    if not soffice:
-        return None
-    with tempfile.TemporaryDirectory() as tmp:
-        origen = os.path.join(tmp, "doc.docx")
-        with open(origen, "wb") as f:
-            f.write(contenido)
-        try:
-            subprocess.run(
-                [soffice, "--headless", "--convert-to", "pdf", "--outdir", tmp, origen],
-                check=True, timeout=60, capture_output=True,
-            )
-            with open(os.path.join(tmp, "doc.pdf"), "rb") as f:
-                return f.read()
-        except Exception:
-            return None
-
-
-def guardar_documento(prefijo: str, id_separacion: int, contenido_docx: bytes, public_base: str | None) -> str:
-    """Guarda PDF si se pudo convertir, si no el .docx. Devuelve la URL."""
-    pdf = docx_a_pdf(contenido_docx)
-    ext, data = ("pdf", pdf) if pdf else ("docx", contenido_docx)
-    nombre = f"{prefijo}_{id_separacion}_{uuid.uuid4().hex[:8]}.{ext}"
-    with open(os.path.join(DIR_DOCUMENTOS, nombre), "wb") as f:
-        f.write(data)
-    ruta = f"/static/separaciones/{nombre}"
-    return f"{public_base}{ruta}" if public_base else ruta

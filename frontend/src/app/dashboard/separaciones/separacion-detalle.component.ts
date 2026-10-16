@@ -49,7 +49,14 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   respuestaDevolucion = '';
 
   mostrarEditar = signal(false);
-  editarForm = { fecha_vencimiento: '', tipo_pago: null as FormaPago | null, notas: '', agenda_fecha: '' };
+  editarForm = {
+    fecha_vencimiento: '',
+    tipo_pago: null as FormaPago | null,
+    notas: '',
+    agenda_fecha: '',
+    precio_valido_hasta: '',
+    precio_descontado: null as number | null,
+  };
 
 
   subiendoContratoFirmado = signal(false);
@@ -387,6 +394,8 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       tipo_pago: sep.tipo_pago ?? null,
       notas: sep.notas ?? '',
       agenda_fecha: sep.agenda_fecha ? sep.agenda_fecha.slice(0, 16) : '',
+      precio_valido_hasta: sep.precio_valido_hasta ?? '',
+      precio_descontado: sep.precio_descontado != null ? Number(sep.precio_descontado) : null,
     };
     this.mostrarEditar.set(true);
   }
@@ -399,6 +408,8 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
         tipo_pago: this.editarForm.tipo_pago || undefined,
         notas: this.editarForm.notas || undefined,
         agenda_fecha: this.editarForm.agenda_fecha ? new Date(this.editarForm.agenda_fecha).toISOString() : undefined,
+        precio_valido_hasta: this.editarForm.precio_valido_hasta || undefined,
+        precio_descontado: this.editarForm.precio_descontado || undefined,
       })
       .subscribe({
         next: () => {

@@ -135,7 +135,7 @@ async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, paylo
             raise HTTPException(status_code=422, detail="Cada comprador requiere id_cliente o cliente_nuevo")
         db.add(m.VentaCliente(id_venta=venta.id, id_cliente=cliente.id, rol=item.rol))
 
-    db.commit()
+    db.flush()  # sin commit todavía: venta y contrato se guardan juntos o no se guarda nada
 
     # El contrato se crea ahora: aparece en Ventas y Contratos y el lote pasa a vendido
     venta_completa = svc.cargar_venta(db, venta.id, usuario)

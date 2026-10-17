@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -19,12 +19,20 @@ interface CompradorExtra {
 @Component({
   selector: 'app-venta-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ClienteBuscadorComponent],
+  imports: [FormsModule, DecimalPipe, ClienteBuscadorComponent],
   templateUrl: './venta-form.component.html',
   styleUrl: './venta-form.component.css',
 })
-export class VentaFormComponent implements OnInit {
+export class VentaFormComponent implements OnInit, OnDestroy {
+  private readonly separacionService = inject(SeparacionService);
+  private readonly clienteService = inject(ClienteService);
+  private readonly ventaService = inject(VentaService);
+  private readonly toastService = inject(ToastService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
   readonly MAX_EXTRAS = 3; // titular + 3 = 4 compradores
+  readonly plazosRapidos = [12, 24, 36, 48, 60];
 
   idSeparacion!: number;
   separacion = signal<Separacion | null>(null);
@@ -34,6 +42,8 @@ export class VentaFormComponent implements OnInit {
 
   formaPago: FormaPago = 'contado';
   precioTotal: number | null = null;
+  /** true cuando el usuario cambió el precio a mano (ya no se reemplaza solo al cambiar la forma de pago) */
+  precioEditado = false;
 
   pagosPrevios: { monto: number | null; fecha: string }[] = [{ monto: null, fecha: '' }];
 
@@ -75,14 +85,33 @@ export class VentaFormComponent implements OnInit {
     return !this.extras().some((e) => e.cliente.numero_documento === cy.numero_documento);
   });
 
-  constructor(
-    private separacionService: SeparacionService,
-    private clienteService: ClienteService,
-    private ventaService: VentaService,
-    private toastService: ToastService,
-    private route: ActivatedRoute,
-    private router: Router
-  ) {}
+  // ---- Precios de referencia (vienen del lote y de la separación) ----
+  precios = computed(() => {
+    const s = this.separacion();
+    const l = s?.lote;
+    return {
+      regular: this.positivo(l?.precio_total_base),
+      contado: this.positivo(l?.precio_total_contado),
+      financiado: this.positivo(l?.precio_total_financiado),
+      // precio final acordado en la separación; si no se definió, el contado de lista
+      pactado: this.positivo(s?.precio_descontado) ?? this.positivo(l?.precio_total_contado),
+    };
+  });
+
+  ngOnInit(): void {
+    this.idSeparacion = Number(this.route.snapshot.paramMap.get('id'));
+    this.cargar();
+  }
+
+  ngOnDestroy(): void {
+    if (this.timer) clearTimeout(this.timer);
+  }
+
+  private positivo(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
 
   // ---- Borrador: se conserva al ir a "Crear cliente nuevo" y volver ----
 
@@ -96,6 +125,7 @@ export class VentaFormComponent implements OnInit {
       JSON.stringify({
         formaPago: this.formaPago,
         precioTotal: this.precioTotal,
+        precioEditado: this.precioEditado,
         pagosPrevios: this.pagosPrevios,
         datosCredito: this.datosCredito,
         extras: this.extras(),
@@ -110,6 +140,7 @@ export class VentaFormComponent implements OnInit {
       const b = JSON.parse(crudo);
       this.formaPago = b.formaPago ?? this.formaPago;
       this.precioTotal = b.precioTotal ?? this.precioTotal;
+      this.precioEditado = b.precioEditado ?? this.precioEditado;
       if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
       if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
       if (b.extras?.length) this.extras.set(b.extras);
@@ -119,18 +150,14 @@ export class VentaFormComponent implements OnInit {
     sessionStorage.removeItem(this.claveBorrador());
   }
 
-  ngOnInit(): void {
-    this.idSeparacion = Number(this.route.snapshot.paramMap.get('id'));
-    this.cargar();
-  }
-
   cargar(): void {
     this.cargando.set(true);
     this.separacionService.obtener(this.idSeparacion).subscribe({
       next: (res) => {
         this.separacion.set(res);
-        this.precioTotal = res.lote?.precio_total_contado ? Number(res.lote.precio_total_contado) : null;
         if (res.tipo_pago) this.formaPago = res.tipo_pago;
+        this.precioTotal = this.precioSugerido();
+        this.precioEditado = false;
         this.restaurarBorrador();
         this.cargando.set(false);
         this.reevaluar();
@@ -148,6 +175,101 @@ export class VentaFormComponent implements OnInit {
     });
   }
 
+  // ---- Precio ----
+
+  /** Precio que el sistema propone: el precio final pactado en la separación (descontado) */
+  precioSugerido(): number | null {
+    const p = this.precios();
+    return p.pactado ?? p.financiado ?? p.regular;
+  }
+
+  get origenSugerido(): string {
+    return this.precios().pactado !== null
+      ? 'el precio final acordado en la separación'
+      : 'el precio de lista del lote';
+  }
+
+  seleccionarForma(forma: FormaPago): void {
+    if (this.formaPago === forma) return;
+    this.formaPago = forma;
+    this.reevaluar();
+  }
+
+  onPrecioManual(): void {
+    this.precioEditado = true;
+    this.reevaluar();
+  }
+
+  usarPrecio(valor: number | null): void {
+    if (valor === null) return;
+    this.precioTotal = valor;
+    this.precioEditado = valor !== this.precioSugerido();
+    this.reevaluar();
+  }
+
+  restablecerPrecio(): void {
+    this.precioTotal = this.precioSugerido();
+    this.precioEditado = false;
+    this.reevaluar();
+  }
+
+  /** Descuento contra el precio regular del lote (negativo = por encima del regular) */
+  get descuento(): number | null {
+    const regular = this.precios().regular;
+    if (!regular || !this.precioTotal) return null;
+    return regular - this.precioTotal;
+  }
+
+  get descuentoPct(): number | null {
+    const regular = this.precios().regular;
+    const d = this.descuento;
+    if (!regular || d === null) return null;
+    return (d / regular) * 100;
+  }
+
+  get importeSeparado(): number {
+    return Number(this.separacion()?.importe ?? 0);
+  }
+
+  // ---- Pagos previos (contado) ----
+
+  get totalPagosPrevios(): number {
+    return this.pagosPrevios.reduce((acc, p) => acc + (Number(p.monto) || 0), 0);
+  }
+
+  get saldoContado(): number | null {
+    if (!this.precioTotal) return null;
+    return Math.max(this.precioTotal - this.totalPagosPrevios, 0);
+  }
+
+  get pagosExcedenPrecio(): boolean {
+    return !!this.precioTotal && this.totalPagosPrevios > this.precioTotal;
+  }
+
+  get pagoSeparacionAgregado(): boolean {
+    const sep = this.separacion();
+    if (!sep) return false;
+    return this.pagosPrevios.some((p) => Number(p.monto) === this.importeSeparado && p.fecha === sep.fecha_inicio);
+  }
+
+  agregarPagoSeparacion(): void {
+    const sep = this.separacion();
+    if (!sep || this.pagoSeparacionAgregado) return;
+    const fila = { monto: this.importeSeparado, fecha: sep.fecha_inicio };
+    const vacia = this.pagosPrevios.findIndex((p) => !p.monto && !p.fecha);
+    if (vacia >= 0) this.pagosPrevios[vacia] = fila;
+    else this.pagosPrevios.push(fila);
+  }
+
+  agregarFilaPago(): void {
+    this.pagosPrevios.push({ monto: null, fecha: '' });
+  }
+
+  quitarFilaPago(index: number): void {
+    this.pagosPrevios.splice(index, 1);
+    if (this.pagosPrevios.length === 0) this.pagosPrevios.push({ monto: null, fecha: '' });
+  }
+
   // ---- Reglas ----
 
   get plazoTexto(): string {
@@ -155,6 +277,11 @@ export class VentaFormComponent implements OnInit {
     if (m <= 0) return '';
     if (m % 12 === 0) return `${m / 12} año${m / 12 === 1 ? '' : 's'}`;
     return m > 12 ? `${Math.floor(m / 12)} año(s) y ${m % 12} mes(es)` : `${m} mes(es)`;
+  }
+
+  setPlazo(meses: number): void {
+    this.datosCredito.plazo_meses = meses;
+    this.reevaluar();
   }
 
   reevaluar(): void {
@@ -219,6 +346,22 @@ export class VentaFormComponent implements OnInit {
     return !!this.evaluacion()?.requiere_autorizacion;
   }
 
+  // ---- Estado de los pasos (para el indicador de progreso) ----
+
+  get pasoPrecioOk(): boolean {
+    return !!this.precioTotal && this.precioTotal > 0;
+  }
+
+  get pasoPagoOk(): boolean {
+    if (this.formaPago === 'contado') return true;
+    const dc = this.datosCredito;
+    return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.plazo_meses && dc.plazo_meses >= 1;
+  }
+
+  irA(id: string): void {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   // ---- Compradores adicionales ----
 
   agregarComprador(c: Cliente, rol: RolExtra = 'copropietario'): void {
@@ -273,16 +416,6 @@ export class VentaFormComponent implements OnInit {
     });
   }
 
-  // ---- Pagos previos (contado) ----
-
-  agregarFilaPago(): void {
-    this.pagosPrevios.push({ monto: null, fecha: '' });
-  }
-
-  quitarFilaPago(index: number): void {
-    this.pagosPrevios.splice(index, 1);
-  }
-
   // ---- Guardar ----
 
   mensajeFaltante(): string | null {
@@ -301,6 +434,7 @@ export class VentaFormComponent implements OnInit {
     const faltante = this.mensajeFaltante();
     if (faltante) {
       this.error.set(faltante);
+      this.irA('vf-inicio');
       return;
     }
     if (!this.separacion()) return;
@@ -343,6 +477,7 @@ export class VentaFormComponent implements OnInit {
     const mensaje = typeof detalle === 'string' ? detalle : porDefecto;
     this.error.set(mensaje);
     this.toastService.error(mensaje);
+    this.irA('vf-inicio');
   }
 
   cancelar(): void {

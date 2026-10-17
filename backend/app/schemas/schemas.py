@@ -773,7 +773,9 @@ class SeparacionLoteOut(ORMBase):
     sunarp_url: Optional[str] = None
     area_m2: Decimal
     partida_registral: Optional[str] = None
+    precio_total_base: Optional[Decimal] = None
     precio_total_contado: Optional[Decimal] = None
+    precio_total_financiado: Optional[Decimal] = None
     estado: EstadoLoteEnum
 
 

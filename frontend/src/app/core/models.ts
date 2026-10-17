@@ -552,10 +552,11 @@ export interface SeparacionLoteInfo {
   sunarp_url?: string;
   area_m2: number;
   partida_registral?: string;
+  precio_total_base?: number;
   precio_total_contado?: number;
+  precio_total_financiado?: number;
   estado: EstadoLote;
 }
-
 export interface Separacion {
   id: number;
   id_proyecto: number;

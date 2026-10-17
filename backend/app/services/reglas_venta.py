@@ -107,7 +107,7 @@ def validar_estructura(forma_pago, precio_total, dc: dict | None) -> None:
         )
 
 
-def evaluar(precio_total, forma_pago, dc: dict | None, lote) -> dict:
+def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None) -> dict:
     """Devuelve los motivos por los que hace falta autorización y un resumen del financiamiento."""
     precio_total = Decimal(str(precio_total))
     motivos: list[dict] = []
@@ -120,11 +120,16 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote) -> dict:
     }
 
     es_contado = _es_contado(forma_pago)
-    minimo = lote.precio_total_contado if es_contado else (lote.precio_total_financiado or lote.precio_total_base)
+    if precio_pactado:
+        # El precio final acordado en la separación es el que manda
+        minimo, origen = precio_pactado, "pactado en la separación"
+    else:
+        minimo = lote.precio_total_contado if es_contado else (lote.precio_total_financiado or lote.precio_total_base)
+        origen = "del lote"
     if minimo and precio_total < Decimal(str(minimo)):
         motivos.append({
             "codigo": "precio_bajo_minimo",
-            "mensaje": f"El precio (S/ {precio_total:,.2f}) es menor al del lote (S/ {Decimal(str(minimo)):,.2f})",
+            "mensaje": f"El precio (S/ {precio_total:,.2f}) es menor al {origen} (S/ {Decimal(str(minimo)):,.2f})",
         })
 
     if not es_contado and dc:

@@ -1,13 +1,17 @@
 """Lógica de negocio del módulo de ventas: generación de Minuta / Contrato
 Preparatorio a partir de plantillas Word (docxtpl) y conversión a PDF con
 LibreOffice headless."""
+import io
+import logging
 import os
 import subprocess
 import uuid
 from datetime import date
+from urllib.parse import unquote, urlparse
 from dateutil.relativedelta import relativedelta
 
-from docxtpl import DocxTemplate
+from docx.shared import Mm
+from docxtpl import DocxTemplate, InlineImage
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -21,6 +25,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backe
 DIR_PLANTILLAS = os.path.join(_BASE_DIR, "plantillas")
 DIR_DOCUMENTOS_VENTA = os.path.join(_BASE_DIR, "static", "documentos_venta")
 os.makedirs(DIR_DOCUMENTOS_VENTA, exist_ok=True)
+logger = logging.getLogger(__name__)
 
 PLANTILLA_POR_FORMA_PAGO = {
     m.FormaPagoEnum.contado: "plantilla_minuta.docx",
@@ -180,6 +185,92 @@ def construir_contexto_compradores(clientes: list[m.Cliente], modo: str) -> dict
     }
 
 
+# ------------------------------------------------- firmas y vouchers ----
+
+def _ruta_local_de_url(url: str | None) -> str | None:
+    """URL pública de un archivo subido (/static/...) -> ruta en disco. Solo dentro de app/static."""
+    if not url:
+        return None
+    ruta_url = unquote(urlparse(url).path)
+    if not ruta_url.startswith("/static/"):
+        return None
+    base = os.path.realpath(os.path.join(_BASE_DIR, "static"))
+    ruta = os.path.realpath(os.path.join(_BASE_DIR, ruta_url.lstrip("/")))
+    if not ruta.startswith(base + os.sep) or not os.path.isfile(ruta):
+        return None
+    return ruta
+
+
+def _voucher_como_imagen(ruta: str):
+    """Voucher listo para el Word: (JPEG liviano, ancho_mm). Acepta JPG, PNG o PDF (1.ª hoja)."""
+    try:
+        from PIL import Image, ImageOps
+        if ruta.lower().endswith(".pdf"):
+            try:
+                import pymupdf
+            except ImportError:
+                import fitz as pymupdf
+            with pymupdf.open(ruta) as pdf:
+                pix = pdf[0].get_pixmap(dpi=130)
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        else:
+            img = ImageOps.exif_transpose(Image.open(ruta)).convert("RGB")
+        img.thumbnail((1400, 1400))
+        w, h = img.size
+        ancho_mm = max(40.0, min(110.0, 125.0 * w / h))  # máx. ~12,5 cm de alto y 11 cm de ancho
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=85)
+        buf.seek(0)
+        return buf, ancho_mm
+    except Exception:
+        logger.exception("No se pudo preparar el voucher %s para el documento", ruta)
+        return None
+
+
+def _vouchers_para_documento(tpl, venta: m.Venta) -> list:
+    """Voucher(s) del medio de pago que se insertan en el Contrato Preparatorio."""
+    dc = venta.datos_credito or {}
+    imagenes = []
+    for url in [dc.get("voucher_url")]:
+        ruta = _ruta_local_de_url(url)
+        preparado = _voucher_como_imagen(ruta) if ruta else None
+        if preparado:
+            buf, ancho_mm = preparado
+            imagenes.append(InlineImage(tpl, buf, width=Mm(ancho_mm)))
+        elif url:
+            logger.warning("Venta %s: no se encontró el voucher %s en el servidor", venta.id, url)
+    return imagenes
+
+
+def construir_firmas(empresa: m.Empresa, clientes: list[m.Cliente]) -> list[dict]:
+    """Filas de 2 firmantes: la vendedora y cada comprador. Todo sale de la venta, nada fijo en la plantilla."""
+    firmantes = [(
+        (empresa.representante_legal_nombre or "").upper(),
+        f"LA VENDEDORA · DNI N° {empresa.representante_legal_dni or ''}",
+    )]
+    for cli in clientes:
+        if cli.tipo_persona == "juridica":
+            nombre = cli.representante_legal or cli.razon_social or cli.nombres
+            detalle = (
+                f"REPRESENTANTE DE {(cli.razon_social or '').upper()} · "
+                f"{cli.representante_tipo_documento or 'DNI'} N° {cli.representante_numero_documento or ''}"
+            )
+        else:
+            nombre = _nombre_cliente(cli)
+            detalle = f"COMPRADOR · DNI N° {_documento_cliente(cli)}"
+        firmantes.append((nombre.upper(), detalle))
+
+    filas = []
+    for i in range(0, len(firmantes), 2):
+        izq = firmantes[i]
+        der = firmantes[i + 1] if i + 1 < len(firmantes) else ("", "")
+        filas.append({
+            "izq_linea": "_" * 30, "izq_nombre": izq[0], "izq_detalle": izq[1],
+            "der_linea": "_" * 30 if der[0] else "", "der_nombre": der[0], "der_detalle": der[1],
+        })
+    return filas
+
+
 # --------------------------------------------------------- generación -----
 
 def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
@@ -233,7 +324,7 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
         "lote_izquierda": _lindero_texto(lote.izquierda_colindante, lote.izquierda_medida),
         "lote_fondo": _lindero_texto(lote.fondo_colindante, lote.fondo_medida),
 
-        "proyecto_nombre": proyecto.nombre if proyecto else "",
+        "proyecto_nombre": (proyecto.nombre if proyecto else "").upper(),
         "proyecto_ubicacion": proyecto_ubicacion,
 
         "precio_total": f"{venta.precio_total:,.2f}",
@@ -251,6 +342,9 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
         "inicial_monto": "", "inicial_monto_texto": "",
         "fecha_deposito": "", "numero_operacion": "",
         "plazo_texto": "", "fecha_maxima_pago": "", "tasa_interes_compensatorio": "",
+        "texto_intereses": "",
+        "firmas": construir_firmas(empresa, clientes),
+        "vouchers": [],
     })
 
     if venta.datos_credito:
@@ -276,6 +370,8 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
         })
 
     tpl = DocxTemplate(ruta_plantilla)
+    if venta.forma_pago == m.FormaPagoEnum.credito:
+        ctx["vouchers"] = _vouchers_para_documento(tpl, venta)
     tpl.render(ctx)
 
     nombre_docx = f"venta_{venta.id}_{uuid.uuid4().hex[:8]}.docx"

@@ -843,6 +843,7 @@ class DatosCreditoIn(BaseModel):
     tasa_interes: Decimal = Decimal("25")  # interés compensatorio por mora (aparece en el documento)
     tea_financiamiento: Optional[Decimal] = None  # interés del financiamiento; vacío = según regla
     observaciones: Optional[str] = None
+    voucher_url: Optional[str] = Field(default=None, max_length=300)
 
 
 class VentaCreate(BaseModel):

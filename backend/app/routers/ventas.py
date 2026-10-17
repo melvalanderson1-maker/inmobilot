@@ -91,7 +91,7 @@ def _datos_credito(payload: s.VentaCreate) -> dict | None:
 def _evaluar(sep: m.Separacion, payload: s.VentaCreate) -> dict:
     dc = _datos_credito(payload)
     reglas.validar_estructura(payload.forma_pago, payload.precio_total, dc)
-    return reglas.evaluar(payload.precio_total, payload.forma_pago, dc, sep.lote)
+    return reglas.evaluar(payload.precio_total, payload.forma_pago, dc, sep.lote, sep.precio_descontado)
 
 
 async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, payload: s.VentaCreate) -> m.Venta:

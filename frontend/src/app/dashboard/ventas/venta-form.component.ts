@@ -38,6 +38,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   separacion = signal<Separacion | null>(null);
   cargando = signal(false);
   guardando = signal(false);
+  subiendoVoucher = signal(false);
   error = signal<string | null>(null);
 
   formaPago: FormaPago = 'contado';
@@ -56,6 +57,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     tasa_interes: 25,
     tea_financiamiento: null as number | null,
     observaciones: '',
+    voucher_url: '',
   };
 
   frecuencias = [
@@ -315,6 +317,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
               tasa_interes: dc.tasa_interes,
               tea_financiamiento: Number(dc.plazo_meses) > 24 && dc.tea_financiamiento != null ? dc.tea_financiamiento : undefined,
               observaciones: dc.observaciones || undefined,
+              voucher_url: dc.voucher_url || undefined,
             }
           : undefined,
     };
@@ -355,7 +358,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   get pasoPagoOk(): boolean {
     if (this.formaPago === 'contado') return true;
     const dc = this.datosCredito;
-    return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.plazo_meses && dc.plazo_meses >= 1;
+    return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.voucher_url && !!dc.plazo_meses && dc.plazo_meses >= 1;
   }
 
   irA(id: string): void {
@@ -416,6 +419,40 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ---- Voucher de la inicial (se inserta en el Contrato Preparatorio) ----
+
+  onVoucherInicial(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoVoucher.set(true);
+    this.ventaService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.datosCredito.voucher_url = res.url;
+        this.subiendoVoucher.set(false);
+      },
+      error: (err) => {
+        this.subiendoVoucher.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el voucher');
+      },
+    });
+  }
+
+  quitarVoucher(): void {
+    this.datosCredito.voucher_url = '';
+  }
+
   // ---- Guardar ----
 
   mensajeFaltante(): string | null {
@@ -425,6 +462,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       if (!dc.inicial_monto || !dc.fecha_deposito || !dc.numero_operacion.trim()) {
         return 'Completa la inicial, la fecha del depósito y el N° de operación del crédito';
       }
+      if (!dc.voucher_url) return 'Sube el voucher del depósito de la inicial';
       if (!dc.plazo_meses || dc.plazo_meses < 1) return 'Indica el plazo en meses';
     }
     return null;

@@ -714,6 +714,7 @@ export interface DatosCredito {
   tasa_interes: number;
   tea_financiamiento?: number;
   observaciones?: string;
+  voucher_url?: string;
 }
 
 

@@ -272,6 +272,23 @@
             </label>
 
             <div class="vf-field">
+              <span class="vf-label">Voucher del depósito de la inicial</span>
+              @if (datosCredito.voucher_url) {
+                <div class="vf-file">
+                  <span class="vf-file-ok" aria-hidden="true">✓</span>
+                  <a [href]="datosCredito.voucher_url" target="_blank" rel="noopener">Ver voucher subido ↗</a>
+                  <button type="button" class="vf-link" (click)="quitarVoucher()">Cambiar</button>
+                </div>
+              } @else {
+                <label class="vf-drop" [class.is-loading]="subiendoVoucher()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onVoucherInicial($event)" [disabled]="subiendoVoucher()" hidden />
+                  <span>{{ subiendoVoucher() ? 'Subiendo...' : 'Subir voucher (JPG, PNG o PDF · máx. 8 MB)' }}</span>
+                </label>
+              }
+              <small class="vf-hint">Se inserta automáticamente en el Contrato Preparatorio como medio de pago.</small>
+            </div>
+
+            <div class="vf-field">
               <span class="vf-label">Plazo @if (plazoTexto) { <em>= {{ plazoTexto }}</em> }</span>
               <div class="vf-quick" role="group" aria-label="Plazos rápidos">
                 @for (m of plazosRapidos; track m) {

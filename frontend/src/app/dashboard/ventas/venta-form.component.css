@@ -488,6 +488,53 @@
 
 .vf-discount-warn { background: var(--vf-warn-bg); color: var(--vf-warn-ink); }
 
+/* ---------- Voucher ---------- */
+.vf-drop {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  padding: 14px;
+  border: 1.5px dashed var(--vf-line-strong);
+  border-radius: 12px;
+  background: #fbfdfc;
+  color: var(--vf-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.vf-drop:hover { border-color: var(--vf-brand); background: var(--vf-brand-soft); }
+.vf-drop.is-loading { opacity: 0.6; pointer-events: none; }
+
+.vf-file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--vf-line-strong);
+  border-radius: 12px;
+  background: var(--vf-brand-soft);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.vf-file a { color: var(--vf-brand-dark); }
+.vf-file .vf-link { margin-left: auto; }
+
+.vf-file-ok {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vf-brand);
+  color: #fff;
+  font-size: 0.8rem;
+}
+
 /* ---------- Plazos rápidos ---------- */
 .vf-quick { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -653,7 +700,7 @@
 
 .vf-icon-btn:hover { color: var(--vf-danger); border-color: var(--vf-danger); }
 
-:is(.vf-btn, .vf-chip, .vf-step, .vf-seg-item, .vf-quick-item, .vf-icon-btn, .vf-back, .vf-callout, .vf-link):focus-visible {
+:is(.vf-btn, .vf-chip, .vf-step, .vf-seg-item, .vf-quick-item, .vf-icon-btn, .vf-back, .vf-callout, .vf-link, .vf-drop):focus-visible {
   outline: none;
   box-shadow: var(--vf-focus);
 }

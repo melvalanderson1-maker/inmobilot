@@ -15,6 +15,7 @@ from app.sockets import (
     notificar_cambio_estado_lote,
     notificar_nuevo_contrato,
     notificar_usuarios,
+    notificar_pago,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,18 @@ async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta,
                 "venta_credito_nueva", "Nuevo contrato a crédito",
                 f"Lote {venta.lote.codigo if venta.lote else ''}: ya puedes iniciar el seguimiento de cobranza.",
             )
+        # La inicial (contado o crédito) la debe validar Caja
+        await _avisar_roles(
+            db, usuario, venta, ["caja", "admin"],
+            "pago_pendiente_caja", "Inicial por validar",
+            f"Lote {venta.lote.codigo if venta.lote else ''}: hay un pago de inicial pendiente de validación de Caja.",
+        )
+        await notificar_pago(
+            "pago:actualizado",
+            {"id_contrato": id_contrato, "estado": "pendiente_caja"},
+            venta.id_proyecto,
+            [],
+        )
     except Exception:
         logger.exception("No se pudo emitir el aviso en tiempo real del contrato %s", id_contrato)
 

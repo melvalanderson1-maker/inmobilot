@@ -494,6 +494,36 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
             requiere_pago=True,
         ))
 
+    # --- Pagos de la inicial: entran al circuito Caja -> Facturación ---
+    if venta.forma_pago == m.FormaPagoEnum.contado:
+        origen = [
+            (Decimal(str(p["monto"])), p.get("fecha"), p.get("numero_operacion"), p.get("voucher_url"))
+            for p in (venta.pagos_previos or [])
+        ]
+    else:
+        dc_ini = venta.datos_credito or {}
+        origen = [(
+            Decimal(str(dc_ini.get("inicial_monto", 0))),
+            dc_ini.get("fecha_deposito"),
+            dc_ini.get("numero_operacion"),
+            dc_ini.get("voucher_url"),
+        )]
+
+    for monto_p, fecha_p, nro_op, voucher in origen:
+        if monto_p <= 0:
+            continue
+        db.add(m.Pago(
+            id_contrato=contrato.id,
+            id_cuota=None,
+            monto=monto_p,
+            fecha_pago=date.fromisoformat(str(fecha_p)) if fecha_p else date.today(),
+            numero_operacion=(str(nro_op)[:50] if nro_op else None),
+            comprobante_url=voucher,
+            observacion=f"Inicial de la venta #{venta.id}",
+            estado="pendiente_caja",
+            registrado_por=usuario.id,
+        ))
+
     venta.id_contrato = contrato.id
 
     lote = db.query(m.Lote).filter(m.Lote.id == venta.id_lote).first()

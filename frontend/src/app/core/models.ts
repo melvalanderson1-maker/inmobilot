@@ -764,6 +764,9 @@ export interface PagoCola {
   factura_url?: string;
   registrado_por_nombre?: string;
   created_at: string;
+  concepto: string;
+  detalle?: string | null;
+  forma_pago?: string | null;
 }
 
 export interface PagoComprobanteIn {

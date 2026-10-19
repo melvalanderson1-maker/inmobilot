@@ -58,11 +58,17 @@ async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta,
         await _avisar_roles(
             db, usuario, venta, ["caja", "admin"],
             "pago_pendiente_caja", "Inicial por validar",
-            f"Lote {venta.lote.codigo if venta.lote else ''}: hay un pago de inicial pendiente de validación de Caja.",
+            f"Contrato {contrato.numero_contrato}, lote {venta.lote.codigo if venta.lote else ''}: "
+            f"la inicial de la venta está pendiente de validación de Caja.",
         )
         await notificar_pago(
             "pago:actualizado",
-            {"id_contrato": id_contrato, "estado": "pendiente_caja"},
+            {
+                "id_contrato": id_contrato,
+                "estado": "pendiente_caja",
+                "concepto": "Inicial",
+                "numero_contrato": contrato.numero_contrato,
+            },
             venta.id_proyecto,
             [],
         )

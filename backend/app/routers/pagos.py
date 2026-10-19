@@ -33,6 +33,17 @@ def _cargar_pago(db: Session, id_pago: int, usuario: m.Usuario) -> m.Pago:
     return pago
 
 
+def _concepto(p: m.Pago) -> str:
+    """Qué es este pago, en palabras que el usuario entienda."""
+    if p.cuota:
+        return f"Cuota {p.cuota.numero_cuota}"
+    if p.observacion and p.observacion.startswith("Inicial de la venta"):
+        if p.contrato and p.contrato.forma_pago == m.FormaPagoEnum.contado:
+            return "Pago al contado"
+        return "Inicial"
+    return "Pago a cuenta"
+
+
 def _a_fila(p: m.Pago) -> s.PagoColaOut:
     c = p.contrato
     titular = next((vc.cliente for vc in c.clientes_rel if vc.rol == m.RolClienteContratoEnum.titular), None)
@@ -52,14 +63,22 @@ def _a_fila(p: m.Pago) -> s.PagoColaOut:
         estado=p.estado, motivo_rechazo=p.motivo_rechazo,
         factura_tipo=p.factura_tipo, factura_numero=p.factura_numero, factura_url=p.factura_url,
         registrado_por_nombre=p.registrador.nombre if p.registrador else None,
+        concepto=_concepto(p),
+        detalle=p.observacion,
+        forma_pago=c.forma_pago.value if c.forma_pago else None,
         created_at=p.created_at,
     )
-
 
 async def _emitir(pago: m.Pago, contrato: m.Contrato, notifs: list):
     await notificar_pago(
         "pago:actualizado",
-        {"id": pago.id, "id_contrato": contrato.id, "estado": pago.estado},
+        {
+            "id": pago.id,
+            "id_contrato": contrato.id,
+            "estado": pago.estado,
+            "concepto": _concepto(pago),
+            "numero_contrato": contrato.numero_contrato,
+        },
         contrato.id_proyecto,
         sep_svc.notificaciones_a_dict(notifs),
     )
@@ -117,8 +136,8 @@ async def validar_pago(
     notifs = sep_svc.crear_notificaciones(
         db, contrato.id_empresa, destinatarios,
         "pago_pendiente_facturacion",
-        "Pago validado: emitir comprobante",
-        f"Caja validó S/ {pago.monto:,.2f} del contrato {contrato.numero_contrato}. Falta emitir el comprobante.",
+        f"{_concepto(pago)} validada: emitir comprobante",
+        f"Caja validó {_concepto(pago)} de S/ {pago.monto:,.2f} del contrato {contrato.numero_contrato}. Falta emitir el comprobante.",
         {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "pendiente_facturacion"},
     )
     db.commit()
@@ -149,8 +168,8 @@ async def rechazar_pago(
     notifs = sep_svc.crear_notificaciones(
         db, contrato.id_empresa, sep_svc.unicos([pago.registrador], excluir_id=usuario.id),
         "pago_rechazado",
-        "Pago rechazado por Caja",
-        f"Contrato {contrato.numero_contrato}: {motivo}",
+        f"{_concepto(pago)} rechazada por Caja",
+        f"Contrato {contrato.numero_contrato} ({_concepto(pago)}, S/ {pago.monto:,.2f}): {motivo}",
         {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "rechazado"},
     )
     db.commit()
@@ -205,8 +224,8 @@ async def subir_comprobante_pago(
     notifs = sep_svc.crear_notificaciones(
         db, contrato.id_empresa, destinatarios,
         "pago_aplicado",
-        "Pago aplicado",
-        f"Contrato {contrato.numero_contrato}: {tipo} {numero} por S/ {pago.monto:,.2f}. El pago ya se aplicó a la cuota.",
+        f"{_concepto(pago)} con comprobante emitido",
+        f"Contrato {contrato.numero_contrato}: {tipo} {numero} por S/ {pago.monto:,.2f} ({_concepto(pago)}).",
         {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "validado"},
     )
     db.commit()

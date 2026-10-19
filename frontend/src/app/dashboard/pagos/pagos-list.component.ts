@@ -57,7 +57,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
     return this.pagos().filter((p) => {
       if (tab !== 'todos' && p.estado !== tab) return false;
       if (texto) {
-        const base = `${p.numero_contrato} ${p.lote_codigo ?? ''} ${p.cliente_nombre} ${p.cliente_documento} ${p.numero_operacion ?? ''}`.toLowerCase();
+        const base = `${p.numero_contrato} ${p.lote_codigo ?? ''} ${p.cliente_nombre} ${p.cliente_documento} ${p.numero_operacion ?? ''} ${p.concepto ?? ''}`.toLowerCase();
         if (!base.includes(texto)) return false;
       }
       return true;
@@ -132,6 +132,18 @@ export class PagosListComponent implements OnInit, OnDestroy {
     return mapa[estado] ?? estado;
   }
 
+  claseConcepto(p: PagoCola): string {
+    if (p.concepto === 'Inicial') return 'concepto-inicial';
+    if (p.concepto === 'Pago al contado') return 'concepto-contado';
+    return 'concepto-cuota';
+  }
+
+  subConcepto(p: PagoCola): string | null {
+    if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
+    if (p.concepto === 'Pago al contado') return 'Venta al contado';
+    return null;
+  }
+
   // ---- Caja ----
 
   validar(p: PagoCola): void {
@@ -139,7 +151,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
     this.pagoService.validar(p.id).subscribe({
       next: () => {
         this.procesando.set(false);
-        this.toastService.exito('Pago validado. Pasó a Facturación.');
+        this.toastService.exito(`${p.concepto} validado. Pasó a Facturación.`);
         this.cargar(true);
       },
       error: (err) => {
@@ -215,7 +227,11 @@ export class PagosListComponent implements OnInit, OnDestroy {
       next: () => {
         this.procesando.set(false);
         this.pagoComprobante.set(null);
-        this.toastService.exito('Comprobante registrado. El pago ya se aplicó a la cuota.');
+        this.toastService.exito(
+          p.concepto === 'Inicial' || p.concepto === 'Pago al contado'
+            ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
+            : 'Comprobante registrado. El pago ya se aplicó a la cuota.'
+        );
         this.cargar(true);
       },
       error: (err) => {

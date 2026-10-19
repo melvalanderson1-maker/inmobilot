@@ -43,7 +43,7 @@
             <th>Fecha</th>
             <th>Contrato / Lote</th>
             <th>Cliente</th>
-            <th>Cuota</th>
+            <th>Concepto</th>
             <th>Monto</th>
             <th>Operación</th>
             <th>Voucher</th>
@@ -57,7 +57,10 @@
               <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
               <td><strong>{{ p.numero_contrato }}</strong><small>Lote {{ p.lote_codigo ?? '—' }}</small></td>
               <td><strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small></td>
-              <td>{{ p.numero_cuota ?? '—' }}</td>
+              <td>
+                <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
+                @if (subConcepto(p); as sub) { <small>{{ sub }}</small> }
+              </td>
               <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
               <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
               <td>
@@ -96,7 +99,7 @@
   <div class="modal-overlay" (click)="pagoRechazo.set(null)">
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>Rechazar pago</h2>
-      <p class="sub">S/ {{ pagoRechazo()!.monto | number:'1.2-2' }} · contrato {{ pagoRechazo()!.numero_contrato }}</p>
+      <p class="sub">{{ pagoRechazo()!.concepto }} · S/ {{ pagoRechazo()!.monto | number:'1.2-2' }} · contrato {{ pagoRechazo()!.numero_contrato }}</p>
       <div class="campo">
         <label>Motivo</label>
         <textarea rows="3" [(ngModel)]="motivoRechazo" placeholder="Ej: el voucher no coincide con el monto"></textarea>
@@ -113,7 +116,7 @@
   <div class="modal-overlay" (click)="pagoComprobante.set(null)">
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>Subir comprobante</h2>
-      <p class="sub">S/ {{ pagoComprobante()!.monto | number:'1.2-2' }} · contrato {{ pagoComprobante()!.numero_contrato }}</p>
+      <p class="sub">{{ pagoComprobante()!.concepto }} · S/ {{ pagoComprobante()!.monto | number:'1.2-2' }} · contrato {{ pagoComprobante()!.numero_contrato }}</p>
       <div class="campo">
         <label>Tipo</label>
         <select [(ngModel)]="comprobanteForm.tipo">

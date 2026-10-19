@@ -141,6 +141,26 @@ def resumen_socket(sep: m.Separacion) -> dict:
     return {"id": sep.id, "id_lote": sep.id_lote, "estado": sep.estado.value}
 
 
+# ------------------------------------------------- precio de separación ---
+
+def validar_precio_descontado(lote: m.Lote, precio_descontado, tipo_pago) -> None:
+    """El precio final no puede superar el precio de lista del tipo de pago elegido."""
+    if precio_descontado is None:
+        return
+    tipo = getattr(tipo_pago, "value", tipo_pago)
+    if tipo == "contado":
+        referencia, nombre = lote.precio_total_contado, "precio contado"
+    elif tipo == "credito":
+        referencia, nombre = lote.precio_total_financiado, "precio financiado"
+    else:
+        referencia, nombre = lote.precio_total_base, "precio regular"
+    if referencia is not None and precio_descontado > referencia:
+        raise HTTPException(
+            status_code=422,
+            detail=f"El precio final no puede superar el {nombre} (S/ {referencia:,.2f})",
+        )
+
+
 # ----------------------------------------------------------------- lote ---
 
 def validar_cambio_manual_estado_lote(lote: m.Lote, nuevo_estado: m.EstadoLoteEnum) -> None:

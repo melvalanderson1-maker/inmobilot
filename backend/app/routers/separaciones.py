@@ -99,15 +99,7 @@ async def crear_separacion(
     if lote.estado != LOTE.libre:
         raise _conflicto(f"El lote {lote.codigo} no está libre (estado actual: {lote.estado.value})")
 
-    if (
-        payload.precio_descontado is not None
-        and lote.precio_total_base is not None
-        and payload.precio_descontado > lote.precio_total_base
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail=f"El precio descontado no puede superar el precio regular (S/ {lote.precio_total_base:,.2f})",
-        )
+    svc.validar_precio_descontado(lote, payload.precio_descontado, payload.tipo_pago)
 
     cliente = (
         db.query(m.Cliente)
@@ -177,15 +169,11 @@ async def actualizar_separacion(
     if nueva_venc is not None and nueva_venc < sep.fecha_inicio:
         raise HTTPException(status_code=422, detail="El vencimiento no puede ser anterior a la fecha inicial")
 
-    nuevo_desc = datos.get("precio_descontado")
-    if (
-        nuevo_desc is not None
-        and sep.lote.precio_total_base is not None
-        and nuevo_desc > sep.lote.precio_total_base
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail=f"El precio descontado no puede superar el precio regular (S/ {sep.lote.precio_total_base:,.2f})",
+    if "precio_descontado" in datos or "tipo_pago" in datos:
+        svc.validar_precio_descontado(
+            sep.lote,
+            datos["precio_descontado"] if "precio_descontado" in datos else sep.precio_descontado,
+            datos["tipo_pago"] if "tipo_pago" in datos else sep.tipo_pago,
         )
 
     for campo, valor in datos.items():

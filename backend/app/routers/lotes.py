@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -5,6 +7,7 @@ from app.core.database import get_db
 from app.deps import require_modulo, get_ids_proyectos_usuario
 from app.models import models as m
 from app.schemas import schemas as s
+from app.services import separacion_service as sep_svc
 from app.sockets import notificar_nuevo_lote, notificar_cambio_estado_lote, notificar_actualizacion_lote
 
 router = APIRouter(prefix="/lotes", tags=["lotes"])
@@ -136,7 +139,26 @@ async def actualizar_lote(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
     _validar_acceso_proyecto(db, usuario, lote.id_proyecto)
 
-    for campo, valor in payload.model_dump(exclude_unset=True).items():
+    datos = payload.model_dump(exclude_unset=True)
+
+    if lote.estado == m.EstadoLoteEnum.vendido:
+        # En un lote vendido no se tocan área ni precios (sí imágenes, mapa y documento)
+        protegidos = (
+            "area_m2", "perimetro", "precio_m2_base", "precio_total_base",
+            "precio_m2_contado", "precio_total_contado", "precio_m2_financiado",
+            "inicial_financiado", "monto_financiado", "precio_total_financiado",
+            "inicial_financiado_60c", "cuota_mensual_60c",
+        )
+        for campo in protegidos:
+            if campo in datos and datos[campo] is not None:
+                actual = getattr(lote, campo)
+                if actual is None or Decimal(str(actual)) != Decimal(str(datos[campo])):
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="El lote está vendido: no se pueden modificar su área ni sus precios.",
+                    )
+
+    for campo, valor in datos.items():
         setattr(lote, campo, valor)
     lote.actualizado_por = usuario.id
 
@@ -183,6 +205,8 @@ async def cambiar_estado_lote(
     if not lote:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
     _validar_acceso_proyecto(db, usuario, lote.id_proyecto)
+
+    sep_svc.validar_cambio_manual_estado_lote(lote, payload.estado)
 
     estado_anterior = lote.estado
     lote.estado = payload.estado

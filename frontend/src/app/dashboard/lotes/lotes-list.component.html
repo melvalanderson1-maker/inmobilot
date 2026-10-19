@@ -205,18 +205,28 @@
                   <button
                     type="button"
                     class="chip chip-boton"
+                    [class.chip-bloqueado-vendido]="lote.estado === 'vendido'"
                     [ngClass]="'chip-' + lote.estado"
+                    [disabled]="lote.estado === 'vendido'"
+                    [attr.title]="lote.estado === 'vendido' ? 'Lote vendido: no se puede cambiar de estado' : null"
                     (click)="toggleMenuEstado(lote.id, $event)"
                   >
                     {{ lote.estado }}
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+                    @if (lote.estado !== 'vendido') {
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    } @else {
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="Bloqueado">
+                        <rect x="5" y="11" width="14" height="9" rx="2"></rect>
+                        <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+                      </svg>
+                    }
                   </button>
 
                   @if (menuEstadoAbierto() === lote.id) {
                     <div class="estado-menu" (click)="$event.stopPropagation()">
-                      @for (opcion of ['libre','separado','bloqueado','vendido']; track opcion) {
+                      @for (opcion of ['libre','separado','bloqueado']; track opcion) {
                         <button
                           type="button"
                           class="estado-menu-item"
@@ -363,13 +373,13 @@
               <select
                 class="select-estado select-estado-card"
                 #selectEstadoLote
+                [disabled]="lote.estado === 'vendido'"
                 (change)="cambiarEstado(lote, $any($event.target).value, selectEstadoLote)"
               >
-                <option value="" disabled selected>Cambiar estado</option>
+                <option value="" disabled selected>{{ lote.estado === 'vendido' ? 'Lote vendido (bloqueado)' : 'Cambiar estado' }}</option>
                 <option value="libre">Libre</option>
                 <option value="separado">Separado</option>
                 <option value="bloqueado">Bloqueado</option>
-                <option value="vendido">Vendido</option>
               </select>
             </div>
           </div>

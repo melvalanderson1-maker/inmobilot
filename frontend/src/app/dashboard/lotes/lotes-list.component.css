@@ -1730,3 +1730,10 @@ select:focus-visible {
     --alto-disponible: calc(100dvh - 170px);
   }
 }
+
+
+.chip-boton:disabled,
+.chip-bloqueado-vendido {
+  cursor: not-allowed;
+  opacity: 0.85;
+}

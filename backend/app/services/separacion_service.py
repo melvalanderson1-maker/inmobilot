@@ -143,6 +143,20 @@ def resumen_socket(sep: m.Separacion) -> dict:
 
 # ----------------------------------------------------------------- lote ---
 
+def validar_cambio_manual_estado_lote(lote: m.Lote, nuevo_estado: m.EstadoLoteEnum) -> None:
+    """Un lote vendido está bloqueado: solo se libera anulando la venta o el contrato."""
+    if lote.estado == m.EstadoLoteEnum.vendido and nuevo_estado != m.EstadoLoteEnum.vendido:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El lote está vendido y no se puede cambiar de estado. Para liberarlo hay que anular la venta o el contrato.",
+        )
+    if nuevo_estado == m.EstadoLoteEnum.vendido and lote.estado != m.EstadoLoteEnum.vendido:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Un lote solo pasa a vendido al iniciar una venta. No se puede marcar a mano.",
+        )
+
+
 def cambiar_estado_lote(
     db: Session, lote: m.Lote, nuevo_estado: m.EstadoLoteEnum, usuario: m.Usuario, observacion: str
 ) -> bool:

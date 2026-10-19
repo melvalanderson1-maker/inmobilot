@@ -787,6 +787,17 @@ export class LotesListComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (lote.estado === 'vendido') {
+      if (selectElement) selectElement.value = '';
+      this.toastService.error('El lote está vendido y no se puede cambiar de estado. Para liberarlo hay que anular la venta.');
+      return;
+    }
+    if (estado === 'vendido') {
+      if (selectElement) selectElement.value = '';
+      this.toastService.error('Un lote pasa a vendido solo al iniciar una venta. No se puede marcar a mano.');
+      return;
+    }
+
     const confirmado = await this.confirmModal.confirm(
       'Cambiar estado del lote',
       `¿Confirmas cambiar el estado del lote ${lote.codigo} a "${estado}"?`

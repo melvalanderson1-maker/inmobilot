@@ -530,6 +530,11 @@ class Pago(Base):
     facturado_por = Column(Integer, ForeignKey("usuarios.id"))
     fecha_facturacion = Column(DateTime)
 
+    # inicial | contado | cuota | cuotas | otro
+    tipo = Column(String(20), nullable=False, default="cuota", server_default="cuota")
+    cuota_desde = Column(Integer)
+    cuota_hasta = Column(Integer)
+
     contrato = relationship("Contrato")
     cuota = relationship("CronogramaPago")
     registrador = relationship("Usuario", foreign_keys=[registrado_por])

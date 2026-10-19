@@ -513,6 +513,7 @@ class CronogramaOut(ORMBase):
 
 class PagoCreate(BaseModel):
     id_cuota: Optional[int] = None
+    cantidad_cuotas: Optional[int] = Field(default=None, ge=1, le=60)  # pagar las N primeras cuotas pendientes
     monto: Decimal
     fecha_pago: date
     metodo_pago: Optional[str] = None
@@ -535,6 +536,10 @@ class PagoOut(ORMBase):
     factura_tipo: Optional[str] = None
     factura_numero: Optional[str] = None
     factura_url: Optional[str] = None
+    observacion: Optional[str] = None
+    tipo: str = "cuota"
+    cuota_desde: Optional[int] = None
+    cuota_hasta: Optional[int] = None
 
 
 class PagoRechazo(BaseModel):

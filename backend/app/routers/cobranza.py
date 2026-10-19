@@ -21,7 +21,11 @@ CERO = Decimal("0")
 def _total_pagado(db: Session, id_contrato: int) -> Decimal:
     total = (
         db.query(func.coalesce(func.sum(m.Pago.monto), 0))
-        .filter(m.Pago.id_contrato == id_contrato, m.Pago.estado == "validado")
+        .filter(
+            m.Pago.id_contrato == id_contrato,
+            m.Pago.estado == "validado",
+            m.Pago.tipo.notin_(["inicial", "contado"]),
+        )
         .scalar()
     )
     return Decimal(str(total))
@@ -80,7 +84,11 @@ def resumen_cobranza(
     if ids:
         pagado = dict(
             db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
-            .filter(m.Pago.id_contrato.in_(ids), m.Pago.estado == "validado")
+            .filter(
+                m.Pago.id_contrato.in_(ids),
+                m.Pago.estado == "validado",
+                m.Pago.tipo.notin_(["inicial", "contado"]),
+            )
             .group_by(m.Pago.id_contrato)
             .all()
         )

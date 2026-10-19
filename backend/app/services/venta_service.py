@@ -526,6 +526,7 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
             numero_operacion=(str(nro_op)[:50] if nro_op else None),
             comprobante_url=voucher,
             observacion=f"Inicial de la venta #{venta.id}",
+            tipo="contado" if venta.forma_pago == m.FormaPagoEnum.contado else "inicial",
             estado="pendiente_caja",
             registrado_por=usuario.id,
         ))

@@ -54,19 +54,20 @@ async def _emitir_contrato_creado(db: Session, id_contrato: int, venta: m.Venta,
                 "venta_credito_nueva", "Nuevo contrato a crédito",
                 f"Lote {venta.lote.codigo if venta.lote else ''}: ya puedes iniciar el seguimiento de cobranza.",
             )
-        # La inicial (contado o crédito) la debe validar Caja
+        # La inicial (crédito) o el pago al contado lo debe validar Caja
+        concepto_ini = "Pago al contado" if venta.forma_pago == m.FormaPagoEnum.contado else "Inicial"
         await _avisar_roles(
             db, usuario, venta, ["caja", "admin"],
-            "pago_pendiente_caja", "Inicial por validar",
+            "pago_pendiente_caja", f"{concepto_ini} por validar",
             f"Contrato {contrato.numero_contrato}, lote {venta.lote.codigo if venta.lote else ''}: "
-            f"la inicial de la venta está pendiente de validación de Caja.",
+            f"{concepto_ini.lower()} pendiente de validación de Caja.",
         )
         await notificar_pago(
             "pago:actualizado",
             {
                 "id_contrato": id_contrato,
                 "estado": "pendiente_caja",
-                "concepto": "Inicial",
+                "concepto": concepto_ini,
                 "numero_contrato": contrato.numero_contrato,
             },
             venta.id_proyecto,
@@ -95,6 +96,27 @@ async def _avisar_roles(db: Session, usuario: m.Usuario, venta: m.Venta, roles: 
 
 
 # ----------------------------------------------------------------- helpers --
+
+def _exigir_inicial_validada(db: Session, venta: m.Venta):
+    """No se genera Minuta / Contrato Preparatorio hasta que Caja y Facturación validen la inicial."""
+    if not venta.id_contrato:
+        return
+    estados = [
+        e for (e,) in db.query(m.Pago.estado)
+        .filter(
+            m.Pago.id_contrato == venta.id_contrato,
+            m.Pago.tipo.in_(["inicial", "contado"]),
+        )
+        .all()
+    ]
+    if not estados:
+        return  # ventas antiguas sin pagos de inicial registrados
+    if any(e in ("pendiente_caja", "pendiente_facturacion") for e in estados) or "validado" not in estados:
+        raise HTTPException(
+            status_code=409,
+            detail="La inicial aún no está validada por Caja y Facturación. No se puede generar el documento.",
+        )
+
 
 def _separacion_convertida(db: Session, usuario: m.Usuario, id_separacion: int) -> m.Separacion:
     sep = sep_svc.cargar_separacion(db, id_separacion, usuario)
@@ -380,6 +402,7 @@ async def generar_documento(
     db: Session = Depends(get_db),
 ):
     venta = svc.cargar_venta(db, id_venta, usuario)
+    _exigir_inicial_validada(db, venta)
     pdf_bytes = svc.generar_documento_venta(db, venta)
     venta.documento_generado_url = svc.guardar_documento_pdf(venta.id, pdf_bytes)
     venta.estado = m.EstadoVentaEnum.documento_generado

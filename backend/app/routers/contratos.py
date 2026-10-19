@@ -375,7 +375,8 @@ async def registrar_pago(
     usuario: m.Usuario = Depends(require_permiso("registrar_pago")),
     db: Session = Depends(get_db),
 ):
-    """El pago NO se aplica a la cuota todavía: queda pendiente de Caja y luego de Facturación."""
+    """El pago NO se aplica todavía: queda pendiente de Caja y luego de Facturación.
+    Puede ser una cuota (id_cuota) o las N primeras cuotas pendientes (cantidad_cuotas)."""
     contrato = (
         db.query(m.Contrato)
         .filter(m.Contrato.id == id_contrato, m.Contrato.id_empresa == usuario.id_empresa)
@@ -389,7 +390,57 @@ async def registrar_pago(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El contrato ya está cerrado")
     if payload.monto <= 0:
         raise HTTPException(status_code=422, detail="El monto debe ser mayor a cero")
-    if payload.id_cuota:
+
+    en_proceso = (
+        db.query(m.Pago)
+        .filter(
+            m.Pago.id_contrato == id_contrato,
+            m.Pago.estado.in_(["pendiente_caja", "pendiente_facturacion"]),
+            m.Pago.tipo.in_(["cuota", "cuotas"]),
+        )
+        .all()
+    )
+
+    tipo = "cuota"
+    id_cuota = None
+    cuota_desde = cuota_hasta = None
+
+    if payload.cantidad_cuotas:
+        # ---- Varias cuotas: las N primeras pendientes, en orden ----
+        if en_proceso:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya hay un pago de cuotas en Caja o Facturación. Espera a que se aplique antes de registrar otro",
+            )
+        pendientes = (
+            db.query(m.CronogramaPago)
+            .filter(
+                m.CronogramaPago.id_contrato == id_contrato,
+                m.CronogramaPago.requiere_pago.is_(True),
+                m.CronogramaPago.estado != m.EstadoCuotaEnum.pagada,
+            )
+            .order_by(m.CronogramaPago.numero_cuota)
+            .all()
+        )
+        if len(pendientes) < payload.cantidad_cuotas:
+            raise HTTPException(status_code=422, detail=f"Solo hay {len(pendientes)} cuota(s) pendiente(s)")
+        elegidas = pendientes[: payload.cantidad_cuotas]
+        esperado = sum((q.monto_cuota - (q.monto_pagado or Decimal("0")) for q in elegidas), Decimal("0"))
+        if abs(payload.monto - esperado) > Q2:
+            raise HTTPException(
+                status_code=422,
+                detail=f"El monto de esas {len(elegidas)} cuota(s) es S/ {esperado:,.2f}, pero se indicó S/ {payload.monto:,.2f}",
+            )
+        cuota_desde, cuota_hasta = elegidas[0].numero_cuota, elegidas[-1].numero_cuota
+        if len(elegidas) == 1:
+            id_cuota = elegidas[0].id
+        else:
+            tipo = "cuotas"
+        concepto = (
+            f"Cuotas {cuota_desde} a {cuota_hasta}" if cuota_desde != cuota_hasta else f"Cuota {cuota_desde}"
+        )
+    elif payload.id_cuota:
+        # ---- Una sola cuota ----
         cuota = (
             db.query(m.CronogramaPago)
             .filter(m.CronogramaPago.id == payload.id_cuota, m.CronogramaPago.id_contrato == id_contrato)
@@ -399,9 +450,25 @@ async def registrar_pago(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La cuota no pertenece a este contrato")
         if cuota.estado == m.EstadoCuotaEnum.pagada:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esa cuota ya está pagada")
+        for p in en_proceso:
+            if p.id_cuota == cuota.id or (
+                p.tipo == "cuotas" and p.cuota_desde <= cuota.numero_cuota <= p.cuota_hasta
+            ):
+                raise HTTPException(status_code=409, detail="Esa cuota ya tiene un pago en Caja o Facturación")
+        falta = cuota.monto_cuota - (cuota.monto_pagado or Decimal("0"))
+        if payload.monto > falta + Q2:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El monto (S/ {payload.monto:,.2f}) supera lo que falta de esta cuota (S/ {falta:,.2f})",
+            )
+        id_cuota = cuota.id
+        cuota_desde = cuota_hasta = cuota.numero_cuota
+        concepto = f"Cuota {cuota.numero_cuota}"
+    else:
+        raise HTTPException(status_code=422, detail="Indica la cuota o cuántas cuotas va a pagar")
 
     pago = m.Pago(
-        id_cuota=payload.id_cuota,
+        id_cuota=id_cuota,
         id_contrato=id_contrato,
         monto=payload.monto,
         fecha_pago=payload.fecha_pago,
@@ -410,6 +477,9 @@ async def registrar_pago(
         comprobante_url=payload.comprobante_url,
         registrado_por=usuario.id,
         observacion=payload.observacion,
+        tipo=tipo,
+        cuota_desde=cuota_desde,
+        cuota_hasta=cuota_hasta,
         estado="pendiente_caja",
     )
     db.add(pago)
@@ -421,8 +491,8 @@ async def registrar_pago(
     notifs = sep_svc.crear_notificaciones(
         db, usuario.id_empresa, destinatarios,
         "pago_pendiente_caja",
-        "Pago por validar",
-        f"{usuario.nombre} registró un pago de S/ {payload.monto:,.2f} (contrato {contrato.numero_contrato})",
+        f"{concepto}: pago por validar",
+        f"{usuario.nombre} registró {concepto} por S/ {payload.monto:,.2f} (contrato {contrato.numero_contrato})",
         {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "pendiente_caja"},
     )
     db.commit()
@@ -430,7 +500,8 @@ async def registrar_pago(
 
     await notificar_pago(
         "pago:actualizado",
-        {"id": pago.id, "id_contrato": contrato.id, "estado": pago.estado},
+        {"id": pago.id, "id_contrato": contrato.id, "estado": pago.estado,
+         "concepto": concepto, "numero_contrato": contrato.numero_contrato},
         contrato.id_proyecto,
         sep_svc.notificaciones_a_dict(notifs),
     )

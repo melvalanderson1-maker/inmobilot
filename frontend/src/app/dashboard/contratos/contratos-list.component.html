@@ -252,6 +252,10 @@
               }
             </div>
 
+            @if (puedeRegistrarPago && pendientesDe(ct.id).length > 1) {
+              <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)">Pagar varias cuotas</button>
+            }
+
             <div class="tabla-scroll">
               <table class="tabla-cronograma">
                 <thead>
@@ -331,7 +335,7 @@
                   <tbody>
                     @for (pago of pagosPorContrato()[ct.id]; track pago.id) {
                       <tr>
-                        <td data-label="Cuota">{{ numeroCuota(contratoDrawer()!.id, pago.id_cuota) }}</td>
+                        <td data-label="Cuota">{{ conceptoPago(pago) }}</td>
                         <td data-label="Fecha">{{ pago.fecha_pago }}</td>
                         <td data-label="Monto" class="num celda-cuota">S/ {{ pago.monto }}</td>
                         <td data-label="Método" class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>
@@ -613,6 +617,79 @@
         <div class="modal-footer">
           <button type="button" class="btn-secundario" (click)="cerrarModalPago()">Cancelar</button>
           <button type="button" class="btn-primary" (click)="guardarPago()" [disabled]="guardandoPago()">
+            {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ============ MODAL: PAGAR VARIAS CUOTAS ============ -->
+  @if (modalVariasAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModalVarias()">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Pagar varias cuotas" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Pagar varias cuotas</h2>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalVarias()" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="modal-body">
+          @if (errorPago()) {
+            <div class="mensaje-error" role="alert">{{ errorPago() }}</div>
+          }
+
+          <div class="campo">
+            <label>¿Cuántas cuotas va a pagar? (desde la primera pendiente)</label>
+            <input [(ngModel)]="cuotasAPagar" type="number" min="1" [max]="contratoDrawer() ? pendientesDe(contratoDrawer()!.id).length : 1" />
+          </div>
+
+          @if (seleccionVarias; as sel) {
+            <div class="cuota-resumen">
+              <div><span class="etiqueta-mini">Cuotas</span><span class="cuota-resumen-valor">{{ sel.desde }} a {{ sel.hasta }}</span></div>
+              <div><span class="etiqueta-mini">Cantidad</span><span class="cuota-resumen-valor">{{ sel.cuotas.length }}</span></div>
+              <div><span class="etiqueta-mini">Total a pagar</span><span class="cuota-resumen-valor">S/ {{ sel.total.toFixed(2) }}</span></div>
+            </div>
+          }
+
+          <div class="aviso-info">
+            Es un solo depósito. Pasa a <strong>Caja</strong> y luego a <strong>Facturación</strong>, y al subir el comprobante se aplica a esas cuotas en orden. El monto es la suma de las cuotas programadas.
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Fecha de pago</label>
+              <input [(ngModel)]="fechaPago" type="date" />
+            </div>
+            <div class="campo">
+              <label>Método de pago</label>
+              <select [(ngModel)]="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="deposito">Depósito</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>N° de operación (opcional)</label>
+            <input [(ngModel)]="numeroOperacion" type="text" />
+          </div>
+
+          <div class="campo">
+            <label>Comprobante de pago (JPG, PNG o PDF) *</label>
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
+            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+          </div>
+
+          <div class="campo">
+            <label>Observación (opcional)</label>
+            <textarea [(ngModel)]="observacionPago" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secundario" (click)="cerrarModalVarias()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="guardarPagoVarias()" [disabled]="guardandoPago() || !seleccionVarias">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
           </button>
         </div>

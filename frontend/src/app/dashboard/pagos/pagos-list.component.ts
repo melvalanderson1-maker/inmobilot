@@ -141,6 +141,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
   subConcepto(p: PagoCola): string | null {
     if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
     if (p.concepto === 'Pago al contado') return 'Venta al contado';
+    if (p.concepto.startsWith('Cuotas ')) return 'Un solo depósito para varias cuotas';
     return null;
   }
 

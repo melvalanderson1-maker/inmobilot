@@ -35,12 +35,16 @@ def _cargar_pago(db: Session, id_pago: int, usuario: m.Usuario) -> m.Pago:
 
 def _concepto(p: m.Pago) -> str:
     """Qué es este pago, en palabras que el usuario entienda."""
+    if p.tipo == "inicial":
+        return "Inicial"
+    if p.tipo == "contado":
+        return "Pago al contado"
+    if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
+        if p.cuota_hasta and p.cuota_hasta != p.cuota_desde:
+            return f"Cuotas {p.cuota_desde} a {p.cuota_hasta}"
+        return f"Cuota {p.cuota_desde}"
     if p.cuota:
         return f"Cuota {p.cuota.numero_cuota}"
-    if p.observacion and p.observacion.startswith("Inicial de la venta"):
-        if p.contrato and p.contrato.forma_pago == m.FormaPagoEnum.contado:
-            return "Pago al contado"
-        return "Inicial"
     return "Pago a cuenta"
 
 
@@ -205,11 +209,31 @@ async def subir_comprobante_pago(
     pago.fecha_facturacion = sep_svc.ahora_utc()
     pago.estado = "validado"
 
-    # Recién ahora el pago cuenta en la cuota
-    if pago.id_cuota:
-        cuota = db.query(m.CronogramaPago).filter(m.CronogramaPago.id == pago.id_cuota).first()
-        if cuota:
-            cuota.monto_pagado = (cuota.monto_pagado or Decimal("0")) + pago.monto
+    # Recién ahora el pago cuenta en las cuotas (una o varias, en orden). La inicial y el contado no tocan cuotas.
+    if pago.tipo in ("cuota", "cuotas") and pago.cuota_desde:
+        cuotas = (
+            db.query(m.CronogramaPago)
+            .filter(
+                m.CronogramaPago.id_contrato == contrato.id,
+                m.CronogramaPago.requiere_pago.is_(True),
+                m.CronogramaPago.estado != m.EstadoCuotaEnum.pagada,
+                m.CronogramaPago.numero_cuota >= pago.cuota_desde,
+                m.CronogramaPago.numero_cuota <= (pago.cuota_hasta or pago.cuota_desde),
+            )
+            .order_by(m.CronogramaPago.numero_cuota)
+            .all()
+        )
+        total_falta = sum((q.monto_cuota - (q.monto_pagado or Decimal("0")) for q in cuotas), Decimal("0"))
+        if pago.monto > total_falta:
+            raise _conflicto(f"El pago (S/ {pago.monto:,.2f}) supera lo que falta cobrar (S/ {total_falta:,.2f})")
+        restante = pago.monto
+        for cuota in cuotas:
+            if restante <= 0:
+                break
+            falta = cuota.monto_cuota - (cuota.monto_pagado or Decimal("0"))
+            aplicar = min(restante, falta)
+            cuota.monto_pagado = (cuota.monto_pagado or Decimal("0")) + aplicar
+            restante -= aplicar
             if cuota.monto_pagado >= cuota.monto_cuota:
                 cuota.estado = m.EstadoCuotaEnum.pagada
                 cuota.fecha_pago_real = pago.fecha_pago

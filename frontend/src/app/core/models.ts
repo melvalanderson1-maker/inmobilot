@@ -389,6 +389,7 @@ export interface CronogramaCuota {
 
 export interface PagoCreate {
   id_cuota?: number;
+  cantidad_cuotas?: number;
   monto: number;
   fecha_pago: string;
   metodo_pago?: string;
@@ -412,6 +413,10 @@ export interface Pago {
   factura_tipo?: string;
   factura_numero?: string;
   factura_url?: string;
+  observacion?: string | null;
+  tipo?: string;
+  cuota_desde?: number | null;
+  cuota_hasta?: number | null;
 }
 
 

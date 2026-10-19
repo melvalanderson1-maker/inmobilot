@@ -303,8 +303,12 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   /** ¿Esa cuota ya tiene un pago esperando a Caja o Facturación? */
   pagoEnProceso(idContrato: number, idCuota: number): boolean {
+    const cuota = (this.cronogramaPorContrato()[idContrato] ?? []).find((q) => q.id === idCuota);
     return (this.pagosPorContrato()[idContrato] ?? []).some(
-      (p) => p.id_cuota === idCuota && (p.estado === 'pendiente_caja' || p.estado === 'pendiente_facturacion')
+      (p) =>
+        (p.estado === 'pendiente_caja' || p.estado === 'pendiente_facturacion') &&
+        (p.id_cuota === idCuota ||
+          (!!cuota && !!p.cuota_desde && cuota.numero_cuota >= p.cuota_desde && cuota.numero_cuota <= (p.cuota_hasta ?? p.cuota_desde)))
     );
   }
 
@@ -313,6 +317,18 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     if (!idCuota) return '—';
     const cuota = (this.cronogramaPorContrato()[idContrato] ?? []).find((q) => q.id === idCuota);
     return cuota ? String(cuota.numero_cuota) : '—';
+  }
+
+  conceptoPago(p: Pago): string {
+    if (p.tipo === 'inicial') return 'Inicial';
+    if (p.tipo === 'contado') return 'Pago al contado';
+    if (p.cuota_desde) {
+      return p.cuota_hasta && p.cuota_hasta !== p.cuota_desde
+        ? `Cuotas ${p.cuota_desde} a ${p.cuota_hasta}`
+        : `Cuota ${p.cuota_desde}`;
+    }
+    if (p.id_cuota) return this.numeroCuota(this.contratoDrawer()!.id, p.id_cuota);
+    return '—';
   }
 
   etiquetaPago(estado: string): string {
@@ -356,7 +372,9 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   resumen(contrato: Contrato): ResumenContrato {
     const cuotas = (this.cronogramaPorContrato()[contrato.id] ?? []).filter((c) => c.requiere_pago);
-    const pagos = (this.pagosPorContrato()[contrato.id] ?? []).filter((p) => p.estado === 'validado');
+    const pagos = (this.pagosPorContrato()[contrato.id] ?? []).filter(
+      (p) => p.estado === 'validado' && p.tipo !== 'inicial' && p.tipo !== 'contado'
+    );
 
     const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
     const totalCuotas = cuotas.reduce((acc, c) => acc + Number(c.monto_cuota), 0);
@@ -411,6 +429,10 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   onEscape(): void {
     if (this.modalComprobanteAbierto()) {
       this.cerrarComprobante();
+      return;
+    }
+    if (this.modalVariasAbierto()) {
+      this.cerrarModalVarias();
       return;
     }
     if (this.modalPagoAbierto()) {
@@ -551,6 +573,89 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   cerrarModalPago(): void {
     this.modalPagoAbierto.set(false);
+  }
+
+  // ---- Pagar varias cuotas ----
+  modalVariasAbierto = signal(false);
+  cuotasAPagar: number | null = null;
+
+  pendientesDe(idContrato: number): CronogramaCuota[] {
+    return (this.cronogramaPorContrato()[idContrato] ?? [])
+      .filter((c) => c.requiere_pago && c.estado !== 'pagada')
+      .sort((a, b) => a.numero_cuota - b.numero_cuota);
+  }
+
+  get seleccionVarias(): { cuotas: CronogramaCuota[]; total: number; desde: number; hasta: number } | null {
+    const id = this.contratoDrawer()?.id;
+    const n = Number(this.cuotasAPagar) || 0;
+    if (!id || n < 1) return null;
+    const cuotas = this.pendientesDe(id).slice(0, n);
+    if (cuotas.length === 0) return null;
+    const total = cuotas.reduce((a, c) => a + (Number(c.monto_cuota) - Number(c.monto_pagado ?? 0)), 0);
+    return { cuotas, total, desde: cuotas[0].numero_cuota, hasta: cuotas[cuotas.length - 1].numero_cuota };
+  }
+
+  abrirPagarVarias(idContrato: number): void {
+    this.contratoPagoId = idContrato;
+    this.cuotasAPagar = Math.min(2, this.pendientesDe(idContrato).length);
+    this.fechaPago = new Date().toISOString().slice(0, 10);
+    this.metodoPago = 'transferencia';
+    this.numeroOperacion = '';
+    this.observacionPago = '';
+    this.archivoComprobante = null;
+    this.errorPago.set(null);
+    this.modalVariasAbierto.set(true);
+  }
+
+  cerrarModalVarias(): void {
+    this.modalVariasAbierto.set(false);
+  }
+
+  guardarPagoVarias(): void {
+    const sel = this.seleccionVarias;
+    if (!this.contratoPagoId || !sel) {
+      this.errorPago.set('Indica cuántas cuotas va a pagar');
+      return;
+    }
+    if (!this.archivoComprobante) {
+      this.errorPago.set('Debes adjuntar el comprobante de pago (imagen o PDF)');
+      return;
+    }
+    this.guardandoPago.set(true);
+    this.errorPago.set(null);
+
+    const formData = new FormData();
+    formData.append('archivo', this.archivoComprobante);
+
+    this.contratoService.subirComprobante(formData).subscribe({
+      next: (res) => {
+        const payload: PagoCreate = {
+          cantidad_cuotas: sel.cuotas.length,
+          monto: Math.round(sel.total * 100) / 100,
+          fecha_pago: this.fechaPago,
+          metodo_pago: this.metodoPago,
+          numero_operacion: this.numeroOperacion || undefined,
+          observacion: this.observacionPago || undefined,
+          comprobante_url: res.url,
+        };
+        this.contratoService.registrarPago(this.contratoPagoId!, payload).subscribe({
+          next: () => {
+            this.guardandoPago.set(false);
+            this.modalVariasAbierto.set(false);
+            this.toastService.exito('Pago enviado a Caja para su validación');
+            this.cargarCronograma(this.contratoPagoId!);
+          },
+          error: (err) => {
+            this.guardandoPago.set(false);
+            this.errorPago.set(err?.error?.detail ?? 'Error al registrar el pago');
+          },
+        });
+      },
+      error: (err) => {
+        this.guardandoPago.set(false);
+        this.errorPago.set(err?.error?.detail ?? 'Error al subir el comprobante');
+      },
+    });
   }
 
   onArchivoSeleccionado(event: Event): void {

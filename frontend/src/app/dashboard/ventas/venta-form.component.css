@@ -738,3 +738,14 @@
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.vf-gen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+.vf-gen input { width: 70px; }
+.vf-cuotas { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.vf-cuota-row { display: grid; grid-template-columns: 28px 1fr 1fr 32px; gap: 8px; align-items: center; }
+.vf-cuota-n { font-weight: 700; color: #64748b; text-align: center; }
+.vf-sim-scroll { overflow-x: auto; }
+.vf-sim-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vf-sim-table th, .vf-sim-table td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
+.vf-sim-table th.num, .vf-sim-table td.num { text-align: right; }
+.vf-sim-tag { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; }

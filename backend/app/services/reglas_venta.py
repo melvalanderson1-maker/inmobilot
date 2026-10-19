@@ -9,7 +9,7 @@ INICIAL_MINIMA = Decimal("10000")
 PLAZO_MAX_MESES = 24          # 2 años: 24 cuotas mensuales o 4 semestrales
 TEA_DEFECTO = Decimal("20")   # interés anual cuando el plazo supera los 24 meses
 MESES_POR_FRECUENCIA = {"mensual": 1, "bimestral": 2, "trimestral": 3, "semestral": 6}
-FRECUENCIAS = ("mensual", "bimestral", "trimestral", "semestral", "unico")
+FRECUENCIAS = ("mensual", "bimestral", "trimestral", "semestral", "unico", "personalizado")
 Q2 = Decimal("0.01")
 
 
@@ -17,8 +17,18 @@ def _es_contado(forma_pago) -> bool:
     return getattr(forma_pago, "value", forma_pago) == "contado"
 
 
+def _fecha(valor) -> date:
+    return valor if isinstance(valor, date) else date.fromisoformat(str(valor)[:10])
+
+
 def plazo_meses_de(dc: dict) -> int:
-    """Soporta ventas antiguas que guardaban 'plazo_anios'."""
+    """Soporta ventas antiguas ('plazo_anios') y cronogramas personalizados
+    (el plazo se deduce de la última fecha, redondeando meses hacia arriba)."""
+    if dc.get("frecuencia_cuota") == "personalizado" and dc.get("cuotas_personalizadas"):
+        base = _fecha(dc["fecha_deposito"]) if dc.get("fecha_deposito") else date.today()
+        ultima = max(_fecha(c["fecha"]) for c in dc["cuotas_personalizadas"])
+        d = relativedelta(ultima, base)
+        return max(d.years * 12 + d.months + (1 if d.days > 0 else 0), 1)
     if dc.get("plazo_meses"):
         return int(dc["plazo_meses"])
     return int(dc.get("plazo_anios", 2)) * 12
@@ -81,6 +91,88 @@ def generar_cuotas(saldo, n: int, meses_cuota: int, tea_pct, fecha_base: date) -
     return filas
 
 
+def generar_cuotas_personalizadas(saldo, cuotas: list[dict], tea_pct, fecha_base: date) -> list[dict]:
+    """Cronograma a medida. Cada cuota trae fecha y, opcionalmente, monto fijo (cuota total).
+    Las cuotas sin monto se reparten el saldo restante en partes iguales.
+    Interés sobre saldo pendiente, por días reales: saldo * ((1+TEA)^(dias/365) - 1).
+    La última cuota liquida el saldo exacto."""
+    saldo = Decimal(str(saldo))
+    tea = Decimal(str(tea_pct or 0)) / 100
+    items = [
+        {
+            "fecha": _fecha(c["fecha"]),
+            "monto": None if c.get("monto") in (None, "") else Decimal(str(c["monto"])),
+        }
+        for c in cuotas
+    ]
+    items.sort(key=lambda x: x["fecha"])
+    n = len(items)
+    if n == 0:
+        raise HTTPException(status_code=422, detail="Agrega al menos una cuota al cronograma personalizado")
+    n_auto = sum(1 for it in items if it["monto"] is None)
+
+    def interes_de(restante: Decimal, desde: date, hasta: date) -> Decimal:
+        if tea <= 0 or restante <= 0:
+            return Decimal("0")
+        factor = Decimal(str((1 + float(tea)) ** ((hasta - desde).days / 365) - 1))
+        return (restante * factor).quantize(Q2, rounding=ROUND_HALF_UP)
+
+    def simular(p_auto: Decimal, liquidar: bool):
+        filas: list[dict] = []
+        restante = saldo
+        previa = fecha_base
+        acumulado = Decimal("0")
+        for i, it in enumerate(items, 1):
+            interes = interes_de(restante, previa, it["fecha"])
+            ajustada = False
+            if liquidar and i == n:
+                amort = restante
+                monto = amort + interes
+                if it["monto"] is not None and abs(monto - it["monto"]) > Decimal("0.05"):
+                    ajustada = True
+            else:
+                monto = it["monto"] if it["monto"] is not None else p_auto
+                amort = monto - interes
+            restante -= amort
+            acumulado += interes
+            filas.append({
+                "numero": i, "fecha": it["fecha"], "capital": restante, "amortizacion": amort,
+                "interes": interes, "acumulado": acumulado, "monto": monto, "ajustada": ajustada,
+            })
+            previa = it["fecha"]
+        return filas, restante
+
+    p_auto = Decimal("0")
+    if n_auto:
+        if simular(Decimal("0"), False)[1] <= 0:
+            raise HTTPException(
+                status_code=422,
+                detail="Los montos fijos ya cubren todo el saldo: reduce algún monto o quita montos para que el sistema los calcule",
+            )
+        anios = max((items[-1]["fecha"] - fecha_base).days / 365, 0)
+        alto = saldo * Decimal(str((1 + float(tea)) ** anios)) + 1
+        bajo = Decimal("0")
+        for _ in range(60):  # búsqueda binaria de la cuota automática
+            medio = (bajo + alto) / 2
+            if simular(medio, False)[1] > 0:
+                bajo = medio
+            else:
+                alto = medio
+        p_auto = alto.quantize(Q2, rounding=ROUND_HALF_UP)
+
+    filas, _ = simular(p_auto, True)
+    for f in filas:
+        if f["amortizacion"] < 0:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"La cuota {f['numero']} (S/ {f['monto']:,.2f}) no es válida: no cubre el interés del período "
+                    f"(S/ {f['interes']:,.2f}) o los montos fijos superan el saldo"
+                ),
+            )
+    return filas
+
+
 def validar_estructura(forma_pago, precio_total, dc: dict | None) -> None:
     """Errores de datos (422), distintos de las excepciones que se resuelven con autorización."""
     if Decimal(str(precio_total)) <= 0:
@@ -96,7 +188,26 @@ def validar_estructura(forma_pago, precio_total, dc: dict | None) -> None:
         raise HTTPException(status_code=422, detail="La inicial no puede superar el precio total")
     frecuencia = dc.get("frecuencia_cuota", "mensual")
     if frecuencia not in FRECUENCIAS:
-        raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, bimestral, trimestral, semestral o pago único")
+        raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, bimestral, trimestral, semestral, pago único o personalizada")
+    if frecuencia == "personalizado":
+        cuotas = dc.get("cuotas_personalizadas") or []
+        if not cuotas:
+            raise HTTPException(status_code=422, detail="Agrega al menos una cuota al cronograma personalizado")
+        if len(cuotas) > 60:
+            raise HTTPException(status_code=422, detail="El cronograma admite como máximo 60 cuotas")
+        anterior = _fecha(dc["fecha_deposito"]) if dc.get("fecha_deposito") else date.today()
+        for i, c in enumerate(cuotas, 1):
+            f = _fecha(c["fecha"])
+            if f <= anterior:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"La cuota {i} debe tener fecha posterior a " + ("la fecha del depósito" if i == 1 else "la cuota anterior"),
+                )
+            anterior = f
+        plazo_c = plazo_meses_de(dc)
+        if not (1 <= plazo_c <= 120):
+            raise HTTPException(status_code=422, detail="El cronograma no puede superar los 120 meses")
+        return
     plazo = plazo_meses_de(dc)
     if not (1 <= plazo <= 120):
         raise HTTPException(status_code=422, detail="El plazo debe estar entre 1 y 120 meses")
@@ -117,6 +228,8 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
         "tea_aplicable": Decimal("0"),
         "monto_financiar": Decimal("0"),
         "cuota_estimada": Decimal("0"),
+        "interes_total": Decimal("0"),
+        "cronograma": [],
     }
 
     es_contado = _es_contado(forma_pago)
@@ -149,11 +262,24 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
             })
 
         saldo = max(precio_total - inicial, Decimal("0"))
-        n = numero_cuotas(frecuencia, plazo)
         tea = tea_aplicable(plazo, dc.get("tea_financiamiento"))
-        resumen.update({"plazo_meses": plazo, "numero_cuotas": n, "tea_aplicable": tea, "monto_financiar": saldo})
-        if saldo > 0 and n > 0:
-            filas = generar_cuotas(saldo, n, meses_por_cuota(frecuencia, plazo), tea, date.today())
-            resumen["cuota_estimada"] = filas[0]["monto"]
+        fecha_base = _fecha(dc["fecha_deposito"]) if dc.get("fecha_deposito") else date.today()
+        filas: list[dict] = []
+        if saldo > 0:
+            if frecuencia == "personalizado":
+                filas = generar_cuotas_personalizadas(saldo, dc.get("cuotas_personalizadas") or [], tea, fecha_base)
+            else:
+                n_regular = numero_cuotas(frecuencia, plazo)
+                if n_regular > 0:
+                    filas = generar_cuotas(saldo, n_regular, meses_por_cuota(frecuencia, plazo), tea, fecha_base)
+        resumen.update({
+            "plazo_meses": plazo,
+            "numero_cuotas": len(filas),
+            "tea_aplicable": tea,
+            "monto_financiar": saldo,
+            "cuota_estimada": filas[0]["monto"] if filas else Decimal("0"),
+            "interes_total": sum((f["interes"] for f in filas), Decimal("0")),
+            "cronograma": filas,
+        })
 
     return {"motivos": motivos, "requiere_autorizacion": bool(motivos), **resumen}

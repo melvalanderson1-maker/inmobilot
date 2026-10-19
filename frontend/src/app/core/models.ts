@@ -715,6 +715,7 @@ export interface DatosCredito {
   tea_financiamiento?: number;
   observaciones?: string;
   voucher_url?: string;
+  cuotas_personalizadas?: { fecha: string; monto?: number | null }[];
 }
 
 
@@ -777,7 +778,20 @@ export interface PagoComprobanteIn {
 
 
 
+export interface CuotaSimulada {
+  numero: number;
+  fecha: string;
+  capital: number | string;
+  amortizacion: number | string;
+  interes: number | string;
+  acumulado: number | string;
+  monto: number | string;
+  ajustada?: boolean;
+}
+
 export interface EvaluacionVenta {
+  interes_total?: number | string;
+  cronograma?: CuotaSimulada[];
   motivos: { codigo: string; mensaje: string }[];
   requiere_autorizacion: boolean;
   plazo_meses: number;

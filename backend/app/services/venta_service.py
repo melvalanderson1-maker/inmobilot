@@ -438,13 +438,19 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         frecuencia = dc.get("frecuencia_cuota", "mensual")
         if frecuencia not in reglas.FRECUENCIAS:
             frecuencia = "mensual"
-
         if saldo > 0:
-            numero_cuotas = reglas.numero_cuotas(frecuencia, plazo_meses)
             tea = reglas.tea_aplicable(plazo_meses, dc.get("tea_financiamiento"))
-            filas = reglas.generar_cuotas(
-                saldo, numero_cuotas, reglas.meses_por_cuota(frecuencia, plazo_meses), tea, fecha_abono
-            )
+            if frecuencia == "personalizado":
+                filas = reglas.generar_cuotas_personalizadas(
+                    saldo, dc.get("cuotas_personalizadas") or [], tea, fecha_abono
+                )
+                numero_cuotas = len(filas)
+            else:
+                numero_cuotas = reglas.numero_cuotas(frecuencia, plazo_meses)
+                filas = reglas.generar_cuotas(
+                    saldo, numero_cuotas, reglas.meses_por_cuota(frecuencia, plazo_meses), tea, fecha_abono
+                )
+
             estado_contrato = m.EstadoContratoEnum.vigente
         else:
             estado_contrato = m.EstadoContratoEnum.cancelado
@@ -463,7 +469,7 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         inicial_abonado=inicial_abonado,
         fecha_abono=fecha_abono,
         forma_pago=venta.forma_pago,
-        frecuencia_cuota=frecuencia,
+        frecuencia_cuota="custom" if frecuencia == "personalizado" else frecuencia,
         saldo_financiado=saldo,
         numero_cuotas=numero_cuotas,
         tiene_interes=tea > 0,

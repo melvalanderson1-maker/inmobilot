@@ -66,7 +66,14 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     { valor: 'trimestral', etiqueta: 'Trimestral' },
     { valor: 'semestral', etiqueta: 'Semestral' },
     { valor: 'unico', etiqueta: 'Pago único al vencimiento' },
+    { valor: 'personalizado', etiqueta: 'Cronograma personalizado' },
   ];
+
+  // ---- Cronograma personalizado ----
+  cuotasPers: { fecha: string; monto: number | null }[] = [];
+  genN = 4;
+  genCada = 3;
+  readonly opcionesCada = [1, 2, 3, 6, 12];
 
   // ---- Vista previa de reglas (la calcula el backend) ----
   evaluacion = signal<EvaluacionVenta | null>(null);
@@ -130,6 +137,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         precioEditado: this.precioEditado,
         pagosPrevios: this.pagosPrevios,
         datosCredito: this.datosCredito,
+        cuotasPers: this.cuotasPers,
         extras: this.extras(),
       })
     );
@@ -145,6 +153,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       this.precioEditado = b.precioEditado ?? this.precioEditado;
       if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
       if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
+      if (b.cuotasPers?.length) this.cuotasPers = b.cuotasPers;
       if (b.extras?.length) this.extras.set(b.extras);
     } catch {
       /* borrador dañado: se ignora */
@@ -312,12 +321,16 @@ export class VentaFormComponent implements OnInit, OnDestroy {
               inicial_monto: dc.inicial_monto,
               fecha_deposito: dc.fecha_deposito || (paraEvaluar ? hoy : ''),
               numero_operacion: dc.numero_operacion || (paraEvaluar ? '-' : ''),
-              plazo_meses: Number(dc.plazo_meses),
+              plazo_meses: Number(dc.plazo_meses) || 24,
               frecuencia_cuota: dc.frecuencia_cuota,
               tasa_interes: dc.tasa_interes,
-              tea_financiamiento: Number(dc.plazo_meses) > 24 && dc.tea_financiamiento != null ? dc.tea_financiamiento : undefined,
+              tea_financiamiento:
+                (this.esPersonalizado || Number(dc.plazo_meses) > 24) && dc.tea_financiamiento != null
+                  ? dc.tea_financiamiento
+                  : undefined,
               observaciones: dc.observaciones || undefined,
               voucher_url: dc.voucher_url || undefined,
+              cuotas_personalizadas: this.esPersonalizado ? this.cuotasValidas() : undefined,
             }
           : undefined,
     };
@@ -329,6 +342,10 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.formaPago === 'credito' && !this.datosCredito.inicial_monto) {
+      this.evaluacion.set(null);
+      return;
+    }
+    if (this.formaPago === 'credito' && this.esPersonalizado && this.cuotasValidas().length === 0) {
       this.evaluacion.set(null);
       return;
     }
@@ -349,6 +366,59 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return !!this.evaluacion()?.requiere_autorizacion;
   }
 
+  // ---- Cronograma personalizado ----
+
+  get esPersonalizado(): boolean {
+    return this.datosCredito.frecuencia_cuota === 'personalizado';
+  }
+
+  get totalSimulado(): number {
+    return (this.evaluacion()?.cronograma ?? []).reduce((acc, c) => acc + Number(c.monto), 0);
+  }
+
+  onFrecuenciaCambiada(): void {
+    if (this.esPersonalizado && this.cuotasPers.length === 0) this.generarCuotas();
+    this.reevaluar();
+  }
+
+  private aISO(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  /** Crea N filas con fecha cada X meses (sin monto: el sistema las calcula). */
+  generarCuotas(): void {
+    const n = Math.min(Math.max(Number(this.genN) || 1, 1), 60);
+    const cada = Number(this.genCada) || 1;
+    const base = this.datosCredito.fecha_deposito ? new Date(this.datosCredito.fecha_deposito + 'T00:00:00') : new Date();
+    const filas: { fecha: string; monto: number | null }[] = [];
+    for (let i = 1; i <= n; i++) {
+      const y = base.getFullYear();
+      const mes = base.getMonth() + i * cada;
+      const ultimoDia = new Date(y, mes + 1, 0).getDate();
+      filas.push({ fecha: this.aISO(new Date(y, mes, Math.min(base.getDate(), ultimoDia))), monto: null });
+    }
+    this.cuotasPers = filas;
+    this.reevaluar();
+  }
+
+  agregarCuota(): void {
+    this.cuotasPers.push({ fecha: '', monto: null });
+  }
+
+  quitarCuota(i: number): void {
+    this.cuotasPers.splice(i, 1);
+    this.reevaluar();
+  }
+
+  /** Filas con fecha, ordenadas, listas para enviar al servidor */
+  cuotasValidas(): { fecha: string; monto: number | null }[] {
+    return this.cuotasPers
+      .filter((c) => !!c.fecha)
+      .map((c) => ({ fecha: c.fecha, monto: c.monto && Number(c.monto) > 0 ? Number(c.monto) : null }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
   // ---- Estado de los pasos (para el indicador de progreso) ----
 
   get pasoPrecioOk(): boolean {
@@ -358,7 +428,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   get pasoPagoOk(): boolean {
     if (this.formaPago === 'contado') return true;
     const dc = this.datosCredito;
-    return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.voucher_url && !!dc.plazo_meses && dc.plazo_meses >= 1;
+    const plazoOk = this.esPersonalizado ? this.cuotasValidas().length > 0 : !!dc.plazo_meses && dc.plazo_meses >= 1;
+    return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.voucher_url && plazoOk;
   }
 
   irA(id: string): void {
@@ -463,7 +534,11 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         return 'Completa la inicial, la fecha del depósito y el N° de operación del crédito';
       }
       if (!dc.voucher_url) return 'Sube el voucher del depósito de la inicial';
-      if (!dc.plazo_meses || dc.plazo_meses < 1) return 'Indica el plazo en meses';
+      if (this.esPersonalizado) {
+        if (this.cuotasValidas().length === 0) return 'Agrega al menos una cuota con fecha al cronograma personalizado';
+      } else if (!dc.plazo_meses || dc.plazo_meses < 1) {
+        return 'Indica el plazo en meses';
+      }
     }
     return null;
   }

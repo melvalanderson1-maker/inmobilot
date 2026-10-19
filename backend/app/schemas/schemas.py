@@ -837,6 +837,11 @@ class PagoPrevioIn(BaseModel):
     fecha: date
 
 
+class CuotaPersonalizadaIn(BaseModel):
+    fecha: date
+    monto: Optional[Decimal] = Field(default=None, gt=0)  # vacío = el sistema la calcula
+
+
 class DatosCreditoIn(BaseModel):
     inicial_monto: Decimal
     fecha_deposito: date
@@ -847,6 +852,7 @@ class DatosCreditoIn(BaseModel):
     tea_financiamiento: Optional[Decimal] = None  # interés del financiamiento; vacío = según regla
     observaciones: Optional[str] = None
     voucher_url: Optional[str] = Field(default=None, max_length=300)
+    cuotas_personalizadas: Optional[list[CuotaPersonalizadaIn]] = Field(default=None, max_length=60)
 
 
 class VentaCreate(BaseModel):
@@ -1003,6 +1009,17 @@ class CobranzaFilaOut(BaseModel):
 
 # ------------------------------------------------- EVALUACIÓN Y AUTORIZACIÓN --
 
+class CuotaSimuladaOut(BaseModel):
+    numero: int
+    fecha: date
+    capital: Decimal
+    amortizacion: Decimal
+    interes: Decimal
+    acumulado: Decimal
+    monto: Decimal
+    ajustada: bool = False
+
+
 class EvaluacionVentaOut(BaseModel):
     motivos: list[dict]
     requiere_autorizacion: bool
@@ -1011,6 +1028,8 @@ class EvaluacionVentaOut(BaseModel):
     tea_aplicable: Decimal = Decimal("0")
     monto_financiar: Decimal = Decimal("0")
     cuota_estimada: Decimal = Decimal("0")
+    interes_total: Decimal = Decimal("0")
+    cronograma: list[CuotaSimuladaOut] = []
 
 
 class AutorizacionResolver(BaseModel):

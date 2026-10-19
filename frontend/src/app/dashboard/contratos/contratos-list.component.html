@@ -162,7 +162,9 @@
         @if (puedeGestionarCobranza) {
           <div class="acciones-cobranza">
             @if (ct.forma_pago === 'credito' && ct.estado !== 'cancelado' && ct.estado !== 'anulado') {
-              <button type="button" class="btn-secundario-sm" (click)="recalcularCuotas(ct)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
+              @if (ct.frecuencia_cuota !== 'custom') {
+                <button type="button" class="btn-secundario-sm" (click)="recalcularCuotas(ct)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
+              }
               <button type="button" class="btn-secundario-sm btn-peligro" (click)="cancelarContrato(ct)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
             }
             @if (ct.estado === 'cancelado' && ventaPorContrato()[ct.id] && ventaPorContrato()[ct.id]!.estado !== 'finalizada') {

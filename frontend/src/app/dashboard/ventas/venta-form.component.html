@@ -288,35 +288,70 @@
               <small class="vf-hint">Se inserta automáticamente en el Contrato Preparatorio como medio de pago.</small>
             </div>
 
-            <div class="vf-field">
-              <span class="vf-label">Plazo @if (plazoTexto) { <em>= {{ plazoTexto }}</em> }</span>
-              <div class="vf-quick" role="group" aria-label="Plazos rápidos">
-                @for (m of plazosRapidos; track m) {
-                  <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">{{ m }} m</button>
+            <label class="vf-field">
+              <span>Frecuencia de pago</span>
+              <select [(ngModel)]="datosCredito.frecuencia_cuota" (ngModelChange)="onFrecuenciaCambiada()">
+                @for (f of frecuencias; track f.valor) {
+                  <option [value]="f.valor">{{ f.etiqueta }}</option>
                 }
-              </div>
-            </div>
+              </select>
+            </label>
 
-            <div class="vf-row-2">
+            @if (!esPersonalizado) {
+              <div class="vf-field">
+                <span class="vf-label">Plazo @if (plazoTexto) { <em>= {{ plazoTexto }}</em> }</span>
+                <div class="vf-quick" role="group" aria-label="Plazos rápidos">
+                  @for (m of plazosRapidos; track m) {
+                    <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">{{ m }} m</button>
+                  }
+                </div>
+              </div>
+
               <label class="vf-field">
                 <span>Plazo (meses)</span>
                 <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
               </label>
-              <label class="vf-field">
-                <span>Frecuencia de pago</span>
-                <select [(ngModel)]="datosCredito.frecuencia_cuota" (ngModelChange)="reevaluar()">
-                  @for (f of frecuencias; track f.valor) {
-                    <option [value]="f.valor">{{ f.etiqueta }}</option>
-                  }
-                </select>
-              </label>
-            </div>
+            } @else {
+              <div class="vf-field">
+                <span class="vf-label">Cuotas del cronograma <em>· deja el monto vacío y el sistema lo calcula</em></span>
 
-            @if (datosCredito.plazo_meses > 24) {
+                <div class="vf-gen">
+                  <span>Generar</span>
+                  <input type="number" min="1" max="60" [(ngModel)]="genN" aria-label="Número de cuotas" />
+                  <span>cuotas cada</span>
+                  <select [(ngModel)]="genCada" aria-label="Cada cuántos meses">
+                    @for (c of opcionesCada; track c) {
+                      <option [ngValue]="c">{{ c }} {{ c === 1 ? 'mes' : 'meses' }}</option>
+                    }
+                  </select>
+                  <button type="button" class="vf-btn vf-btn-soft vf-btn-sm" (click)="generarCuotas()">Generar</button>
+                </div>
+
+                <div class="vf-cuotas">
+                  @for (c of cuotasPers; track $index) {
+                    <div class="vf-cuota-row">
+                      <span class="vf-cuota-n">{{ $index + 1 }}</span>
+                      <input type="date" [(ngModel)]="c.fecha" (ngModelChange)="reevaluar()" aria-label="Fecha de la cuota" />
+                      <div class="vf-money">
+                        <span aria-hidden="true">S/</span>
+                        <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="c.monto" (ngModelChange)="reevaluar()" placeholder="Automático" />
+                      </div>
+                      <button type="button" class="vf-icon-btn" (click)="quitarCuota($index)" aria-label="Quitar cuota">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  }
+                </div>
+                <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarCuota()">+ Agregar cuota</button>
+                <small class="vf-hint">Las cuotas sin monto se reparten el saldo restante. La última cuota cierra el saldo exacto.</small>
+              </div>
+            }
+
+            @if (esPersonalizado || datosCredito.plazo_meses > 24) {
               <label class="vf-field">
                 <span>Interés del financiamiento (% anual)</span>
                 <input type="number" inputmode="decimal" step="0.01" [(ngModel)]="datosCredito.tea_financiamiento" (ngModelChange)="reevaluar()" placeholder="20 (estándar)" />
-                <small class="vf-hint">Plazos mayores a 24 meses llevan interés. Si lo dejas vacío se usa el 20% estándar.</small>
+                <small class="vf-hint">Solo aplica si el plazo supera los 24 meses. Si lo dejas vacío se usa el 20% estándar. Se calcula sobre el saldo pendiente según los días reales de cada cuota.</small>
               </label>
             }
 
@@ -330,6 +365,56 @@
               <textarea rows="2" [(ngModel)]="datosCredito.observaciones" placeholder="Ej: si lo cancela en 3 meses se considera precio al contado"></textarea>
             </label>
           </section>
+        }
+
+        <!-- CRONOGRAMA SIMULADO (en vivo) -->
+        @if (formaPago === 'credito') {
+          @if (evaluacion(); as ev) {
+            @if (ev.cronograma && ev.cronograma.length > 0) {
+              <section class="vf-card vf-sim" aria-label="Cronograma simulado">
+                <header class="vf-card-head">
+                  <div class="vf-card-title">
+                    <h2>Cronograma simulado</h2>
+                    <p>Se actualiza al instante. Al iniciar la venta queda fijo y ya no se puede modificar.</p>
+                  </div>
+                </header>
+
+                <div class="vf-sim-scroll">
+                  <table class="vf-sim-table">
+                    <thead>
+                      <tr>
+                        <th>N°</th>
+                        <th>Vence</th>
+                        <th class="num">Cuota</th>
+                        <th class="num">Amortización</th>
+                        <th class="num">Interés</th>
+                        <th class="num">Saldo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (c of ev.cronograma ?? []; track c.numero) {
+                        <tr>
+                          <td>{{ c.numero }}</td>
+                          <td>{{ c.fecha }}</td>
+                          <td class="num"><strong>S/ {{ c.monto | number:'1.2-2' }}</strong>
+                            @if (c.ajustada) { <span class="vf-sim-tag" title="El sistema ajustó esta cuota para cerrar el saldo exacto">Ajustada</span> }
+                          </td>
+                          <td class="num">S/ {{ c.amortizacion | number:'1.2-2' }}</td>
+                          <td class="num">S/ {{ c.interes | number:'1.2-2' }}</td>
+                          <td class="num">S/ {{ c.capital | number:'1.2-2' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <dl class="vf-totals">
+                  <div><dt>Interés total</dt><dd>S/ {{ ev.interes_total ?? 0 | number:'1.2-2' }}</dd></div>
+                  <div class="is-strong"><dt>Total a pagar en cuotas</dt><dd>S/ {{ totalSimulado | number:'1.2-2' }}</dd></div>
+                </dl>
+              </section>
+            }
+          }
         }
 
         <!-- AVISOS DE REGLAS -->

@@ -138,15 +138,15 @@
               <label>Tipo de pago previsto</label>
               <div class="segmented">
                 <label class="seg-item">
-                  <input type="radio" name="tipo_pago" [value]="null" [(ngModel)]="form.tipo_pago" />
+                  <input type="radio" name="tipo_pago" [value]="null" [(ngModel)]="form.tipo_pago" (ngModelChange)="onTipoPagoCambiado()" />
                   <span>Sin definir</span>
                 </label>
                 <label class="seg-item">
-                  <input type="radio" name="tipo_pago" value="contado" [(ngModel)]="form.tipo_pago" />
+                  <input type="radio" name="tipo_pago" value="contado" [(ngModel)]="form.tipo_pago" (ngModelChange)="onTipoPagoCambiado()" />
                   <span>Contado</span>
                 </label>
                 <label class="seg-item">
-                  <input type="radio" name="tipo_pago" value="credito" [(ngModel)]="form.tipo_pago" />
+                  <input type="radio" name="tipo_pago" value="credito" [(ngModel)]="form.tipo_pago" (ngModelChange)="onTipoPagoCambiado()" />
                   <span>Crédito</span>
                 </label>
               </div>
@@ -173,8 +173,25 @@
                 <span>S/</span>
                 <input type="number" [(ngModel)]="form.precio_descontado" placeholder="0.00" />
               </div>
-              @if (loteSeleccionado() && loteSeleccionado()!.precio_total_contado) {
-                <small class="ayuda">Precio contado de lista: S/ {{ loteSeleccionado()!.precio_total_contado | number: '1.2-2' }}. Modifícalo si das una rebaja.</small>
+              @if (loteSeleccionado()) {
+                @if (precioReferencia(); as ref) {
+                  <small class="ayuda">
+                    {{ etiquetaPrecioReferencia() }}: S/ {{ ref | number: '1.2-2' }}.
+                    @if (descuentoSeparacion !== null && descuentoSeparacion > 0) {
+                      Descuento aplicado: <strong>S/ {{ descuentoSeparacion | number: '1.2-2' }}</strong>
+                      @if (descuentoSeparacionPct !== null) { ({{ descuentoSeparacionPct | number: '1.0-1' }}%) }
+                    } @else if (descuentoSeparacion !== null && descuentoSeparacion < 0) {
+                      El precio supera al de lista en <strong>S/ {{ -descuentoSeparacion | number: '1.2-2' }}</strong>.
+                    } @else {
+                      Sin descuento.
+                    }
+                    @if (descuentoSeparacion !== 0) {
+                      <button type="button" class="btn btn-outline btn-sm" (click)="aplicarPrecioReferencia()">Restablecer</button>
+                    }
+                  </small>
+                } @else {
+                  <small class="ayuda ayuda-warn">Este lote no tiene cargado el {{ etiquetaPrecioReferencia().toLowerCase() }}. Ingresa el precio manualmente.</small>
+                }
               }
             </div>
             <div class="campo campo-span-2">

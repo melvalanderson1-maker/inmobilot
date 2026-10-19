@@ -110,7 +110,48 @@ export class SeparacionFormComponent implements OnInit {
   onLoteSeleccionado(): void {
     const lote = this.lotesTodos().find((l) => l.id === this.form.id_lote) ?? null;
     this.loteSeleccionado.set(lote);
-    this.form.precio_descontado = lote?.precio_total_contado != null ? Number(lote.precio_total_contado) : null;
+    this.aplicarPrecioReferencia();
+  }
+
+  /** Precio de lista que corresponde al tipo de pago elegido */
+  precioReferencia(): number | null {
+    const l = this.loteSeleccionado();
+    if (!l) return null;
+    const v =
+      this.form.tipo_pago === 'contado' ? l.precio_total_contado
+      : this.form.tipo_pago === 'credito' ? l.precio_total_financiado
+      : l.precio_total_base;
+    const n = Number(v);
+    return v != null && Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  etiquetaPrecioReferencia(): string {
+    if (this.form.tipo_pago === 'contado') return 'Precio contado (lista)';
+    if (this.form.tipo_pago === 'credito') return 'Precio financiado (lista)';
+    return 'Precio regular';
+  }
+
+  aplicarPrecioReferencia(): void {
+    this.form.precio_descontado = this.precioReferencia();
+  }
+
+  onTipoPagoCambiado(): void {
+    this.aplicarPrecioReferencia();
+  }
+
+  /** Cuánto se está descontando respecto al precio de lista (negativo = por encima) */
+  get descuentoSeparacion(): number | null {
+    const ref = this.precioReferencia();
+    const p = this.form.precio_descontado;
+    if (!ref || !p) return null;
+    return ref - p;
+  }
+
+  get descuentoSeparacionPct(): number | null {
+    const ref = this.precioReferencia();
+    const d = this.descuentoSeparacion;
+    if (!ref || d === null) return null;
+    return (d / ref) * 100;
   }
   nombreManzana(lote: Lote): string {
     const manzana = this.manzanas().find((m) => m.id === lote.id_manzana);
@@ -303,9 +344,9 @@ export class SeparacionFormComponent implements OnInit {
     if (this.form.precio_valido_hasta < this.form.fecha_inicio) {
       return 'La validez del precio no puede ser anterior a la fecha inicial';
     }
-    const regular = Number(this.loteSeleccionado()?.precio_total_base ?? 0);
-    if (this.form.precio_descontado && regular && this.form.precio_descontado > regular) {
-      return 'El precio descontado no puede superar el precio regular';
+    const referencia = this.precioReferencia();
+    if (this.form.precio_descontado && referencia && this.form.precio_descontado > referencia) {
+      return `El precio final no puede superar el ${this.etiquetaPrecioReferencia().toLowerCase()}`;
     }
     if (!this.form.medio_pago.trim()) return 'Indica el medio de pago (ej. Transferencia Yape)';
     if (!this.form.voucher_numero.trim()) return 'Indica el número de voucher';

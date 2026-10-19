@@ -97,6 +97,9 @@ export class PagosListComponent implements OnInit, OnDestroy {
     this.socket.conectar();
     this.sub = this.socket.onEvento.subscribe((e) => {
       if (e.evento === 'pago:actualizado' || e.evento === 'contrato:pago_registrado') this.cargar(true);
+      if (e.evento === 'notificacion:nueva' && String((e.data as { tipo?: string })?.tipo ?? '').startsWith('pago_')) {
+        this.cargar(true);
+      }
     });
   }
 

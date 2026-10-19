@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -61,6 +62,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   subiendoContratoFirmado = signal(false);
   generandoProforma = signal(false);
+  private sub?: Subscription;
 
 
 
@@ -115,15 +117,21 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     this.cargar();
 
     this.socket.conectar();
-    this.socket.onEvento.subscribe((evento) => {
+    this.sub = this.socket.onEvento.subscribe((evento) => {
       if (evento.evento === 'separacion:actualizada') {
         const data = evento.data as { id?: number };
-        if (data?.id === this.idSeparacion) this.cargar();
+        if (data?.id === this.idSeparacion) this.cargar(true);
+      }
+      // Respaldo: la notificación privada llega aunque no estés en la sala del proyecto
+      if (evento.evento === 'notificacion:nueva') {
+        const n = evento.data as { data?: { id_separacion?: number } };
+        if (Number(n?.data?.id_separacion) === this.idSeparacion) this.cargar(true);
       }
     });
   }
 
   ngOnDestroy(): void {
+    this.sub?.unsubscribe();
     this.socket.desconectar();
   }
 
@@ -131,8 +139,8 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     return this.auth.usuario()?.rol?.clave ?? '';
   }
 
-  cargar(): void {
-    this.cargando.set(true);
+  cargar(silencioso = false): void {
+    if (!silencioso) this.cargando.set(true);
     this.separacionService.obtener(this.idSeparacion).subscribe({
       next: (res) => {
         this.separacion.set(res);

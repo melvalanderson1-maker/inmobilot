@@ -1,7 +1,7 @@
 """tipo de pago: inicial, contado, cuota, cuotas
 
 Revision ID: a9c3e7d15b42
-Revises: f4b8d2a6c917
+Revises: c7f2a9d4e813
 Create Date: 2026-10-19 00:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = 'a9c3e7d15b42'
-down_revision: Union[str, None] = 'f4b8d2a6c917'
+down_revision: Union[str, None] = 'c7f2a9d4e813'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

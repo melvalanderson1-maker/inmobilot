@@ -128,6 +128,16 @@ class Empresa(Base):
     representante_legal_dni = Column(String(20))
     representante_legal_estado_civil = Column(String(20))
     partida_poderes = Column(String(50))
+    representante_legal_genero = Column(String(1))   # M | F
+    representante_legal_domicilio = Column(String(250))
+    representante_legal_ocupacion = Column(String(100))
+    apoderado_nombre = Column(String(150))
+    apoderado_dni = Column(String(20))
+    apoderado_genero = Column(String(1))             # M | F
+    apoderado_estado_civil = Column(String(20))
+    apoderado_ocupacion = Column(String(100))
+    apoderado_domicilio = Column(String(250))
+    apoderado_partida_poderes = Column(String(50))
     oficina_registral = Column(String(100))
     domicilio_fiscal = Column(String(250))
     cuenta_bancaria = Column(String(50))
@@ -394,6 +404,7 @@ class Cliente(Base):
     dni_reverso_url = Column(String(300))
     fecha_nacimiento = Column(Date)
     estado_civil = Column(String(20))  # soltero | casado | viudo | divorciado
+    sexo = Column(String(1))  # M | F
     segundo_contacto_nombre = Column(String(150))
     segundo_contacto_telefono = Column(String(20))
     ruc = Column(String(20))

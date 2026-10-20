@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional, Any
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -314,6 +314,7 @@ class ClienteCreate(BaseModel):
     dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None  # soltero | casado | viudo | divorciado
+    sexo: Optional[str] = None
     segundo_contacto_nombre: Optional[str] = None
     segundo_contacto_telefono: Optional[str] = None
     ruc: Optional[str] = None
@@ -350,6 +351,7 @@ class ClienteUpdate(BaseModel):
     dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None
+    sexo: Optional[str] = None
     segundo_contacto_nombre: Optional[str] = None
     segundo_contacto_telefono: Optional[str] = None
     ruc: Optional[str] = None
@@ -375,6 +377,7 @@ class ClienteOut(ORMBase):
     dni_reverso_url: Optional[str] = None
     fecha_nacimiento: Optional[date] = None
     estado_civil: Optional[str] = None
+    sexo: Optional[str] = None
     segundo_contacto_nombre: Optional[str] = None
     segundo_contacto_telefono: Optional[str] = None
     ruc: Optional[str] = None
@@ -893,6 +896,9 @@ class DocumentoFirmadoIn(BaseModel):
     url: str
 
 
+class GenerarDocumentoIn(BaseModel):
+    firmante: Literal["gerente", "apoderado"] = "gerente"
+
 class DocumentoUbicacionCreate(BaseModel):
     tipo_documento: str
     ubicacion: str
@@ -968,6 +974,16 @@ class EmpresaConfigOut(ORMBase):
     representante_legal_dni: Optional[str] = None
     representante_legal_estado_civil: Optional[str] = None
     partida_poderes: Optional[str] = None
+    representante_legal_genero: Optional[str] = None
+    representante_legal_domicilio: Optional[str] = None
+    representante_legal_ocupacion: Optional[str] = None
+    apoderado_nombre: Optional[str] = None
+    apoderado_dni: Optional[str] = None
+    apoderado_genero: Optional[str] = None
+    apoderado_estado_civil: Optional[str] = None
+    apoderado_ocupacion: Optional[str] = None
+    apoderado_domicilio: Optional[str] = None
+    apoderado_partida_poderes: Optional[str] = None
     oficina_registral: Optional[str] = None
     domicilio_fiscal: Optional[str] = None
     cuenta_bancaria: Optional[str] = None
@@ -981,6 +997,16 @@ class EmpresaConfigUpdate(BaseModel):
     representante_legal_dni: Optional[str] = None
     representante_legal_estado_civil: Optional[str] = None
     partida_poderes: Optional[str] = None
+    representante_legal_genero: Optional[str] = None
+    representante_legal_domicilio: Optional[str] = None
+    representante_legal_ocupacion: Optional[str] = None
+    apoderado_nombre: Optional[str] = None
+    apoderado_dni: Optional[str] = None
+    apoderado_genero: Optional[str] = None
+    apoderado_estado_civil: Optional[str] = None
+    apoderado_ocupacion: Optional[str] = None
+    apoderado_domicilio: Optional[str] = None
+    apoderado_partida_poderes: Optional[str] = None
     oficina_registral: Optional[str] = None
     domicilio_fiscal: Optional[str] = None
     cuenta_bancaria: Optional[str] = None

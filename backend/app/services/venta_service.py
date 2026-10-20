@@ -4,6 +4,7 @@ LibreOffice headless."""
 import io
 import logging
 import os
+import re
 import subprocess
 import uuid
 from datetime import date
@@ -149,6 +150,37 @@ def _componer_pagos_detalle(pagos_previos: list[dict] | None) -> str:
 
 # --------------------------------------------- gramática comprador(es) ----
 
+_EC_MASC_FEM = {
+    "SOLTERO": "SOLTERA", "CASADO": "CASADA", "VIUDO": "VIUDA",
+    "DIVORCIADO": "DIVORCIADA", "SEPARADO": "SEPARADA",
+}
+_EC_FEM_MASC = {v: k for k, v in _EC_MASC_FEM.items()}
+
+
+def _es_mujer_valor(valor) -> bool:
+    """'F', 'f', 'Femenino', 'mujer'... -> True. Cualquier otro valor o vacío -> False (masculino)."""
+    return str(valor or "").strip().upper()[:1] == "F"
+
+
+def _es_mujer(cliente: m.Cliente) -> bool:
+    """Persona jurídica = femenino ("LA EMPRESA"). Persona natural: campo sexo/genero del cliente."""
+    if cliente.tipo_persona == "juridica":
+        return True
+    return _es_mujer_valor(getattr(cliente, "sexo", None) or getattr(cliente, "genero", None))
+
+
+def _estado_civil_segun_genero(valor, mujer: bool) -> str:
+    ec = (valor or "").strip().upper()
+    if not ec:
+        return "NO INDICADO"
+    base = re.split(r"[\s(/]", ec, maxsplit=1)[0]
+    if mujer and base in _EC_MASC_FEM:
+        return _EC_MASC_FEM[base]
+    if not mujer and base in _EC_FEM_MASC:
+        return _EC_FEM_MASC[base]
+    return base if base in _EC_MASC_FEM or base in _EC_FEM_MASC else ec
+
+
 def _nombre_cliente(cliente: m.Cliente) -> str:
     if cliente.tipo_persona == "juridica":
         return cliente.razon_social or cliente.nombres
@@ -160,29 +192,122 @@ def _documento_cliente(cliente: m.Cliente) -> str:
 
 
 def construir_contexto_compradores(clientes: list[m.Cliente], modo: str) -> dict:
-    """modo: 'preparatorio' (usa "PROMINENTE COMPRADOR") o 'minuta' (usa "COMPRADOR")."""
+    """modo: 'preparatorio' (usa "PROMINENTE COMPRADOR") o 'minuta' (usa "COMPRADOR").
+
+    Concordancia automática:
+      - 1 comprador  -> singular; varios -> plural.
+      - Singular: según su sexo. Plural: femenino solo si TODOS son mujeres; si hay un hombre, masculino.
+    """
+    mujeres = [_es_mujer(c) for c in clientes]
+    es_plural = len(clientes) > 1
+    fem = all(mujeres)
+
     bloques = []
-    for cli in clientes:
-        bloques.append(
-            f'{_nombre_cliente(cli)}, IDENTIFICADO CON DNI N° {_documento_cliente(cli)}, '
-            f'DE ESTADO CIVIL {(cli.estado_civil or "NO INDICADO").upper()}, '
-            f'CON DOMICILIO EN {cli.direccion or "NO INDICADO"}'
-        )
+    for cli, mujer in zip(clientes, mujeres):
+        juridica = cli.tipo_persona == "juridica"
+        partes = [
+            _nombre_cliente(cli),
+            f'{"IDENTIFICADA" if mujer else "IDENTIFICADO"} CON {"RUC" if juridica else "DNI"} N° {_documento_cliente(cli)}',
+        ]
+        if not juridica:
+            partes.append(f"DE ESTADO CIVIL {_estado_civil_segun_genero(cli.estado_civil, mujer)}")
+        partes.append(f'CON DOMICILIO EN {cli.direccion or "NO INDICADO"}')
+        bloques.append(", ".join(partes))
     comprador_bloque = bloques[0] if len(bloques) == 1 else "; ".join(bloques[:-1]) + " Y " + bloques[-1]
 
-    es_plural = len(clientes) > 1
-    if modo == "preparatorio":
-        denom = "LOS PROMINENTES COMPRADORES" if es_plural else "EL PROMINENTE COMPRADOR"
-    else:
-        denom = "LOS COMPRADORES" if es_plural else "EL COMPRADOR"
+    articulo = ("LAS" if fem else "LOS") if es_plural else ("LA" if fem else "EL")
+    comprador = {
+        (False, False): "COMPRADOR", (True, False): "COMPRADORA",
+        (False, True): "COMPRADORES", (True, True): "COMPRADORAS",
+    }[(fem, es_plural)]
+    prominente = ("PROMINENTES " if es_plural else "PROMINENTE ") if modo == "preparatorio" else ""
+    este_ultimo = {
+        (False, False): "ESTE ÚLTIMO", (True, False): "ESTA ÚLTIMA",
+        (False, True): "ESTOS ÚLTIMOS", (True, True): "ESTAS ÚLTIMAS",
+    }[(fem, es_plural)]
 
     return {
         "comprador_bloque": comprador_bloque,
-        "comprador_denominacion": denom,
+        "comprador_denominacion": f"{articulo} {prominente}{comprador}",
         "comprador_quien": "A QUIENES" if es_plural else "A QUIEN",
         "comprador_se_le": "SE LES" if es_plural else "SE LE",
         "comprador_sufijo_plural": "S" if es_plural else "",
+        "comprador_n": "N" if es_plural else "",                       # DECLARA / DECLARAN
+        "comprador_adj": ("AS" if es_plural else "A") if fem else ("OS" if es_plural else "O"),  # INTERESADO/A/OS/AS
+        "comprador_este_ultimo": este_ultimo,
+        "comprador_rol_firma": "COMPRADORA" if fem else "COMPRADOR",
     }
+
+
+# --------------------------------------- quién firma por la empresa ----
+
+FIRMANTES = ("gerente", "apoderado")
+
+
+def datos_firmante(empresa: m.Empresa, firmante: str) -> dict:
+    """Datos de quien comparece por la empresa. 'gerente' usa las columnas actuales; 'apoderado' las apoderado_*."""
+    if firmante not in FIRMANTES:
+        raise HTTPException(status_code=422, detail="Firmante no válido: use 'gerente' o 'apoderado'")
+    if firmante == "apoderado":
+        if not (getattr(empresa, "apoderado_nombre", None) and getattr(empresa, "apoderado_dni", None)):
+            raise HTTPException(
+                status_code=422,
+                detail="La empresa no tiene un apoderado registrado (nombre y DNI). Complete sus datos o firme el gerente general.",
+            )
+        return {
+            "nombre": empresa.apoderado_nombre,
+            "dni": empresa.apoderado_dni,
+            "genero": getattr(empresa, "apoderado_genero", None),
+            "estado_civil": getattr(empresa, "apoderado_estado_civil", None),
+            "ocupacion": getattr(empresa, "apoderado_ocupacion", None),
+            "domicilio": getattr(empresa, "apoderado_domicilio", None),
+            "partida_poderes": getattr(empresa, "apoderado_partida_poderes", None),
+        }
+    return {
+        "nombre": empresa.representante_legal_nombre or "",
+        "dni": empresa.representante_legal_dni or "",
+        "genero": getattr(empresa, "representante_legal_genero", None),
+        "estado_civil": empresa.representante_legal_estado_civil,
+        "ocupacion": getattr(empresa, "representante_legal_ocupacion", None) or "EMPRESARIO",
+        "domicilio": getattr(empresa, "representante_legal_domicilio", None),
+        "partida_poderes": empresa.partida_poderes,
+    }
+
+
+def construir_bloque_representante(documento: str, firmante: str, rep: dict, empresa: m.Empresa) -> str:
+    """Texto con el que la empresa comparece. documento: 'contrato' | 'minuta'."""
+    mujer = _es_mujer_valor(rep["genero"])
+    ident = "IDENTIFICADA" if mujer else "IDENTIFICADO"
+    cargo = "SU GERENTE GENERAL" if firmante == "gerente" else ("SU APODERADA" if mujer else "SU APODERADO")
+    nombre, dni = rep["nombre"], rep["dni"]
+    partida = (rep.get("partida_poderes") or "").strip()
+    oficina = empresa.oficina_registral or ""
+
+    if documento == "contrato":
+        if firmante == "gerente":
+            txt = (
+                f"{cargo} {nombre}, {ident} CON DNI N° {dni}, "
+                f"FACULTADO SEGÚN PODERES INSCRITOS EN LA PARTIDA N° {partida} "
+                f"DEL REGISTRO DE PERSONAS JURÍDICAS DE LA OFICINA REGISTRAL DE {oficina}, "
+                f"CON DOMICILIO EN {empresa.domicilio_fiscal or ''}"
+            )
+        else:  # el modelo del apoderado no cita partida de poderes
+            txt = f"{cargo} {nombre}, {ident} CON DNI N° {dni}, CON DOMICILIO EN {empresa.domicilio_fiscal or ''}"
+    else:
+        partes = [f"{cargo} {nombre}", f"{ident} CON DOCUMENTO NACIONAL DE IDENTIDAD NÚMERO {dni}"]
+        if rep.get("estado_civil"):
+            partes.append(f"DE ESTADO CIVIL {_estado_civil_segun_genero(rep['estado_civil'], mujer)}")
+        if rep.get("ocupacion"):
+            partes.append(f"DE OCUPACIÓN {rep['ocupacion']}")
+        if rep.get("domicilio"):
+            partes.append(f"CON DOMICILIO EN {rep['domicilio']}")
+        if partida:
+            partes.append(
+                f"CUYAS FACULTADES CONSTAN INSCRITAS EN LA PARTIDA N° {partida} "
+                f"DEL REGISTRO DE PERSONAS JURÍDICAS DE LA OFICINA REGISTRAL DE {oficina}"
+            )
+        txt = ", ".join(partes)
+    return txt.upper()
 
 
 # ------------------------------------------------- firmas y vouchers ----
@@ -242,11 +367,11 @@ def _vouchers_para_documento(tpl, venta: m.Venta) -> list:
     return imagenes
 
 
-def construir_firmas(empresa: m.Empresa, clientes: list[m.Cliente]) -> list[dict]:
-    """Filas de 2 firmantes: la vendedora y cada comprador. Todo sale de la venta, nada fijo en la plantilla."""
+def construir_firmas(rep: dict, clientes: list[m.Cliente]) -> list[dict]:
+    """Filas de 2 firmantes: quien firma por la vendedora y cada comprador. Todo sale de la venta."""
     firmantes = [(
-        (empresa.representante_legal_nombre or "").upper(),
-        f"LA VENDEDORA · DNI N° {empresa.representante_legal_dni or ''}",
+        (rep["nombre"] or "").upper(),
+        f"LA VENDEDORA · DNI N° {rep['dni'] or ''}",
     )]
     for cli in clientes:
         if cli.tipo_persona == "juridica":
@@ -257,7 +382,7 @@ def construir_firmas(empresa: m.Empresa, clientes: list[m.Cliente]) -> list[dict
             )
         else:
             nombre = _nombre_cliente(cli)
-            detalle = f"COMPRADOR · DNI N° {_documento_cliente(cli)}"
+            detalle = f"{'COMPRADORA' if _es_mujer(cli) else 'COMPRADOR'} · DNI N° {_documento_cliente(cli)}"
         firmantes.append((nombre.upper(), detalle))
 
     filas = []
@@ -273,8 +398,9 @@ def construir_firmas(empresa: m.Empresa, clientes: list[m.Cliente]) -> list[dict
 
 # --------------------------------------------------------- generación -----
 
-def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
-    """Rellena la plantilla según forma_pago y devuelve el PDF ya convertido."""
+def generar_documento_venta(db: Session, venta: m.Venta, firmante: str = "gerente") -> bytes:
+    """Rellena la plantilla según forma_pago y devuelve el PDF ya convertido.
+    firmante: 'gerente' (gerente general) o 'apoderado' = quién comparece por la empresa."""
     empresa = db.query(m.Empresa).filter(m.Empresa.id == venta.id_empresa).first()
     lote = venta.lote
     clientes = [vc.cliente for vc in venta.clientes_rel]
@@ -288,6 +414,7 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
 
     modo = "preparatorio" if venta.forma_pago == m.FormaPagoEnum.credito else "minuta"
     ctx = construir_contexto_compradores(clientes, modo)
+    rep = datos_firmante(empresa, firmante)
 
     proyecto = db.query(m.Proyecto).filter(m.Proyecto.id == venta.id_proyecto).first()
     proyecto_ubicacion = ""
@@ -303,10 +430,9 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
     ctx.update({
         "empresa_razon_social": empresa.nombre_comercial or empresa.razon_social,
         "empresa_ruc": empresa.ruc or "",
-        "empresa_representante_nombre": empresa.representante_legal_nombre or "",
-        "empresa_representante_dni": empresa.representante_legal_dni or "",
-        "empresa_representante_estado_civil": empresa.representante_legal_estado_civil or "",
-        "empresa_partida_poderes": empresa.partida_poderes or "",
+        "empresa_representante_bloque": construir_bloque_representante(
+            "contrato" if modo == "preparatorio" else "minuta", firmante, rep, empresa
+        ),
         "empresa_oficina_registral": empresa.oficina_registral or "",
         "empresa_domicilio": empresa.domicilio_fiscal or "",
         "empresa_cuenta_bancaria": empresa.cuenta_bancaria or "",
@@ -343,7 +469,7 @@ def generar_documento_venta(db: Session, venta: m.Venta) -> bytes:
         "fecha_deposito": "", "numero_operacion": "",
         "plazo_texto": "", "fecha_maxima_pago": "", "tasa_interes_compensatorio": "",
         "texto_intereses": "",
-        "firmas": construir_firmas(empresa, clientes),
+        "firmas": construir_firmas(rep, clientes),
         "vouchers": [],
     })
 

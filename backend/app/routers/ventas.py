@@ -398,12 +398,14 @@ def obtener_venta(
 @router.post("/{id_venta}/generar-documento", response_model=s.VentaOut)
 async def generar_documento(
     id_venta: int,
+    payload: s.GenerarDocumentoIn | None = None,
     usuario: m.Usuario = Depends(require_permiso("crear_venta")),
     db: Session = Depends(get_db),
 ):
     venta = svc.cargar_venta(db, id_venta, usuario)
     _exigir_inicial_validada(db, venta)
-    pdf_bytes = svc.generar_documento_venta(db, venta)
+    firmante = payload.firmante if payload else "gerente"
+    pdf_bytes = svc.generar_documento_venta(db, venta, firmante=payload.firmante if payload else "gerente")
     venta.documento_generado_url = svc.guardar_documento_pdf(venta.id, pdf_bytes)
     venta.estado = m.EstadoVentaEnum.documento_generado
     db.commit()

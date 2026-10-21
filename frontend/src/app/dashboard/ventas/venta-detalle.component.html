@@ -66,6 +66,23 @@
               <div class="vd-flow-body">
                 <strong>Generar {{ nombreDocumento() }}</strong>
                 <span class="vd-muted">{{ venta()!.documento_generado_url ? 'Documento listo para imprimir y firmar.' : 'Aún no se ha generado.' }}</span>
+                                @if (!venta()!.documento_generado_url) {
+                  <div class="vd-firmante" role="radiogroup" aria-label="Quién firma por la empresa">
+                    <span class="vd-muted">Firma por la empresa</span>
+                    <div class="vd-seg">
+                      <button type="button" role="radio" class="vd-btn vd-btn-sm"
+                              [attr.aria-checked]="firmante() === 'gerente'"
+                              [class.vd-btn-primary]="firmante() === 'gerente'"
+                              [class.vd-btn-ghost]="firmante() !== 'gerente'"
+                              (click)="firmante.set('gerente')">Gerente general</button>
+                      <button type="button" role="radio" class="vd-btn vd-btn-sm"
+                              [attr.aria-checked]="firmante() === 'apoderado'"
+                              [class.vd-btn-primary]="firmante() === 'apoderado'"
+                              [class.vd-btn-ghost]="firmante() !== 'apoderado'"
+                              (click)="firmante.set('apoderado')">Apoderado</button>
+                    </div>
+                  </div>
+                }
                 <div class="vd-actions">
                   @if (venta()!.documento_generado_url) {
                     <a class="vd-btn vd-btn-ghost vd-btn-sm" [href]="venta()!.documento_generado_url!" target="_blank" rel="noopener">Ver documento ↗</a>

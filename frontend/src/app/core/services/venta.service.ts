@@ -14,8 +14,8 @@ export class VentaService {
     return this.api.get<Venta>(`/ventas/${id}`);
   }
 
-  generarDocumento(id: number) {
-    return this.api.post<Venta>(`/ventas/${id}/generar-documento`, {});
+  generarDocumento(id: number, firmante: 'gerente' | 'apoderado' = 'gerente') {
+    return this.api.post<Venta>(`/ventas/${id}/generar-documento`, { firmante });
   }
 
   subirDocumentoFirmado(id: number, url: string) {

@@ -567,3 +567,6 @@
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+.vd-firmante { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.vd-seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }

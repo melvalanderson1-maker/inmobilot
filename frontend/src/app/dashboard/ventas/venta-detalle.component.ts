@@ -44,6 +44,9 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   subiendoFirmado = signal(false);
 
+  /** Quién firma por la empresa en el documento que se va a generar */
+  firmante = signal<'gerente' | 'apoderado'>('gerente');
+
   // ---------- Datos derivados ----------
 
   /** Línea de tiempo del trámite */
@@ -174,7 +177,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   generarDocumento(): void {
     this.procesando.set(true);
-    this.ventaService.generarDocumento(this.idVenta).subscribe({
+    this.ventaService.generarDocumento(this.idVenta, this.firmante()).subscribe({
       next: () => {
         this.procesando.set(false);
         this.toastService.exito(`${this.nombreDocumento()} generado correctamente`);

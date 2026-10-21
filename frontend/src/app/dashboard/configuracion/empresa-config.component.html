@@ -56,6 +56,66 @@
             </div>
           </div>
         </section>
+
+        <section class="card">
+          <h3>Gerente general — datos para la minuta</h3>
+          <div class="form-grid">
+            <div class="campo">
+              <label>Sexo del gerente</label>
+              <select [(ngModel)]="form.representante_legal_genero">
+                <option value="">Selecciona</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Ocupación</label>
+              <input type="text" [(ngModel)]="form.representante_legal_ocupacion" placeholder="EMPRESARIO" />
+            </div>
+            <div class="campo campo-span-2">
+              <label>Domicilio del gerente</label>
+              <input type="text" [(ngModel)]="form.representante_legal_domicilio" placeholder="JR. JOSE OLAYA N° 994, HUANCAYO, JUNÍN" />
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>Apoderado(a)</h3>
+          <div class="form-grid">
+            <div class="campo campo-span-2">
+              <label>Nombre completo</label>
+              <input type="text" [(ngModel)]="form.apoderado_nombre" />
+            </div>
+            <div class="campo">
+              <label>DNI</label>
+              <input type="text" [(ngModel)]="form.apoderado_dni" />
+            </div>
+            <div class="campo">
+              <label>Sexo</label>
+              <select [(ngModel)]="form.apoderado_genero">
+                <option value="">Selecciona</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Estado civil</label>
+              <input type="text" [(ngModel)]="form.apoderado_estado_civil" placeholder="SOLTERA" />
+            </div>
+            <div class="campo">
+              <label>Ocupación</label>
+              <input type="text" [(ngModel)]="form.apoderado_ocupacion" placeholder="EMPRESARIA" />
+            </div>
+            <div class="campo">
+              <label>Partida de poderes <em>(opcional)</em></label>
+              <input type="text" [(ngModel)]="form.apoderado_partida_poderes" />
+            </div>
+            <div class="campo campo-span-2">
+              <label>Domicilio</label>
+              <input type="text" [(ngModel)]="form.apoderado_domicilio" placeholder="AV. MÁRTIRES DE TSIRIARI N° 370, MAZAMARI, SATIPO, JUNÍN" />
+            </div>
+          </div>
+        </section>
       </div>
       <aside class="col-side">
         <div class="card card-resumen">

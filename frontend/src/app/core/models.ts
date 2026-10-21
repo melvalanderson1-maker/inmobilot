@@ -698,6 +698,16 @@ export interface EmpresaConfig {
   representante_legal_dni?: string;
   representante_legal_estado_civil?: string;
   partida_poderes?: string;
+  representante_legal_genero?: string;
+  representante_legal_domicilio?: string;
+  representante_legal_ocupacion?: string;
+  apoderado_nombre?: string;
+  apoderado_dni?: string;
+  apoderado_genero?: string;
+  apoderado_estado_civil?: string;
+  apoderado_ocupacion?: string;
+  apoderado_domicilio?: string;
+  apoderado_partida_poderes?: string;
   oficina_registral?: string;
   domicilio_fiscal?: string;
   cuenta_bancaria?: string;

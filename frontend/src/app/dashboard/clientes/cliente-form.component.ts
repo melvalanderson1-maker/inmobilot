@@ -40,6 +40,7 @@ export class ClienteFormComponent implements OnInit {
     dni_reverso_url: null as string | null,
     fecha_nacimiento: '',
     estado_civil: '' as EstadoCivil | '',
+    sexo: '' as 'M' | 'F' | '',
     segundo_contacto_nombre: '',
     segundo_contacto_telefono: '',
     ruc: '',
@@ -102,6 +103,7 @@ export class ClienteFormComponent implements OnInit {
             dni_reverso_url: c.dni_reverso_url ?? null,
             fecha_nacimiento: c.fecha_nacimiento ?? '',
             estado_civil: c.estado_civil ?? '',
+            sexo: (c.sexo ?? '') as 'M' | 'F' | '',
             segundo_contacto_nombre: c.segundo_contacto_nombre ?? '',
             segundo_contacto_telefono: c.segundo_contacto_telefono ?? '',
             ruc: c.ruc ?? '',
@@ -235,6 +237,10 @@ export class ClienteFormComponent implements OnInit {
       if (!this.form.nombres.trim() || !this.form.apellidos.trim()) {
         return 'Nombres y apellidos son obligatorios';
       }
+
+      if (!this.form.sexo) {
+        return 'Indica el sexo del cliente (se usa para redactar el contrato)';
+      }
       if (this.form.tipo_documento === 'DNI' && !/^\d{8}$/.test(this.form.numero_documento.trim())) {
         return 'El DNI debe tener 8 dígitos';
       }
@@ -284,6 +290,7 @@ export class ClienteFormComponent implements OnInit {
         dni_reverso_url: this.form.dni_reverso_url || undefined,
         fecha_nacimiento: this.form.fecha_nacimiento || undefined,
         estado_civil: (this.form.estado_civil || undefined) as EstadoCivil | undefined,
+        sexo: (this.form.sexo || undefined) as 'M' | 'F' | undefined,
         segundo_contacto_nombre: this.form.segundo_contacto_nombre || undefined,
         segundo_contacto_telefono: this.form.segundo_contacto_telefono || undefined,
         ruc: this.form.ruc || undefined,
@@ -321,6 +328,7 @@ export class ClienteFormComponent implements OnInit {
         dni_reverso_url: this.form.dni_reverso_url || undefined,
         fecha_nacimiento: this.form.fecha_nacimiento || undefined,
         estado_civil: (this.form.estado_civil || undefined) as EstadoCivil | undefined,
+        sexo: (this.form.sexo || undefined) as 'M' | 'F' | undefined,
         segundo_contacto_nombre: this.form.segundo_contacto_nombre || undefined,
         segundo_contacto_telefono: this.form.segundo_contacto_telefono || undefined,
         ruc: this.form.ruc || undefined,

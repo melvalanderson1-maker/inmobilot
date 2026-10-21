@@ -165,6 +165,7 @@ def crear_cliente(
         dni_reverso_url=payload.dni_reverso_url,
         fecha_nacimiento=payload.fecha_nacimiento,
         estado_civil=payload.estado_civil,
+        sexo=payload.sexo,
         segundo_contacto_nombre=payload.segundo_contacto_nombre,
         segundo_contacto_telefono=payload.segundo_contacto_telefono,
         ruc=payload.ruc,

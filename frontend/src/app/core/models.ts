@@ -282,6 +282,7 @@ export interface ClienteCreate {
   dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
+  sexo?: 'M' | 'F';
   segundo_contacto_nombre?: string;
   segundo_contacto_telefono?: string;
   ruc?: string;
@@ -300,6 +301,7 @@ export interface ClienteUpdate {
   dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
+  sexo?: 'M' | 'F';
   segundo_contacto_nombre?: string;
   segundo_contacto_telefono?: string;
   ruc?: string;
@@ -446,6 +448,7 @@ export interface Cliente {
   dni_reverso_url?: string;
   fecha_nacimiento?: string;
   estado_civil?: EstadoCivil;
+  sexo?: 'M' | 'F' | null;
   segundo_contacto_nombre?: string;
   segundo_contacto_telefono?: string;
   ruc?: string;

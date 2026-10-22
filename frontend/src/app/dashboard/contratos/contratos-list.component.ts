@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/services/api.service';
@@ -21,6 +21,7 @@ import {
   PagoCreate,
   FormaPago,
   Venta,
+  DocumentoUbicacion,
 } from '../../core/models';
 
 interface ResumenContrato {
@@ -47,6 +48,32 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   contratos = signal<Contrato[]>([]);
   lotesLibres = signal<Lote[]>([]);
   cargando = signal(false);
+
+    // ---- Filtro por fase documental ----
+  faseFiltro = signal<string>('todas');
+  readonly fases = [
+    { clave: 'todas', etiqueta: 'Todos' },
+    { clave: 'iniciada', etiqueta: 'Iniciada' },
+    { clave: 'documento_generado', etiqueta: 'Doc. generado' },
+    { clave: 'documento_firmado', etiqueta: 'Firmado' },
+    { clave: 'escriturada', etiqueta: 'Escriturada' },
+    { clave: 'finalizada', etiqueta: 'Finalizada' },
+  ];
+
+  contratosFiltrados = computed(() => {
+    const f = this.faseFiltro();
+    const todos = this.contratos();
+    return f === 'todas' ? todos : todos.filter((c) => c.fase_documental === f);
+  });
+
+  conteoFases = computed(() => {
+    const m: Record<string, number> = { todas: this.contratos().length };
+    for (const c of this.contratos()) {
+      if (!c.fase_documental) continue; // sin venta: no pertenece a ninguna fase
+      m[c.fase_documental] = (m[c.fase_documental] ?? 0) + 1;
+    }
+    return m;
+  });
 
   // ---- Drawer de detalle ----
   drawerAbierto = signal(false);
@@ -162,6 +189,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
         }
       }
       if (evento.evento === 'venta:nueva' || evento.evento === 'venta:actualizada') {
+        this.cargarContratos(true); // refresca conteos y burbujas en vivo
         const abierto = this.contratoDrawer();
         if (abierto) this.cargarVenta(abierto.id);
       }
@@ -416,6 +444,24 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.modalComprobanteAbierto.set(true);
   }
 
+
+  nombreDocBase(c: Contrato): string {
+    return c.forma_pago === 'contado' ? 'Minuta' : 'Contrato prep.';
+  }
+
+  etiquetaFase(f?: string | null): string {
+    if (!f) return 'Sin venta';
+    if (f === 'cancelada') return 'Cancelada';
+    if (f === 'anulada') return 'Anulada';
+    return this.fases.find((x) => x.clave === f)?.etiqueta ?? f;
+  }
+
+  /** Último registro por tipo de documento (evita duplicados en el drawer) */
+  ubicacionesActuales(venta: Venta): DocumentoUbicacion[] {
+    const m = new Map<string, DocumentoUbicacion>();
+    for (const u of [...venta.ubicaciones].sort((a, b) => a.id - b.id)) m.set(u.tipo_documento, u);
+    return [...m.values()];
+  }
   clienteTitular(contrato: Contrato): ContratoClienteInfo | undefined {
     return contrato.clientes[0];
   }

@@ -22,7 +22,13 @@
       </select>
     </div>
     @if (!cargando() && contratos().length > 0) {
-      <span class="contador">{{ contratos().length }} {{ contratos().length === 1 ? 'contrato' : 'contratos' }}</span>
+      <div class="fases-chips" role="group" aria-label="Filtrar por fase del documento">
+        @for (f of fases; track f.clave) {
+          <button type="button" class="fase-chip" [class.activo]="faseFiltro() === f.clave" (click)="faseFiltro.set(f.clave)">
+            {{ f.etiqueta }} <strong>{{ conteoFases()[f.clave] ?? 0 }}</strong>
+          </button>
+        }
+      </div>
     }
   </section>
 
@@ -48,11 +54,12 @@
             <th>Cliente</th>
             <th class="th-derecha">Monto</th>
             <th>Forma</th>
+            <th>Documento</th>
             <th>Estado</th>
           </tr>
         </thead>
         <tbody>
-          @for (c of contratos(); track c.id) {
+          @for (c of contratosFiltrados(); track c.id) {
             <tr class="fila-contrato" tabindex="0" (click)="abrirDrawer(c)" (keydown.enter)="abrirDrawer(c)">
               <td data-label="Contrato" class="celda-principal">
                 <span class="numero">{{ c.numero_contrato }}</span>
@@ -72,6 +79,14 @@
               </td>
               <td data-label="Monto" class="monto">S/ {{ c.precio_total }}</td>
               <td data-label="Forma"><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
+              <td data-label="Documento">
+                <span class="chip fase-burbuja" [attr.data-fase]="c.fase_documental ?? 'sin_venta'">
+                  {{ nombreDocBase(c) }} · {{ etiquetaFase(c.fase_documental) }}
+                </span>
+                @if (c.ubicacion_actual) {
+                  <span class="documento">{{ c.ubicacion_actual }}{{ c.tramite_actual ? ' · ' + c.tramite_actual : '' }}</span>
+                }
+              </td>
               <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
             </tr>
           }
@@ -146,7 +161,7 @@
               <span>Estado de la venta</span>
               <span class="chip chip-forma">{{ venta.estado }}</span>
             </div>
-            @for (u of venta.ubicaciones; track u.id) {
+            @for (u of ubicacionesActuales(venta); track u.id) {
               <div class="doc-fila">
                 <span>{{ u.tipo_documento }} · {{ u.ubicacion }}{{ u.notaria_nombre ? ' (' + u.notaria_nombre + ')' : '' }}</span>
                 <span class="chip chip-forma">{{ u.estado_tramite }}</span>

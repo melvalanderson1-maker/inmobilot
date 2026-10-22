@@ -371,6 +371,10 @@ export interface Contrato {
   estado: EstadoContrato;
   lote?: ContratoLote;
   clientes: ContratoClienteInfo[];
+  id_venta?: number | null;
+  fase_documental?: string | null;   // = estado de la venta
+  ubicacion_actual?: string | null;  // ubicación del documento en curso
+  tramite_actual?: string | null;    // pendiente | en_proceso | concretado
 }
 
 

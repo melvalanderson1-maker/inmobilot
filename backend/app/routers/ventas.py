@@ -1,5 +1,5 @@
 import logging
-
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -448,9 +448,19 @@ async def registrar_ubicacion_documento(
     venta = svc.cargar_venta(db, id_venta, usuario)
     registro = m.DocumentoUbicacion(
         id_venta=venta.id, actualizado_por=usuario.id,
+        fecha_actualizacion=date.today(),
         **payload.model_dump(),
     )
     db.add(registro)
+
+    # Escritura concretada => la venta pasa sola a "escriturada"
+    if (
+        payload.tipo_documento == "escritura"
+        and payload.estado_tramite == "concretado"
+        and venta.estado == m.EstadoVentaEnum.documento_firmado
+    ):
+        venta.estado = m.EstadoVentaEnum.escriturada
+
     db.commit()
     db.refresh(registro)
     await notificar_venta("venta:actualizada", _resumen_socket(venta), id_proyecto=venta.id_proyecto)

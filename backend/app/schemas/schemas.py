@@ -446,6 +446,23 @@ class ContratoClienteOut(ORMBase):
     rol: RolClienteContratoEnum
 
 
+_ETIQ_UBICACION = {
+    "notaria": "Notaría", "juez_de_paz": "Juez de Paz", "municipalidad": "Municipalidad",
+    "archivo_central": "Archivo Central", "otro": "Otro",
+}
+_ETIQ_TRAMITE = {"pendiente": "Pendiente", "en_proceso": "En proceso", "concretado": "Concretado"}
+
+
+def _ubicacion_vigente(venta):
+    """Último registro de ubicación de la venta -> (texto de ubicación, texto de estado)."""
+    if not venta or not venta.ubicaciones:
+        return None, None
+    u = max(venta.ubicaciones, key=lambda x: (x.created_at or datetime.min, x.id))
+    texto = _ETIQ_UBICACION.get(u.ubicacion, u.ubicacion)
+    if u.notaria_nombre:
+        texto = f"{texto} · {u.notaria_nombre}"
+    return texto, _ETIQ_TRAMITE.get(u.estado_tramite, u.estado_tramite)
+
 class ContratoOut(ORMBase):
     id: int
     numero_contrato: str
@@ -463,10 +480,22 @@ class ContratoOut(ORMBase):
     frecuencia_cuota: str
     lote: Optional[ContratoLoteOut] = None
     clientes: list[ContratoClienteOut] = []
+    id_venta: Optional[int] = None
+    fase_documental: Optional[str] = None
+    ubicacion_actual: Optional[str] = None
+    tramite_actual: Optional[str] = None
+
+
 
     @staticmethod
     def desde_contrato(contrato) -> "ContratoOut":
+        venta = getattr(contrato, "venta", None)
+        ubic, tramite = _ubicacion_vigente(venta)
         return ContratoOut(
+            id_venta=venta.id if venta else None,
+            fase_documental=venta.estado.value if venta else None,
+            ubicacion_actual=ubic,
+            tramite_actual=tramite,
             id=contrato.id,
             numero_contrato=contrato.numero_contrato,
             id_lote=contrato.id_lote,

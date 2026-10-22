@@ -1,7 +1,7 @@
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.database import get_db
 from app.deps import require_modulo, require_permiso, get_ids_proyectos_usuario
@@ -168,6 +168,7 @@ def listar_contratos(
         .options(
             joinedload(m.Contrato.lote),
             joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
+            selectinload(m.Contrato.venta).selectinload(m.Venta.ubicaciones),
         )
         .filter(m.Contrato.id_proyecto == id_proyecto)
         .order_by(m.Contrato.fecha_contrato.desc())

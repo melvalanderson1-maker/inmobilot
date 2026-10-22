@@ -8,9 +8,17 @@ import { VentaService } from '../../core/services/venta.service';
 import { SocketService } from '../../core/services/socket.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ContratoService } from '../../core/services/contrato.service';
-import { Venta, DocumentoUbicacionCreate, CronogramaCuota } from '../../core/models';
+import { Venta, DocumentoUbicacion, DocumentoUbicacionCreate, CronogramaCuota } from '../../core/models';
 
 type EstadoPaso = 'hecho' | 'actual' | 'pendiente';
+
+
+interface DocTramite {
+  tipo: string;
+  etiqueta: string;
+  actual: DocumentoUbicacion | null;
+  historial: DocumentoUbicacion[];
+}
 
 @Component({
   selector: 'app-venta-detalle',
@@ -44,6 +52,12 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   subiendoFirmado = signal(false);
 
+    readonly estadosTramite = [
+    { valor: 'pendiente', etiqueta: 'Pendiente' },
+    { valor: 'en_proceso', etiqueta: 'En proceso' },
+    { valor: 'concretado', etiqueta: 'Concretado' },
+  ];
+
   /** Quién firma por la empresa en el documento que se va a generar */
   firmante = signal<'gerente' | 'apoderado'>('gerente');
 
@@ -70,6 +84,20 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   anulada = computed(() => {
     const e = this.venta()?.estado;
     return e === 'cancelada' || e === 'anulada';
+  });
+
+    /** Un renglón por documento; "actual" = el último registro de ese documento */
+  documentos = computed<DocTramite[]>(() => {
+    const v = this.venta();
+    if (!v) return [];
+    const base = v.forma_pago === 'contado' ? 'minuta' : 'contrato_preparatorio';
+    const ordenadas = [...(v.ubicaciones ?? [])].sort(
+      (a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '') || b.id - a.id
+    );
+    return [base, 'escritura', 'titulo'].map((tipo) => {
+      const historial = ordenadas.filter((u) => u.tipo_documento === tipo);
+      return { tipo, etiqueta: this.etiquetaTipoDocumento(tipo), actual: historial[0] ?? null, historial };
+    });
   });
 
   pagosPrevios = computed(() => (this.venta()?.pagos_previos ?? []).map((p) => ({ monto: Number(p.monto), fecha: p.fecha })));
@@ -239,12 +267,52 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   // ---------- Ubicación física ----------
 
   abrirUbicacion(): void {
+    this.ubicarDocumento(this.venta()?.forma_pago === 'contado' ? 'minuta' : 'contrato_preparatorio');
+  }
+
+  /** Abre el formulario con el documento ya elegido y, si existe, con su última ubicación */
+  ubicarDocumento(tipo: string): void {
+    const actual = this.documentos().find((d) => d.tipo === tipo)?.actual;
     this.ubicacionForm = {
-      tipo_documento: this.venta()?.forma_pago === 'contado' ? 'minuta' : 'contrato_preparatorio',
-      ubicacion: 'notaria',
-      estado_tramite: 'en_proceso',
+      tipo_documento: tipo,
+      ubicacion: actual?.ubicacion ?? 'notaria',
+      notaria_nombre: actual?.notaria_nombre,
+      estado_tramite: actual?.estado_tramite ?? 'en_proceso',
+      numero_tramite: actual?.numero_tramite,
+      numero_titulo: actual?.numero_titulo,
     };
     this.mostrarUbicacion.set(true);
+  }
+
+  /** Cambio de estado en un clic: repite la última ubicación con el nuevo estado */
+  cambiarTramite(tipo: string, estado: string): void {
+    const actual = this.documentos().find((d) => d.tipo === tipo)?.actual;
+    if (!actual) {
+      this.ubicarDocumento(tipo);
+      return;
+    }
+    if (actual.estado_tramite === estado) return;
+    this.procesando.set(true);
+    this.ventaService
+      .registrarUbicacion(this.idVenta, {
+        tipo_documento: tipo,
+        ubicacion: actual.ubicacion,
+        notaria_nombre: actual.notaria_nombre,
+        numero_tramite: actual.numero_tramite,
+        numero_titulo: actual.numero_titulo,
+        estado_tramite: estado,
+      })
+      .subscribe({
+        next: () => {
+          this.procesando.set(false);
+          this.toastService.exito(`${this.etiquetaTipoDocumento(tipo)}: ${this.etiquetaTramite(estado)}`);
+          this.cargar();
+        },
+        error: (err) => {
+          this.procesando.set(false);
+          this.toastService.error(err?.error?.detail ?? 'No se pudo cambiar el estado');
+        },
+      });
   }
 
   guardarUbicacion(): void {

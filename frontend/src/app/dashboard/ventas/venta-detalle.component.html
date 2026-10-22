@@ -189,28 +189,54 @@
           <header class="vd-card-head">
             <div>
               <h2>Ubicación física de documentos</h2>
-              <p>Dónde está cada documento y el estado de su trámite.</p>
+              <p>Dónde está cada documento y en qué punto del trámite va.</p>
             </div>
-            <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm" (click)="abrirUbicacion()" [disabled]="anulada()">+ Registrar</button>
           </header>
 
-          @if (venta()!.ubicaciones.length === 0) {
-            <p class="vd-muted">Sin registros de ubicación todavía.</p>
-          } @else {
-            <ul class="vd-locs">
-              @for (u of venta()!.ubicaciones; track u.id) {
-                <li class="vd-loc">
-                  <div class="vd-loc-main">
-                    <strong>{{ etiquetaTipoDocumento(u.tipo_documento) }}</strong>
-                    <span>{{ etiquetaUbicacion(u.ubicacion) }}@if (u.notaria_nombre) { · {{ u.notaria_nombre }} }</span>
-                    @if (u.numero_tramite) { <span>Trámite {{ u.numero_tramite }}</span> }
-                    @if (u.observaciones) { <span class="vd-loc-note">{{ u.observaciones }}</span> }
-                  </div>
-                  <span class="vd-mini" [attr.data-tramite]="u.estado_tramite">{{ etiquetaTramite(u.estado_tramite) }}</span>
-                </li>
-              }
-            </ul>
-          }
+          <ul class="vd-dt-list">
+            @for (d of documentos(); track d.tipo) {
+              <li class="vd-dt" [attr.data-tramite]="d.actual?.estado_tramite ?? 'sin_ubicar'">
+                <div class="vd-dt-main">
+                  <strong>{{ d.etiqueta }}</strong>
+                  @if (d.actual; as a) {
+                    <span>
+                      {{ etiquetaUbicacion(a.ubicacion) }}@if (a.notaria_nombre) { · {{ a.notaria_nombre }} }@if (a.numero_tramite) { · Trám. {{ a.numero_tramite }} }
+                    </span>
+                  } @else {
+                    <span class="vd-muted">Sin ubicar todavía</span>
+                  }
+                </div>
+
+                <div class="vd-dt-actions">
+                  @if (d.actual; as a) {
+                    <div class="vd-seg" role="group" aria-label="Estado del trámite">
+                      @for (e of estadosTramite; track e.valor) {
+                        <button type="button" class="vd-btn vd-btn-sm"
+                                [class.vd-btn-primary]="a.estado_tramite === e.valor"
+                                [class.vd-btn-ghost]="a.estado_tramite !== e.valor"
+                                [disabled]="procesando() || anulada()"
+                                (click)="cambiarTramite(d.tipo, e.valor)">{{ e.etiqueta }}</button>
+                      }
+                    </div>
+                    <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm" (click)="ubicarDocumento(d.tipo)" [disabled]="anulada()">Mover</button>
+                  } @else {
+                    <button type="button" class="vd-btn vd-btn-primary vd-btn-sm" (click)="ubicarDocumento(d.tipo)" [disabled]="anulada()">Ubicar documento</button>
+                  }
+                </div>
+
+                @if (d.historial.length > 1) {
+                  <details class="vd-dt-hist">
+                    <summary>Historial ({{ d.historial.length }})</summary>
+                    <ul>
+                      @for (h of d.historial; track h.id) {
+                        <li>{{ h.created_at | slice:0:10 }} · {{ etiquetaUbicacion(h.ubicacion) }} · {{ etiquetaTramite(h.estado_tramite) }}</li>
+                      }
+                    </ul>
+                  </details>
+                }
+              </li>
+            }
+          </ul>
         </section>
       </div>
 

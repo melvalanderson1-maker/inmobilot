@@ -52,6 +52,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   subiendoFirmado = signal(false);
 
+  subiendoLegal = signal<'escritura' | 'titulo' | null>(null);
     readonly estadosTramite = [
     { valor: 'pendiente', etiqueta: 'Pendiente' },
     { valor: 'en_proceso', etiqueta: 'En proceso' },
@@ -262,6 +263,38 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
         this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el contrato');
       },
     });
+  }
+
+
+    onDocumentoLegalSeleccionado(event: Event, tipo: 'escritura' | 'titulo'): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoLegal.set(tipo);
+
+    this.ventaService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.ventaService.subirDocumentoLegal(this.idVenta, tipo, res.url).subscribe({
+          next: () => {
+            this.subiendoLegal.set(null);
+            this.toastService.exito(tipo === 'escritura' ? 'Escritura pública registrada' : 'Título de propiedad registrado');
+            this.cargar();
+          },
+          error: (err) => {
+            this.subiendoLegal.set(null);
+            this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el documento');
+          },
+        });
+      },
+      error: (err) => {
+        this.subiendoLegal.set(null);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+    input.value = '';
   }
 
   // ---------- Ubicación física ----------

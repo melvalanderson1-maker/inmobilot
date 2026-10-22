@@ -925,6 +925,10 @@ class DocumentoFirmadoIn(BaseModel):
     url: str
 
 
+class DocumentoLegalIn(BaseModel):
+    tipo: Literal["escritura", "titulo"]
+    url: str = Field(max_length=300)
+
 class GenerarDocumentoIn(BaseModel):
     firmante: Literal["gerente", "apoderado"] = "gerente"
 

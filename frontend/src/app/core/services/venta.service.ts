@@ -57,4 +57,9 @@ export class VentaService {
   registrarContrato(id: number) {
     return this.api.post<Venta>(`/ventas/${id}/registrar-contrato`, {});
   }
+
+
+  subirDocumentoLegal(idVenta: number, tipo: 'escritura' | 'titulo', url: string) {
+    return this.api.post<Venta>(`/ventas/${idVenta}/documento-legal`, { tipo, url });
+  }
 }

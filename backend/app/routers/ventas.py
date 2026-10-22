@@ -467,6 +467,27 @@ async def registrar_ubicacion_documento(
     return registro
 
 
+@router.post("/{id_venta}/documento-legal", response_model=s.VentaOut)
+async def subir_documento_legal(
+    id_venta: int,
+    payload: s.DocumentoLegalIn,
+    usuario: m.Usuario = Depends(require_permiso("gestionar_rrpp")),
+    db: Session = Depends(get_db),
+):
+    """Sube la escritura pública o el título de propiedad ya escaneado."""
+    venta = svc.cargar_venta(db, id_venta, usuario)
+    if payload.tipo == "escritura":
+        venta.escritura_url = payload.url
+        if venta.estado == m.EstadoVentaEnum.documento_firmado:
+            venta.estado = m.EstadoVentaEnum.escriturada
+    else:
+        venta.titulo_url = payload.url
+    db.commit()
+    venta_completa = svc.cargar_venta(db, id_venta, usuario)
+    await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
+    return s.VentaOut.desde_venta(venta_completa)
+
+
 @router.post("/{id_venta}/registrar-contrato", response_model=s.VentaOut)
 async def registrar_contrato(
     id_venta: int,

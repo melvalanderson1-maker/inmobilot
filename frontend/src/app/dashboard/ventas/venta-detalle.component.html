@@ -133,13 +133,24 @@
             </li>
           </ol>
 
-          @if (venta()!.escritura_url || venta()!.titulo_url) {
+          @if (venta()!.documento_firmado_url) {
             <div class="vd-docs">
               @if (venta()!.escritura_url) {
                 <a class="vd-doc-link" [href]="venta()!.escritura_url!" target="_blank" rel="noopener">Escritura pública ↗</a>
+              } @else {
+                <label class="vd-btn vd-btn-ghost vd-btn-sm" [class.is-disabled]="subiendoLegal() !== null || anulada()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoLegalSeleccionado($event, 'escritura')" [disabled]="subiendoLegal() !== null || anulada()" hidden />
+                  {{ subiendoLegal() === 'escritura' ? 'Subiendo...' : 'Subir escritura pública' }}
+                </label>
               }
+
               @if (venta()!.titulo_url) {
                 <a class="vd-doc-link" [href]="venta()!.titulo_url!" target="_blank" rel="noopener">Título de propiedad ↗</a>
+              } @else {
+                <label class="vd-btn vd-btn-ghost vd-btn-sm" [class.is-disabled]="subiendoLegal() !== null || anulada()">
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoLegalSeleccionado($event, 'titulo')" [disabled]="subiendoLegal() !== null || anulada()" hidden />
+                  {{ subiendoLegal() === 'titulo' ? 'Subiendo...' : 'Subir título de propiedad' }}
+                </label>
               }
             </div>
           }

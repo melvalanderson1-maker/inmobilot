@@ -1,4 +1,4 @@
-import { DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DecimalPipe, SlicePipe, TitleCasePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -23,7 +23,7 @@ interface DocTramite {
 @Component({
   selector: 'app-venta-detalle',
   standalone: true,
-  imports: [FormsModule, DecimalPipe, TitleCasePipe],
+  imports: [FormsModule, DecimalPipe, TitleCasePipe, SlicePipe],
   templateUrl: './venta-detalle.component.html',
   styleUrl: './venta-detalle.component.css',
 })

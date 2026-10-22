@@ -370,14 +370,7 @@ class LoteImagen(Base):
 
     lote = relationship("Lote", back_populates="imagenes")
 
-    # Venta de origen (solo lectura): permite mostrar la fase documental en la lista
-    venta = relationship(
-        "Venta",
-        foreign_keys="Venta.id_contrato",
-        uselist=False,
-        viewonly=True,
-        lazy="selectin",
-    )
+
 
 
 class LoteEstadoHistorial(Base):
@@ -481,6 +474,15 @@ class Contrato(Base):
     cronograma = relationship("CronogramaPago", back_populates="contrato")
     clientes_rel = relationship("ContratoCliente", back_populates="contrato")
     lote = relationship("Lote")
+
+    # Venta de origen (solo lectura): permite mostrar la fase documental en la lista
+    venta = relationship(
+        "Venta",
+        foreign_keys="Venta.id_contrato",
+        uselist=False,
+        viewonly=True,
+        lazy="selectin",
+    )
 
 
 class ContratoCliente(Base):

@@ -1891,3 +1891,24 @@ textarea {
 .doc-paso.hecho .doc-punto { background: #16a34a; border-color: #16a34a; color: #fff; }
 .doc-info { display: grid; gap: 2px; min-width: 0; }
 .fase-burbuja[data-fase='titulada'] { background: #fef3c7; color: #92400e; }
+
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi {
+  display: grid; gap: 4px; text-align: left; cursor: pointer; color: inherit;
+  padding: 14px 16px; border-radius: 12px; background: transparent;
+  border: 1px solid rgba(128,128,128,.3); border-left: 4px solid #9ca3af;
+}
+.kpi-minuta { border-left-color: #3b82f6; }
+.kpi-prep { border-left-color: #f59e0b; }
+.kpi.activo { background: rgba(59,130,246,.10); border-color: #3b82f6; }
+.kpi-label { font-size: 13px; opacity: .75; }
+.kpi-valor { font-size: 28px; font-weight: 700; line-height: 1; }
+@media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
+
+.mini-checks { list-style: none; margin: 6px 0 4px; padding: 0; display: grid; gap: 2px; font-size: 12px; }
+.mini-checks li { display: flex; align-items: center; gap: 6px; opacity: .7; }
+.mini-checks li.ok { opacity: 1; }
+.mini-checks .mini-marca { width: 14px; text-align: center; font-weight: 700; }
+.mini-checks li.ok .mini-marca { color: #16a34a; }
+.mini-checks em { font-style: normal; color: #d97706; font-weight: 600; }

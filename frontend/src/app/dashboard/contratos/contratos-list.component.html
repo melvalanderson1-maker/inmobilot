@@ -32,6 +32,25 @@
     }
   </section>
 
+
+    <!-- ============ KPIs ============ -->
+  @if (!cargando() && contratos().length > 0) {
+    <div class="kpis">
+      <button type="button" class="kpi" [class.activo]="formaFiltro() === 'todas'" (click)="formaFiltro.set('todas')">
+        <span class="kpi-label">Todos los contratos</span>
+        <span class="kpi-valor">{{ kpis().total }}</span>
+      </button>
+      <button type="button" class="kpi kpi-minuta" [class.activo]="formaFiltro() === 'contado'" (click)="formaFiltro.set('contado')">
+        <span class="kpi-label">Con Minuta · al contado</span>
+        <span class="kpi-valor">{{ kpis().minuta }}</span>
+      </button>
+      <button type="button" class="kpi kpi-prep" [class.activo]="formaFiltro() === 'credito'" (click)="formaFiltro.set('credito')">
+        <span class="kpi-label">Con Contrato preparatorio · crédito</span>
+        <span class="kpi-valor">{{ kpis().preparatorio }}</span>
+      </button>
+    </div>
+  }
+
   <!-- ============ LISTADO ============ -->
   @if (cargando()) {
     <div class="estado-carga" role="status" aria-live="polite">
@@ -82,10 +101,19 @@
               <td data-label="Forma"><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
               <td data-label="Documento">
                 <span class="chip fase-burbuja" [attr.data-fase]="c.fase_documental ?? 'sin_venta'">
-                  {{ nombreDocBase(c) }} · {{ etiquetaFase(c.fase_documental) }}
+                  {{ etiquetaFase(c.fase_documental) }}
                 </span>
+                <ul class="mini-checks">
+                  @for (p of pasosDoc(c); track p.etiqueta) {
+                    <li [class.ok]="p.hecho">
+                      <span class="mini-marca" aria-hidden="true">{{ p.hecho ? '✓' : '○' }}</span>
+                      {{ p.etiqueta }}
+                      @if (!p.hecho) { <em>Pendiente</em> }
+                    </li>
+                  }
+                </ul>
                 @if (c.ubicacion_actual) {
-                  <span class="documento">{{ c.ubicacion_actual }}{{ c.tramite_actual ? ' · ' + c.tramite_actual : '' }}</span>
+                  <span class="documento">Ubicación: {{ c.ubicacion_actual }}{{ c.tramite_actual ? ' · ' + c.tramite_actual : '' }}</span>
                 }
               </td>
               <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>

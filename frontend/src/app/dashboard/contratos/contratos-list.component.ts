@@ -61,10 +61,24 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     { clave: 'finalizada', etiqueta: 'Finalizada' },
   ];
 
+  // ---- Filtro por tipo de documento base (contado = Minuta, crédito = Contrato preparatorio) ----
+  formaFiltro = signal<'todas' | 'contado' | 'credito'>('todas');
+
   contratosFiltrados = computed(() => {
     const f = this.faseFiltro();
+    const forma = this.formaFiltro();
+    return this.contratos().filter(
+      (c) => (f === 'todas' || c.fase_documental === f) && (forma === 'todas' || c.forma_pago === forma)
+    );
+  });
+
+  kpis = computed(() => {
     const todos = this.contratos();
-    return f === 'todas' ? todos : todos.filter((c) => c.fase_documental === f);
+    return {
+      total: todos.length,
+      minuta: todos.filter((c) => c.forma_pago === 'contado').length,
+      preparatorio: todos.filter((c) => c.forma_pago === 'credito').length,
+    };
   });
 
   conteoFases = computed(() => {
@@ -480,6 +494,25 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       return { ...d, hecho: !!d.url, ubicacion: u ? this.etiquetaUbic(u) : null, tramite: u?.estado_tramite ?? null };
     });
   }
+
+  /** Checklist de documentos de un contrato, según la fase de su venta */
+  pasosDoc(c: Contrato): { etiqueta: string; hecho: boolean }[] {
+    const f = c.fase_documental;
+    if (!f || f === 'cancelada' || f === 'anulada') return [];
+    const niveles: Record<string, number> = {
+      iniciada: 0, documento_generado: 1, documento_firmado: 2,
+      escriturada: 3, titulada: 4, finalizada: 4,
+    };
+    const nivel = niveles[f] ?? 0;
+    const etiquetas = [
+      c.forma_pago === 'contado' ? 'Minuta' : 'Contrato prep.',
+      'Firmado',
+      'Escritura pública',
+      'Título',
+    ];
+    return etiquetas.map((etiqueta, i) => ({ etiqueta, hecho: i < nivel }));
+  }
+
 
   nombreDocBase(c: Contrato): string {
     return c.forma_pago === 'contado' ? 'Minuta' : 'Contrato prep.';

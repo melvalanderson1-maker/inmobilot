@@ -245,17 +245,17 @@ export class ClienteFormComponent implements OnInit {
         return 'El DNI debe tener 8 dígitos';
       }
     }
-    if (!this.form.dni_frente_url || !this.form.dni_reverso_url) {
+    if (!this.form.dni_frente_url) {
       return this.form.tipo_persona === 'natural'
-        ? 'Sube el DNI (frente y reverso) del cliente'
-        : 'Sube el DNI (frente y reverso) del representante legal';
+        ? 'Sube el archivo del DNI del cliente (frente y reverso)'
+        : 'Sube el archivo del DNI del representante legal (frente y reverso)';
     }
     if (this.esCasado) {
       if (!this.conyuge.nombres.trim() || !this.conyuge.apellidos.trim() || !this.conyuge.numero_documento.trim()) {
         return 'Si el estado civil es casado, completa los datos del cónyuge';
       }
-      if (!this.conyuge.dni_frente_url || !this.conyuge.dni_reverso_url) {
-        return 'Sube el DNI (frente y reverso) del cónyuge';
+      if (!this.conyuge.dni_frente_url) {
+        return 'Sube el archivo del DNI del cónyuge (frente y reverso)';
       }
     }
     if (!this.form.telefono.trim()) return 'El teléfono es obligatorio';

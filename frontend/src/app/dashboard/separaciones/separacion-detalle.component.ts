@@ -70,14 +70,16 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   documentos = computed<DocTab[]>(() => {
     const s = this.separacion();
-    return [
+    const docs: DocTab[] = [
       { clave: 'proforma',         etiqueta: 'Proforma',          url: s?.proforma_url ?? null },
       { clave: 'contrato',         etiqueta: 'Contrato',          url: s?.contrato_url ?? null },
       { clave: 'contrato_firmado', etiqueta: 'Contrato firmado',  url: s?.contrato_firmado_url ?? null },
-      { clave: 'dni_frente',       etiqueta: 'DNI frente',        url: s?.dni_frente_url ?? null },
+      { clave: 'dni_frente',       etiqueta: 'DNI',               url: s?.dni_frente_url ?? null },
       { clave: 'dni_reverso',      etiqueta: 'DNI reverso',       url: s?.dni_reverso_url ?? null },
       { clave: 'voucher',          etiqueta: 'Voucher',           url: s?.voucher_url ?? null },
     ];
+    // El reverso solo aparece en separaciones antiguas que ya lo tienen subido
+    return docs.filter((d) => d.clave !== 'dni_reverso' || !!d.url);
   });
 
   docsDisponibles = computed(() => this.documentos().filter((d) => !!d.url).length);
@@ -516,7 +518,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       proforma: 'La proforma aún no se ha generado. Usa el botón "Generar".',
       contrato: 'El contrato aún no se ha generado. Usa el botón "Generar".',
       contrato_firmado: 'El contrato firmado aún no se ha subido.',
-      dni_frente: 'No hay foto del DNI (frente).',
+      dni_frente: 'No hay archivo del DNI.',
       dni_reverso: 'No hay foto del DNI (reverso).',
       voucher: 'No hay voucher adjunto.',
     };

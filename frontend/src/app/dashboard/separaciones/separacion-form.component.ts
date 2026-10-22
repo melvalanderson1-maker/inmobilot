@@ -293,7 +293,6 @@ export class SeparacionFormComponent implements OnInit {
       !this.form.voucher_numero.trim() ||
       !this.form.medio_pago.trim() ||
       !this.dniFrenteUrl ||
-      !this.dniReversoUrl ||
       !this.voucherUrl
     ) {
       return;
@@ -314,7 +313,7 @@ export class SeparacionFormComponent implements OnInit {
         notas: this.form.notas || undefined,
         agenda_fecha: this.form.agenda_fecha ? new Date(this.form.agenda_fecha).toISOString() : undefined,
         dni_frente_url: this.dniFrenteUrl,
-        dni_reverso_url: this.dniReversoUrl,
+        dni_reverso_url: this.dniReversoUrl ?? undefined,
         voucher_url: this.voucherUrl,
         voucher_numero: this.form.voucher_numero.trim(),
         medio_pago: this.form.medio_pago.trim(),
@@ -350,8 +349,8 @@ export class SeparacionFormComponent implements OnInit {
     }
     if (!this.form.medio_pago.trim()) return 'Indica el medio de pago (ej. Transferencia Yape)';
     if (!this.form.voucher_numero.trim()) return 'Indica el número de voucher';
-    if (!this.dniFrenteUrl || !this.dniReversoUrl || !this.voucherUrl) {
-      return 'Sube el DNI (ambas caras) y el voucher antes de guardar';
+    if (!this.dniFrenteUrl || !this.voucherUrl) {
+      return 'Sube el archivo del DNI (frente y reverso) y el voucher antes de guardar';
     }
     return null;
   }

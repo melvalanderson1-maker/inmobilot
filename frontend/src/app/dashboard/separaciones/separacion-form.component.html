@@ -216,8 +216,8 @@
       <section class="card">
         <header class="card-head">
           <div class="card-title">
-            <span class="step" [class.step-ok]="dniFrenteUrl && dniReversoUrl && voucherUrl">
-              @if (dniFrenteUrl && dniReversoUrl && voucherUrl) { ✓ } @else { 3 }
+            <span class="step" [class.step-ok]="dniFrenteUrl && voucherUrl">
+              @if (dniFrenteUrl && voucherUrl) { ✓ } @else { 3 }
             </span>
             <h3>Documentos</h3>
           </div>
@@ -227,7 +227,7 @@
         <div class="docs-grid">
           <!-- DNI frente -->
           <div class="doc-item">
-            <label class="doc-label">DNI (frente)</label>
+            <label class="doc-label">DNI (frente y reverso en un solo archivo)</label>
             @if (dniFrenteUrl) {
               <a [href]="dniFrenteUrl" target="_blank" class="doc-ok">
                 <span class="doc-check">✓</span>
@@ -244,31 +244,7 @@
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
                 }
-                <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI frente' }}</span>
-              </label>
-            }
-          </div>
-
-          <!-- DNI reverso -->
-          <div class="doc-item">
-            <label class="doc-label">DNI (reverso)</label>
-            @if (dniReversoUrl) {
-              <a [href]="dniReversoUrl" target="_blank" class="doc-ok">
-                <span class="doc-check">✓</span>
-                <span>Archivo subido</span>
-                <small>Ver archivo ↗</small>
-              </a>
-            } @else {
-              <label class="dropzone" [class.dropzone-loading]="subiendoDniReverso()">
-                <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDniReversoSeleccionado($event)" [disabled]="subiendoDniReverso()" hidden />
-                @if (subiendoDniReverso()) {
-                  <span class="spinner spinner-blue"></span>
-                } @else {
-                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
-                }
-                <span>{{ subiendoDniReverso() ? 'Subiendo...' : 'Subir DNI reverso' }}</span>
+                <span>{{ subiendoDniFrente() ? 'Subiendo...' : 'Subir DNI (frente y reverso)' }}</span>
               </label>
             }
           </div>
@@ -371,12 +347,12 @@
               <b>{{ form.fecha_vencimiento || 'Pendiente' }}</b>
             </div>
           </li>
-          <li [class.ok]="dniFrenteUrl && dniReversoUrl && voucherUrl">
-            <span class="dot">@if (dniFrenteUrl && dniReversoUrl && voucherUrl) { ✓ }</span>
+          <li [class.ok]="dniFrenteUrl && voucherUrl">
+            <span class="dot">@if (dniFrenteUrl && voucherUrl) { ✓ }</span>
             <div>
               <small>Documentos</small>
               <b>
-                {{ (dniFrenteUrl ? 1 : 0) + (dniReversoUrl ? 1 : 0) + (voucherUrl ? 1 : 0) }} de 3 subidos
+                {{ (dniFrenteUrl ? 1 : 0) + (voucherUrl ? 1 : 0) }} de 2 subidos
               </b>
             </div>
           </li>

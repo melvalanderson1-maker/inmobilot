@@ -331,15 +331,15 @@ class ClienteCreate(BaseModel):
                 raise ValueError("Persona jurídica requiere RUC, razón social y representante legal")
             if not self.representante_tipo_documento or not self.representante_numero_documento:
                 raise ValueError("Debes indicar el tipo y número de documento del representante legal")
-        if not self.dni_frente_url or not self.dni_reverso_url:
+        if not self.dni_frente_url:
             if self.tipo_persona == "natural":
-                raise ValueError("Debes subir el DNI (frente y reverso) del cliente")
-            raise ValueError("Debes subir el DNI (frente y reverso) del representante legal")
+                raise ValueError("Debes subir el archivo del DNI del cliente (frente y reverso)")
+            raise ValueError("Debes subir el archivo del DNI del representante legal (frente y reverso)")
         if self.estado_civil == "casado":
             if not self.conyuge:
                 raise ValueError("Si el estado civil es casado, los datos del cónyuge son obligatorios")
-            if not self.conyuge.dni_frente_url or not self.conyuge.dni_reverso_url:
-                raise ValueError("Debes subir el DNI (frente y reverso) del cónyuge")
+            if not self.conyuge.dni_frente_url:
+                raise ValueError("Debes subir el archivo del DNI del cónyuge (frente y reverso)")
         return self
 
 
@@ -699,7 +699,7 @@ class SeparacionCreate(BaseModel):
     tipo_pago: Optional[FormaPagoEnum] = None
     notas: Optional[str] = None
     dni_frente_url: str
-    dni_reverso_url: str
+    dni_reverso_url: Optional[str] = None
     voucher_url: str
     voucher_numero: str = Field(min_length=1, max_length=60)
     medio_pago: str = Field(min_length=1, max_length=40)
@@ -803,7 +803,7 @@ class SeparacionOut(ORMBase):
     tipo_pago: Optional[FormaPagoEnum] = None
     notas: Optional[str] = None
     dni_frente_url: str
-    dni_reverso_url: str
+    dni_reverso_url: Optional[str] = None
     voucher_url: str
     voucher_numero: Optional[str] = None
     medio_pago: Optional[str] = None

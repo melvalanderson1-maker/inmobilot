@@ -79,6 +79,7 @@
             } @else {
               <div class="dato"><span>Documento</span><strong>{{ cliente()!.tipo_documento }} {{ cliente()!.numero_documento }}</strong></div>
               <div class="dato"><span>Estado civil</span><strong class="capitalizar">{{ cliente()!.estado_civil || 'Sin indicar' }}</strong></div>
+              <div class="dato"><span>Sexo</span><strong>{{ cliente()!.sexo === 'F' ? 'Femenino' : (cliente()!.sexo === 'M' ? 'Masculino' : 'Sin indicar') }}</strong></div>
               @if (cliente()!.fecha_nacimiento) {
                 <div class="dato"><span>Fecha de nacimiento</span><strong>{{ cliente()!.fecha_nacimiento }}</strong></div>
               }
@@ -128,7 +129,7 @@
                   <a [href]="cliente()!.conyuge!.dni_frente_url" target="_blank" class="link-doc">
                     <span class="doc-check">✓</span>
                     <span class="doc-txt">
-                      <b>DNI cónyuge (frente)</b>
+                      <b>{{ cliente()!.conyuge!.dni_reverso_url ? 'DNI cónyuge (frente)' : 'DNI cónyuge' }}</b>
                       <small>Ver archivo ↗</small>
                     </span>
                   </a>
@@ -166,7 +167,7 @@
                 <a [href]="cliente()!.dni_frente_url" target="_blank" class="link-doc">
                   <span class="doc-check">✓</span>
                   <span class="doc-txt">
-                    <b>DNI (frente)</b>
+                    <b>{{ cliente()!.dni_reverso_url ? 'DNI (frente)' : 'DNI' }}</b>
                     <small>Ver archivo ↗</small>
                   </span>
                 </a>

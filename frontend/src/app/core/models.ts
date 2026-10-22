@@ -520,7 +520,7 @@ export interface SeparacionCreate {
   tipo_pago?: FormaPago;
   notas?: string;
   dni_frente_url: string;
-  dni_reverso_url: string;
+  dni_reverso_url?: string;
   voucher_url: string;
   voucher_numero: string;
   medio_pago: string;
@@ -578,7 +578,7 @@ export interface Separacion {
   tipo_pago?: FormaPago;
   notas?: string;
   dni_frente_url: string;
-  dni_reverso_url: string;
+  dni_reverso_url?: string;
   voucher_url: string;
   voucher_numero?: string;
   medio_pago?: string;

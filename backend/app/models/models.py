@@ -682,7 +682,7 @@ class Separacion(Base):
     tipo_pago = Column(SAEnum(FormaPagoEnum, name="forma_pago_enum"))
     notas = Column(String(500))
     dni_frente_url = Column(String(300), nullable=False)
-    dni_reverso_url = Column(String(300), nullable=False)
+    dni_reverso_url = Column(String(300))
     voucher_url = Column(String(300), nullable=False)
     voucher_numero = Column(String(60), nullable=True)
     medio_pago = Column(String(40), nullable=True)

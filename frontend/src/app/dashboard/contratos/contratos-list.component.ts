@@ -57,6 +57,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     { clave: 'documento_generado', etiqueta: 'Doc. generado' },
     { clave: 'documento_firmado', etiqueta: 'Firmado' },
     { clave: 'escriturada', etiqueta: 'Escriturada' },
+    { clave: 'titulada', etiqueta: 'Titulada' },
     { clave: 'finalizada', etiqueta: 'Finalizada' },
   ];
 
@@ -444,6 +445,41 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.modalComprobanteAbierto.set(true);
   }
 
+
+    verVenta(c: Contrato, event: Event): void {
+    event.stopPropagation(); // no abrir el drawer
+    if (c.id_venta) this.abrirVenta(c.id_venta);
+  }
+
+  etiquetaTramite(t?: string | null): string {
+    const mapa: Record<string, string> = { pendiente: 'Pendiente', en_proceso: 'En proceso', concretado: 'Concretado' };
+    return t ? (mapa[t] ?? t) : '';
+  }
+
+  etiquetaUbic(u: DocumentoUbicacion): string {
+    const mapa: Record<string, string> = {
+      notaria: 'Notaría', juez_de_paz: 'Juez de Paz', municipalidad: 'Municipalidad',
+      archivo_central: 'Archivo Central', otro: 'Otro',
+    };
+    const base = mapa[u.ubicacion] ?? u.ubicacion;
+    return u.notaria_nombre ? `${base} (${u.notaria_nombre})` : base;
+  }
+
+  /** Los 4 documentos de la venta con su archivo, ubicación y estado de trámite */
+  documentosVenta(v: Venta) {
+    const ub = new Map(this.ubicacionesActuales(v).map((u) => [u.tipo_documento, u]));
+    const contado = v.forma_pago === 'contado';
+    const defs = [
+      { clave: contado ? 'minuta' : 'contrato_preparatorio', etiqueta: contado ? 'Minuta' : 'Contrato Preparatorio', url: v.documento_generado_url },
+      { clave: 'firmado', etiqueta: 'Documento firmado', url: v.documento_firmado_url },
+      { clave: 'escritura', etiqueta: 'Escritura pública', url: v.escritura_url },
+      { clave: 'titulo', etiqueta: 'Título de propiedad', url: v.titulo_url },
+    ];
+    return defs.map((d) => {
+      const u = ub.get(d.clave);
+      return { ...d, hecho: !!d.url, ubicacion: u ? this.etiquetaUbic(u) : null, tramite: u?.estado_tramite ?? null };
+    });
+  }
 
   nombreDocBase(c: Contrato): string {
     return c.forma_pago === 'contado' ? 'Minuta' : 'Contrato prep.';

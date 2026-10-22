@@ -64,24 +64,28 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   // ---------- Datos derivados ----------
 
-  /** Línea de tiempo del trámite */
+  /** Línea de tiempo: cada paso se marca según el documento realmente subido */
   pasos = computed<{ etiqueta: string; estado: EstadoPaso }[]>(() => {
     const v = this.venta();
     if (!v) return [];
-    const orden = ['iniciada', 'documento_generado', 'documento_firmado', 'escriturada', 'finalizada'];
-    const etiquetas = ['Iniciada', 'Documento generado', 'Documento firmado', 'Escriturada', 'Finalizada'];
-    const idx = orden.indexOf(v.estado);
-    const ultimo = orden.length - 1;
-    return etiquetas.map((etiqueta, i) => {
-      let estado: EstadoPaso = 'pendiente';
-      if (idx >= 0) {
-        if (i < idx || (idx === ultimo && i === idx)) estado = 'hecho';
-        else if (i === idx) estado = 'actual';
-      }
-      return { etiqueta, estado };
-    });
+    const fin = v.estado === 'finalizada';
+    const hechos = [
+      true,
+      !!v.documento_generado_url || fin,
+      !!v.documento_firmado_url || fin,
+      !!v.escritura_url || v.estado === 'escriturada' || fin,
+      !!v.titulo_url || fin,
+      fin,
+    ];
+    const etiquetas = ['Iniciada', 'Documento generado', 'Documento firmado', 'Escriturada', 'Titulada', 'Finalizada'];
+    const actual = hechos.findIndex((h) => !h);
+    return etiquetas.map((etiqueta, i) => ({
+      etiqueta,
+      estado: (hechos[i] ? 'hecho' : i === actual ? 'actual' : 'pendiente') as EstadoPaso,
+    }));
   });
 
+  
   anulada = computed(() => {
     const e = this.venta()?.estado;
     return e === 'cancelada' || e === 'anulada';

@@ -585,3 +585,13 @@
 .vd-dt-hist { grid-column: 1 / -1; font-size: 12px; }
 .vd-dt-hist ul { margin: 6px 0 0; padding-left: 16px; }
 @media (max-width: 640px) { .vd-dt { grid-template-columns: 1fr; } }
+
+
+.vd-docs { display: grid; gap: 8px; margin-top: 14px; }
+.vd-doc-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; border: 1px solid rgba(128,128,128,.25); border-left: 4px solid #9ca3af; border-radius: 10px;
+}
+.vd-doc-row.is-done { border-left-color: #16a34a; }
+.vd-doc-name { display: grid; gap: 2px; }
+.vd-doc-btns { display: flex; gap: 8px; flex-wrap: wrap; }

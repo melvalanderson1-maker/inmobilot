@@ -427,7 +427,9 @@ async def subir_documento_firmado(
 ):
     venta = svc.cargar_venta(db, id_venta, usuario)
     venta.documento_firmado_url = payload.url
-    venta.estado = m.EstadoVentaEnum.documento_firmado
+    # Al reemplazar el archivo, el estado no debe retroceder si la venta ya avanzó
+    if venta.estado in (m.EstadoVentaEnum.iniciada, m.EstadoVentaEnum.documento_generado):
+        venta.estado = m.EstadoVentaEnum.documento_firmado
     db.commit()
     await _avisar_roles(
         db, usuario, venta, ["legal"], "venta_documento_firmado", "Documento firmado",

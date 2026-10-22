@@ -56,6 +56,7 @@
             <th>Forma</th>
             <th>Documento</th>
             <th>Estado</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +89,11 @@
                 }
               </td>
               <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
+              <td data-label="">
+                @if (c.id_venta) {
+                  <button type="button" class="btn-secundario-sm" (click)="verVenta(c, $event)">Ver venta →</button>
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -141,32 +147,26 @@
         <section class="bloque-docs">
           <h4>Documentos de la venta</h4>
           @if (ventaPorContrato()[ct.id]; as venta) {
-            <div class="doc-fila">
-              <span>{{ venta.forma_pago === 'contado' ? 'Minuta' : 'Contrato Preparatorio' }}</span>
-              @if (venta.documento_generado_url) {
-                <a [href]="venta.documento_generado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
-              } @else {
-                <span class="texto-tenue-inline">Sin generar</span>
+            <ol class="doc-linea">
+              @for (d of documentosVenta(venta); track d.clave) {
+                <li class="doc-paso" [class.hecho]="d.hecho">
+                  <span class="doc-punto" aria-hidden="true">{{ d.hecho ? '✓' : '' }}</span>
+                  <div class="doc-info">
+                    <strong>{{ d.etiqueta }}</strong>
+                    <span class="documento">
+                      {{ d.hecho ? 'Subido' : 'Pendiente' }}@if (d.ubicacion) { · {{ d.ubicacion }} }@if (d.tramite) { · {{ etiquetaTramite(d.tramite) }} }
+                    </span>
+                  </div>
+                  @if (d.url) {
+                    <a [href]="d.url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
+                  }
+                </li>
               }
-            </div>
+            </ol>
             <div class="doc-fila">
-              <span>Documento firmado</span>
-              @if (venta.documento_firmado_url) {
-                <a [href]="venta.documento_firmado_url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
-              } @else {
-                <span class="texto-tenue-inline">Pendiente</span>
-              }
+              <span>Fase de la venta</span>
+              <span class="chip fase-burbuja" [attr.data-fase]="ct.fase_documental ?? 'iniciada'">{{ etiquetaFase(ct.fase_documental) }}</span>
             </div>
-            <div class="doc-fila">
-              <span>Estado de la venta</span>
-              <span class="chip chip-forma">{{ venta.estado }}</span>
-            </div>
-            @for (u of ubicacionesActuales(venta); track u.id) {
-              <div class="doc-fila">
-                <span>{{ u.tipo_documento }} · {{ u.ubicacion }}{{ u.notaria_nombre ? ' (' + u.notaria_nombre + ')' : '' }}</span>
-                <span class="chip chip-forma">{{ u.estado_tramite }}</span>
-              </div>
-            }
             <button type="button" class="btn-secundario-sm btn-abrir-venta" (click)="abrirVenta(venta.id)">Abrir venta completa →</button>
           } @else {
             <p class="texto-tenue">Este contrato no proviene del flujo de ventas, así que no tiene documentos asociados.</p>

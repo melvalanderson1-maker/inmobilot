@@ -463,6 +463,24 @@ def _ubicacion_vigente(venta):
         texto = f"{texto} · {u.notaria_nombre}"
     return texto, _ETIQ_TRAMITE.get(u.estado_tramite, u.estado_tramite)
 
+
+def _fase_venta(venta):
+    """Fase documental según los documentos ya subidos (no depende del enum de la BD)."""
+    if not venta:
+        return None
+    estado = venta.estado.value if hasattr(venta.estado, "value") else str(venta.estado)
+    if estado in ("finalizada", "cancelada", "anulada"):
+        return estado
+    if venta.titulo_url:
+        return "titulada"
+    if venta.escritura_url or estado == "escriturada":
+        return "escriturada"
+    if venta.documento_firmado_url:
+        return "documento_firmado"
+    if venta.documento_generado_url:
+        return "documento_generado"
+    return "iniciada"
+
 class ContratoOut(ORMBase):
     id: int
     numero_contrato: str
@@ -493,7 +511,7 @@ class ContratoOut(ORMBase):
         ubic, tramite = _ubicacion_vigente(venta)
         return ContratoOut(
             id_venta=venta.id if venta else None,
-            fase_documental=venta.estado.value if venta else None,
+            fase_documental=_fase_venta(venta),
             ubicacion_actual=ubic,
             tramite_actual=tramite,
             id=contrato.id,

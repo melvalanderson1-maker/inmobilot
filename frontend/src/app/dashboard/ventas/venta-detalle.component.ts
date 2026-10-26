@@ -134,8 +134,11 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     const dc = this.venta()?.datos_credito;
     if (!dc) return 0;
     if (dc.tea_financiamiento != null) return Number(dc.tea_financiamiento);
-    return (this.plazoMeses() ?? 0) > 24 ? 20 : 0;
+    return (this.plazoMeses() ?? 0) > 24 ? 20.98 : 0;
   });
+
+  /** TEM = (1+TEA)^(1/12) - 1, igual que F14 del Excel */
+  tem = computed<number>(() => (Math.pow(1 + this.interesAnual() / 100, 1 / 12) - 1) * 100);
 
   cronogramaPagos = computed(() => this.cronograma().filter((c) => c.requiere_pago !== false));
   cronogramaMensual = computed(() =>

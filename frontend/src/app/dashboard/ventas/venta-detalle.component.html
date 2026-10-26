@@ -208,9 +208,30 @@
                 </div>
               }
             </div>
+
+            @if (cronogramaMensual().length > 0) {
+              <details class="vd-dt-hist">
+                <summary>Detalle mensual ({{ cronogramaMensual().length }} filas)</summary>
+                <div class="vd-table" role="table" aria-label="Detalle mensual">
+                  <div class="vd-tr vd-th" role="row">
+                    <span role="columnheader">N°</span>
+                    <span role="columnheader">Fecha</span>
+                    <span role="columnheader">Interés del mes</span>
+                    <span role="columnheader">Cuota</span>
+                  </div>
+                  @for (c of cronogramaMensual(); track c.id) {
+                    <div class="vd-tr" role="row">
+                      <span role="cell" data-label="N°">{{ c.numero_cuota }}</span>
+                      <span role="cell" data-label="Fecha">{{ c.fecha_pago_programada }}</span>
+                      <span role="cell" data-label="Interés del mes">S/ {{ c.interes_mensual | number:'1.2-2' }}</span>
+                      <span role="cell" data-label="Cuota">{{ c.requiere_pago ? 'S/ ' + (c.monto_cuota | number:'1.2-2') : '—' }}</span>
+                    </div>
+                  }
+                </div>
+              </details>
+            }
           </section>
         }
-
         <!-- UBICACIÓN FÍSICA -->
         <section class="vd-card">
           <header class="vd-card-head">
@@ -304,7 +325,11 @@
                   <div><dt>Plazo</dt><dd>{{ plazoMeses() }} meses</dd></div>
                 }
                 <div><dt>Frecuencia</dt><dd>{{ etiquetaFrecuencia(dc.frecuencia_cuota) }}</dd></div>
-                <div><dt>Interés financiamiento</dt><dd>{{ interesAnual() }}% anual</dd></div>
+                <div><dt>Interés financiamiento (TEA)</dt><dd>{{ interesAnual() | number:'1.2-2' }}% anual</dd></div>
+                @if (interesAnual() > 0) {
+                  <div><dt>TCEA</dt><dd>{{ interesAnual() | number:'1.2-2' }}% anual</dd></div>
+                  <div><dt>TEM</dt><dd>{{ tem() | number:'1.2-2' }}% mensual</dd></div>
+                }
                 @if (dc.tasa_interes != null) {
                   <div><dt>Interés por mora</dt><dd>{{ dc.tasa_interes }}% anual</dd></div>
                 }

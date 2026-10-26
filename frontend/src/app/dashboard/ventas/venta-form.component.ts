@@ -66,7 +66,6 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     { valor: 'trimestral', etiqueta: 'Trimestral' },
     { valor: 'semestral', etiqueta: 'Semestral' },
     { valor: 'anual', etiqueta: 'Anual (con detalle mensual)' },
-    { valor: 'anual', etiqueta: 'Anual (con detalle mensual)' },
     { valor: 'unico', etiqueta: 'Pago único al vencimiento' },
     { valor: 'personalizado', etiqueta: 'Cronograma personalizado' },
   ];
@@ -324,7 +323,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
               fecha_deposito: dc.fecha_deposito || (paraEvaluar ? hoy : ''),
               numero_operacion: dc.numero_operacion || (paraEvaluar ? '-' : ''),
               plazo_meses: Number(dc.plazo_meses) || 24,
-              frecuencia_cuota: dc.frecuencia_cuota,
+              frecuencia_cuota: this.frecuenciaEfectiva,
               tasa_interes: dc.tasa_interes,
               tea_financiamiento:
                 (this.esPersonalizado || Number(dc.plazo_meses) > 24) && dc.tea_financiamiento != null
@@ -372,6 +371,12 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   get esPersonalizado(): boolean {
     return this.datosCredito.frecuencia_cuota === 'personalizado';
+  }
+
+  /** Más de 24 meses (y no personalizado) => siempre método anual con detalle mensual */
+  get frecuenciaEfectiva(): string {
+    if (this.esPersonalizado) return 'personalizado';
+    return Number(this.datosCredito.plazo_meses) > 24 ? 'anual' : this.datosCredito.frecuencia_cuota;
   }
 
   get totalSimulado(): number {

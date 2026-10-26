@@ -821,6 +821,7 @@ export interface EvaluacionVenta {
   plazo_meses: number;
   numero_cuotas: number;
   tea_aplicable: number | string;
+  tcea?: number | string; tem?: number | string;
   monto_financiar: number | string;
   cuota_estimada: number | string;
 }

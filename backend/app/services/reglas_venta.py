@@ -8,7 +8,7 @@ from fastapi import HTTPException
 
 INICIAL_MINIMA = Decimal("10000")
 PLAZO_MAX_MESES = 24          # 2 años: 24 cuotas mensuales o 4 semestrales
-TEA_DEFECTO = Decimal("20")   # interés anual cuando el plazo supera los 24 meses
+TEA_DEFECTO = Decimal("20.98")   # TEA por defecto (Excel Gruselva) cuando el plazo supera los 24 meses
 MESES_POR_FRECUENCIA = {"mensual": 1, "bimestral": 2, "trimestral": 3, "semestral": 6, "anual": 12}
 FRECUENCIAS = ("mensual", "bimestral", "trimestral", "semestral", "anual", "unico", "personalizado")
 Q2 = Decimal("0.01")
@@ -109,28 +109,29 @@ def _factor_tea(tea: float, dias: int) -> float:
     """(1+TEA)^(dias/365) - 1 : interés compuesto por días reales."""
     return (1 + tea) ** (dias / 365) - 1
 
+# Réplica exacta del Excel de Gruselva. Si pones False en cualquiera, ya NO coincide con el PDF.
+EXCEL_PARENTESIS_CUOTA = True   # F15 del Excel: (S*(r*f) - 1)/(f-1) -> cuota 0.63 menor
+EXCEL_BASE_360_ANIO_2 = True    # el Excel usa /360 en los 12 meses del 2.º año
+
+
+def _d(x: float) -> Decimal:
+    return Decimal(str(round(x, 2) + 0.0)).quantize(Q2, rounding=ROUND_HALF_UP)
+
 
 def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> list[dict]:
-    """Una fila por MES (siempre, porque la empresa tributa mensualmente) y un pago por AÑO.
-
-    - Las filas vencen a fin de mes. La primera es el primer fin de mes posterior a la fecha base
-      (el primer período puede ser parcial: se cobran los días reales).
-    - Mes a mes el interés se capitaliza: acumulado = capital * ((1+TEA)^(dias/365) - 1), con días reales.
-    - En el aniversario (fin de mes, 12 meses después, 24, 36...) el cliente paga la cuota anual:
-      del pago, primero se cubre el interés acumulado y el resto amortiza capital. El acumulado
-      vuelve a cero y empieza otro bloque de 12 meses sobre el nuevo capital.
-    - Cuota anual fija = anualidad con la TEA. La última cuota liquida capital + interés exactos.
-    Cada fila trae requiere_pago (True solo en las fechas de pago)."""
-    saldo = Decimal(str(saldo))
-    tea = float(Decimal(str(tea_pct or 0)) / 100)
+    """Una fila por MES y un pago por AÑO (método del Excel de Gruselva). Sin redondear mes a mes."""
     if anios < 1:
         raise HTTPException(status_code=422, detail="El pago anual requiere un plazo de al menos 12 meses")
-
+    S = float(Decimal(str(saldo)))
+    tea = float(Decimal(str(tea_pct or 0)) / 100)
     if tea > 0:
-        factor = (1 + tea) ** anios
-        cuota = (saldo * Decimal(str(tea * factor / (factor - 1)))).quantize(Q2, rounding=ROUND_HALF_UP)
-    else:  # sin interés: cuotas anuales iguales
-        cuota = (saldo / anios).quantize(Q2, rounding=ROUND_HALF_UP)
+        f = (1 + tea) ** anios
+        if EXCEL_PARENTESIS_CUOTA:
+            cuota = round((S * (tea * f) - 1) / (f - 1), 2)
+        else:
+            cuota = round(S * tea * f / (f - 1), 2)
+    else:
+        cuota = round(S / anios, 2)
 
     fechas_pago = [_sumar_meses_fin_de_mes(fecha_base, 12 * (k + 1)) for k in range(anios)]
     fecha = _fin_de_mes(fecha_base.year, fecha_base.month)
@@ -138,42 +139,37 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
         fecha = _sumar_meses_fin_de_mes(fecha_base, 1)
 
     filas: list[dict] = []
-    capital = saldo                 # capital vigente durante el bloque
-    acum_prev = Decimal("0")        # interés acumulado del bloque (mes anterior)
+    capital = S
+    acum_prev = 0.0
     previa = fecha_base
     k = 0
-    primero_del_bloque = True
+    primero = True
     while k < anios:
         dias = (fecha - previa).days
-        g = _factor_tea(tea, dias)
-        if primero_del_bloque:
-            acum = (capital * Decimal(str(g))).quantize(Q2, rounding=ROUND_HALF_UP)
-        else:
-            acum = ((capital + acum_prev) * Decimal(str(g)) + acum_prev).quantize(Q2, rounding=ROUND_HALF_UP)
-        interes_mes = acum - acum_prev
+        base = 360 if (EXCEL_BASE_360_ANIO_2 and k == 1) else 365
+        g = (1 + tea) ** (dias / base) - 1
+        acum = capital * g if primero else (capital + acum_prev) * g + acum_prev
         fila = {
-            "numero": len(filas) + 1, "fecha": fecha, "capital": capital, "amortizacion": Decimal("0"),
-            "interes": interes_mes, "acumulado": acum, "monto": Decimal("0"),
+            "numero": len(filas) + 1, "fecha": fecha, "capital": _d(capital), "amortizacion": Decimal("0.00"),
+            "interes": _d(acum) - _d(acum_prev), "acumulado": _d(acum), "monto": Decimal("0.00"),
             "requiere_pago": False, "ajustada": False,
         }
         if fecha == fechas_pago[k]:
             if k == anios - 1:
-                amort = capital
-                monto = capital + acum
-                fila["ajustada"] = abs(monto - cuota) > Decimal("0.05")
+                monto = round(capital + acum, 2)
+                fila["ajustada"] = abs(monto - cuota) > 0.05
             else:
                 monto = cuota
-                amort = monto - acum
-            capital = capital - amort
-            fila.update({"amortizacion": amort, "monto": monto, "requiere_pago": True, "capital": capital})
-            filas.append(fila)
-            acum_prev = Decimal("0")
+            amort = monto - acum
+            capital -= amort
+            fila.update({"amortizacion": _d(amort), "monto": _d(monto), "requiere_pago": True, "capital": _d(capital)})
+            acum_prev = 0.0
             k += 1
-            primero_del_bloque = True
+            primero = True
         else:
-            filas.append(fila)
             acum_prev = acum
-            primero_del_bloque = False
+            primero = False
+        filas.append(fila)
         previa = fecha
         fecha = _sumar_meses_fin_de_mes(fecha, 1)
     return filas
@@ -342,6 +338,8 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
         "plazo_meses": 0,
         "numero_cuotas": 0,
         "tea_aplicable": Decimal("0"),
+        "tcea": Decimal("0"),
+        "tem": Decimal("0"),
         "monto_financiar": Decimal("0"),
         "cuota_estimada": Decimal("0"),
         "interes_total": Decimal("0"),
@@ -394,6 +392,8 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
             "plazo_meses": plazo,
             "numero_cuotas": len(filas_pago),
             "tea_aplicable": tea,
+            "tcea": tea,
+            "tem": (Decimal(str((1 + float(tea) / 100) ** (1 / 12) - 1)) * 100).quantize(Decimal("0.0001")),
             "monto_financiar": saldo,
             "cuota_estimada": filas_pago[0]["monto"] if filas_pago else Decimal("0"),
             "interes_total": sum((f["interes"] for f in filas), Decimal("0")),

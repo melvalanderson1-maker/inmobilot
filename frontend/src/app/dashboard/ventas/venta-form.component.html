@@ -11,32 +11,50 @@
     <!-- ===================== ENCABEZADO ===================== -->
     <header class="vf-header">
       <button type="button" class="vf-back" (click)="cancelar()">
-        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5l-5 5 5 5" /></svg>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         Volver a la separación
       </button>
 
       <div class="vf-headline">
         <div class="vf-title">
-          <span class="vf-eyebrow">Nueva venta</span>
-          <h1>Iniciar venta · Lote {{ separacion()!.lote?.codigo }}</h1>
-          <p class="vf-sub">
+          <h1>Iniciar venta del lote {{ separacion()!.lote?.codigo }}</h1>
+          <ul class="vf-facts">
             @if (separacion()!.lote?.manzana_nombre) {
-              <span>Mz. {{ separacion()!.lote?.manzana_nombre }}</span>
+              <li>Manzana {{ separacion()!.lote?.manzana_nombre }}</li>
             }
-            <span>{{ separacion()!.lote?.area_m2 }} m²</span>
-            <span>Separación n.º {{ separacion()!.id }}</span>
-          </p>
+            <li>{{ separacion()!.lote?.area_m2 }} m²</li>
+            <li>Separación n.º {{ separacion()!.id }}</li>
+          </ul>
         </div>
 
-        <nav class="vf-steps" aria-label="Progreso del formulario">
-          <button type="button" class="vf-step is-done" (click)="irA('vf-compradores')">
-            <span class="vf-step-n">✓</span><span class="vf-step-t">Compradores</span>
+        <nav class="vf-rail" aria-label="Progreso del formulario">
+          <button type="button" class="vf-node is-done" (click)="irA('vf-compradores')">
+            <span class="vf-node-dot">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </span>
+            <span class="vf-node-t">Compradores</span>
           </button>
-          <button type="button" class="vf-step" [class.is-done]="pasoPrecioOk" (click)="irA('vf-precio-sec')">
-            <span class="vf-step-n">{{ pasoPrecioOk ? '✓' : '2' }}</span><span class="vf-step-t">Precio</span>
+          <span class="vf-node-line is-done" aria-hidden="true"></span>
+          <button type="button" class="vf-node" [class.is-done]="pasoPrecioOk" (click)="irA('vf-precio-sec')">
+            <span class="vf-node-dot">
+              @if (pasoPrecioOk) {
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+              } @else {
+                2
+              }
+            </span>
+            <span class="vf-node-t">Precio</span>
           </button>
-          <button type="button" class="vf-step" [class.is-done]="pasoPagoOk" (click)="irA('vf-pago')">
-            <span class="vf-step-n">{{ pasoPagoOk ? '✓' : '3' }}</span><span class="vf-step-t">{{ formaPago === 'contado' ? 'Pagos' : 'Crédito' }}</span>
+          <span class="vf-node-line" [class.is-done]="pasoPrecioOk" aria-hidden="true"></span>
+          <button type="button" class="vf-node" [class.is-done]="pasoPagoOk" (click)="irA('vf-pago')">
+            <span class="vf-node-dot">
+              @if (pasoPagoOk) {
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+              } @else {
+                3
+              }
+            </span>
+            <span class="vf-node-t">{{ formaPago === 'contado' ? 'Pagos' : 'Crédito' }}</span>
           </button>
         </nav>
       </div>
@@ -44,7 +62,7 @@
 
     @if (error()) {
       <div class="vf-alert vf-alert-error" role="alert">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v5M12 16h.01" /></svg>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
         <span>{{ error() }}</span>
       </div>
     }
@@ -54,408 +72,418 @@
       <div class="vf-main">
 
         <!-- 1. COMPRADORES -->
-        <section class="vf-card" id="vf-compradores">
-          <header class="vf-card-head">
-            <span class="vf-badge">1</span>
-            <div class="vf-card-title">
-              <h2>Compradores</h2>
-              <p>{{ extras().length + 1 }} de 4 permitidos</p>
-            </div>
-            @if (puedeAgregarMas() && !agregando()) {
-              <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregando.set(true)">+ Agregar</button>
-            }
-          </header>
-
-          <ul class="vf-people">
-            <li class="vf-person">
-              <span class="vf-avatar" aria-hidden="true">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</span>
-              <div class="vf-person-info">
-                <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
-                <span>{{ separacion()!.cliente?.numero_documento }}@if (separacion()!.cliente?.telefono) { · {{ separacion()!.cliente?.telefono }} }</span>
+        <section class="vf-sec" id="vf-compradores">
+          <div class="vf-sec-node is-done" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          </div>
+          <div class="vf-sec-body">
+            <header class="vf-sec-head">
+              <div>
+                <h2>Compradores</h2>
+                <p>{{ extras().length + 1 }} de 4 permitidos</p>
               </div>
-              <span class="vf-tag">Titular</span>
-            </li>
-
-            @for (e of extras(); track e.cliente.id) {
-              <li class="vf-person">
-                <span class="vf-avatar vf-avatar-alt" aria-hidden="true">{{ e.cliente.nombres.charAt(0) }}</span>
-                <div class="vf-person-info">
-                  <strong>{{ e.cliente.nombres }} {{ e.cliente.apellidos }}</strong>
-                  <span>{{ e.cliente.numero_documento }}@if (e.cliente.telefono) { · {{ e.cliente.telefono }} }</span>
-                </div>
-                <div class="vf-person-actions">
-                  <select class="vf-select-sm" [ngModel]="e.rol" (ngModelChange)="cambiarRol(e.cliente.id, $event)" aria-label="Rol del comprador">
-                    <option value="conyuge">Cónyuge</option>
-                    <option value="copropietario">Copropietario</option>
-                  </select>
-                  <button type="button" class="vf-icon-btn" (click)="quitarComprador(e.cliente.id)" aria-label="Quitar comprador">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </button>
-                </div>
-              </li>
-            }
-          </ul>
-
-          @if (extras().length === 0 && !agregando()) {
-            <p class="vf-muted">Agrega al cónyuge o copropietarios si la venta tiene más de un titular.</p>
-          }
-
-          @if (agregando()) {
-            <div class="vf-add-box">
-              @if (conyugeDisponible()) {
-                <button type="button" class="vf-btn vf-btn-soft vf-btn-block" (click)="usarConyuge()" [disabled]="creandoConyuge()">
-                  {{ creandoConyuge() ? 'Cargando...' : 'Usar al cónyuge: ' + conyugeTitular()!.nombres + ' ' + conyugeTitular()!.apellidos }}
+              @if (puedeAgregarMas() && !agregando()) {
+                <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregando.set(true)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  Agregar comprador
                 </button>
               }
-              <app-cliente-buscador
-                [excluirIds]="idsExcluidos()"
-                (seleccionado)="agregarComprador($event)"
-                (crearNuevo)="irACrearCliente($event)"
-              />
-              <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregando.set(false)">Cancelar</button>
-            </div>
-          }
+            </header>
+
+            <ul class="vf-people">
+              <li class="vf-person">
+                <span class="vf-avatar" aria-hidden="true">{{ (separacion()!.cliente?.nombres || '?').charAt(0) }}</span>
+                <div class="vf-person-info">
+                  <strong>{{ separacion()!.cliente?.nombres }} {{ separacion()!.cliente?.apellidos }}</strong>
+                  <span>{{ separacion()!.cliente?.numero_documento }}@if (separacion()!.cliente?.telefono) { · {{ separacion()!.cliente?.telefono }} }</span>
+                </div>
+                <span class="vf-tag is-main">Titular</span>
+              </li>
+
+              @for (e of extras(); track e.cliente.id) {
+                <li class="vf-person">
+                  <span class="vf-avatar vf-avatar-alt" aria-hidden="true">{{ e.cliente.nombres.charAt(0) }}</span>
+                  <div class="vf-person-info">
+                    <strong>{{ e.cliente.nombres }} {{ e.cliente.apellidos }}</strong>
+                    <span>{{ e.cliente.numero_documento }}@if (e.cliente.telefono) { · {{ e.cliente.telefono }} }</span>
+                  </div>
+                  <div class="vf-person-actions">
+                    <select class="vf-select-sm" [ngModel]="e.rol" (ngModelChange)="cambiarRol(e.cliente.id, $event)" aria-label="Rol del comprador">
+                      <option value="conyuge">Cónyuge</option>
+                      <option value="copropietario">Copropietario</option>
+                    </select>
+                    <button type="button" class="vf-icon-btn" (click)="quitarComprador(e.cliente.id)" aria-label="Quitar comprador">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </li>
+              }
+            </ul>
+
+            @if (extras().length === 0 && !agregando()) {
+              <p class="vf-muted">Agrega al cónyuge o copropietarios si la venta tiene más de un titular.</p>
+            }
+
+            @if (agregando()) {
+              <div class="vf-add-box">
+                @if (conyugeDisponible()) {
+                  <button type="button" class="vf-btn vf-btn-soft vf-btn-block" (click)="usarConyuge()" [disabled]="creandoConyuge()">
+                    {{ creandoConyuge() ? 'Cargando...' : 'Usar al cónyuge: ' + conyugeTitular()!.nombres + ' ' + conyugeTitular()!.apellidos }}
+                  </button>
+                }
+                <app-cliente-buscador
+                  [excluirIds]="idsExcluidos()"
+                  (seleccionado)="agregarComprador($event)"
+                  (crearNuevo)="irACrearCliente($event)"
+                />
+                <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregando.set(false)">Cancelar</button>
+              </div>
+            }
+          </div>
         </section>
 
         <!-- 2. FORMA DE PAGO Y PRECIO -->
-        <section class="vf-card" id="vf-precio-sec">
-          <header class="vf-card-head">
-            <span class="vf-badge">2</span>
-            <div class="vf-card-title">
-              <h2>Forma de pago y precio</h2>
-              <p>Define cómo pagará el cliente y el precio final de la venta.</p>
-            </div>
-          </header>
-
-          <div class="vf-seg" role="radiogroup" aria-label="Forma de pago">
-            <button type="button" role="radio" class="vf-seg-item" [class.is-on]="formaPago === 'contado'" [attr.aria-checked]="formaPago === 'contado'" (click)="seleccionarForma('contado')">
-              <span class="vf-seg-title">Contado</span>
-              <span class="vf-seg-sub">Genera Minuta</span>
-            </button>
-            <button type="button" role="radio" class="vf-seg-item" [class.is-on]="formaPago === 'credito'" [attr.aria-checked]="formaPago === 'credito'" (click)="seleccionarForma('credito')">
-              <span class="vf-seg-title">Crédito</span>
-              <span class="vf-seg-sub">Genera Contrato Preparatorio</span>
-            </button>
+        <section class="vf-sec" id="vf-precio-sec">
+          <div class="vf-sec-node" [class.is-done]="pasoPrecioOk" aria-hidden="true">
+            @if (pasoPrecioOk) {
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            } @else {
+              2
+            }
           </div>
+          <div class="vf-sec-body">
+            <header class="vf-sec-head">
+              <div>
+                <h2>Forma de pago y precio</h2>
+                <p>Define cómo pagará el cliente y el precio final de la venta.</p>
+              </div>
+            </header>
 
-          <div class="vf-field">
-            <label for="vf-precio">Precio total de la venta</label>
-            <div class="vf-money vf-money-lg">
-              <span aria-hidden="true">S/</span>
-              <input id="vf-precio" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"
-                [(ngModel)]="precioTotal" (ngModelChange)="onPrecioManual()" />
+            <div class="vf-seg" role="radiogroup" aria-label="Forma de pago">
+              <button type="button" role="radio" class="vf-seg-item" [class.is-on]="formaPago === 'contado'" [attr.aria-checked]="formaPago === 'contado'" (click)="seleccionarForma('contado')">
+                <span class="vf-seg-ico">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="3" /><path d="M3 10h18M16 14.5h2" /></svg>
+                </span>
+                <span class="vf-seg-txt">
+                  <span class="vf-seg-title">Contado</span>
+                  <span class="vf-seg-sub">Genera la Minuta</span>
+                </span>
+              </button>
+              <button type="button" role="radio" class="vf-seg-item" [class.is-on]="formaPago === 'credito'" [attr.aria-checked]="formaPago === 'credito'" (click)="seleccionarForma('credito')">
+                <span class="vf-seg-ico">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20.5h18" /></svg>
+                </span>
+                <span class="vf-seg-txt">
+                  <span class="vf-seg-title">Crédito</span>
+                  <span class="vf-seg-sub">Genera el Contrato Preparatorio</span>
+                </span>
+              </button>
             </div>
 
-            @if (precioSugerido() !== null) {
-              @if (!precioEditado) {
-                <p class="vf-hint">Sugerido: {{ origenSugerido }}. Puedes modificarlo si hay un acuerdo distinto.</p>
-              } @else {
-                <p class="vf-hint vf-hint-warn">
-                  Precio modificado manualmente.
-                  <button type="button" class="vf-link" (click)="restablecerPrecio()">Restablecer a S/ {{ precioSugerido() | number:'1.2-2' }}</button>
+            <div class="vf-field">
+              <label for="vf-precio">Precio total de la venta</label>
+              <div class="vf-money vf-money-lg">
+                <span aria-hidden="true">S/</span>
+                <input id="vf-precio" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"
+                  [(ngModel)]="precioTotal" (ngModelChange)="onPrecioManual()" />
+              </div>
+
+              @if (precioSugerido() !== null) {
+                @if (!precioEditado) {
+                  <p class="vf-hint">Sugerido: {{ origenSugerido }}. Puedes modificarlo si hay un acuerdo distinto.</p>
+                } @else {
+                  <p class="vf-hint vf-hint-warn">
+                    Precio modificado manualmente.
+                    <button type="button" class="vf-link" (click)="restablecerPrecio()">Restablecer a S/ {{ precioSugerido() | number:'1.2-2' }}</button>
+                  </p>
+                }
+              }
+            </div>
+
+            <div class="vf-chips" role="group" aria-label="Precios de referencia">
+              @if (precios().regular; as v) {
+                <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
+                  <span>Precio regular</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
+                </button>
+              }
+              @if (precios().pactado; as v) {
+                <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
+                  <span>Pactado en la separación</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
+                </button>
+              }
+              @if (precios().financiado; as v) {
+                <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
+                  <span>Precio financiado</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
+                </button>
+              }
+            </div>
+
+            @if (descuento !== null) {
+              @if (descuento > 0) {
+                <p class="vf-discount">
+                  Descuento sobre el precio regular:
+                  <strong>S/ {{ descuento | number:'1.2-2' }}</strong>
+                  @if (descuentoPct !== null) { <span>({{ descuentoPct | number:'1.0-1' }}%)</span> }
+                </p>
+              } @else if (descuento < 0) {
+                <p class="vf-discount vf-discount-warn">
+                  El precio supera al regular en <strong>S/ {{ -descuento | number:'1.2-2' }}</strong>.
                 </p>
               }
             }
           </div>
-
-          <div class="vf-chips" role="group" aria-label="Precios de referencia">
-            @if (precios().regular; as v) {
-              <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
-                <span>Precio regular</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
-              </button>
-            }
-            @if (precios().pactado; as v) {
-              <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
-                <span>Pactado en la separación</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
-              </button>
-            }
-            @if (precios().financiado; as v) {
-              <button type="button" class="vf-chip" [class.is-on]="precioTotal === v" (click)="usarPrecio(v)">
-                <span>Precio financiado</span><strong>S/ {{ v | number:'1.2-2' }}</strong>
-              </button>
-            }
-          </div>
-
-          @if (descuento !== null) {
-            @if (descuento > 0) {
-              <p class="vf-discount">
-                Descuento sobre el precio regular:
-                <strong>S/ {{ descuento | number:'1.2-2' }}</strong>
-                @if (descuentoPct !== null) { <span>({{ descuentoPct | number:'1.0-1' }}%)</span> }
-              </p>
-            } @else if (descuento < 0) {
-              <p class="vf-discount vf-discount-warn">
-                El precio supera al regular en <strong>S/ {{ -descuento | number:'1.2-2' }}</strong>.
-              </p>
-            }
-          }
         </section>
 
         <!-- 3A. CONTADO: PAGOS REALIZADOS -->
         @if (formaPago === 'contado') {
-          <section class="vf-card" id="vf-pago">
-            <header class="vf-card-head">
-              <span class="vf-badge">3</span>
-              <div class="vf-card-title">
-                <h2>Pagos realizados</h2>
-                <p>Registra lo que el cliente ya pagó hasta hoy.</p>
-              </div>
-              <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarFilaPago()">+ Pago</button>
-            </header>
-
-            @if (importeSeparado > 0 && !pagoSeparacionAgregado) {
-              <button type="button" class="vf-callout" (click)="agregarPagoSeparacion()">
-                <span>
-                  <strong>Incluir el pago de la separación</strong>
-                  <small>S/ {{ importeSeparado | number:'1.2-2' }} · {{ separacion()!.fecha_inicio }}</small>
-                </span>
-                <span class="vf-callout-cta">Agregar</span>
-              </button>
-            }
-
-            <div class="vf-pagos">
-              @for (pago of pagosPrevios; track $index) {
-                <div class="vf-pago-row">
-                  <label class="vf-field">
-                    <span>Monto (S/)</span>
-                    <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="pago.monto" placeholder="0.00" />
-                  </label>
-                  <label class="vf-field">
-                    <span>Fecha</span>
-                    <input type="date" [(ngModel)]="pago.fecha" />
-                  </label>
-                  @if (pagosPrevios.length > 1) {
-                    <button type="button" class="vf-icon-btn vf-pago-del" (click)="quitarFilaPago($index)" aria-label="Quitar pago">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                    </button>
-                  }
-                </div>
+          <section class="vf-sec vf-sec-last" id="vf-pago">
+            <div class="vf-sec-node" [class.is-done]="pasoPagoOk" aria-hidden="true">
+              @if (pasoPagoOk) {
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+              } @else {
+                3
               }
             </div>
+            <div class="vf-sec-body">
+              <header class="vf-sec-head">
+                <div>
+                  <h2>Pagos realizados</h2>
+                  <p>Registra lo que el cliente ya pagó hasta hoy.</p>
+                </div>
+                <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarFilaPago()">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  Agregar pago
+                </button>
+              </header>
 
-            <dl class="vf-totals">
-              <div><dt>Total registrado</dt><dd>S/ {{ totalPagosPrevios | number:'1.2-2' }}</dd></div>
-              @if (saldoContado !== null) {
-                <div class="is-strong"><dt>Saldo por cobrar</dt><dd>S/ {{ saldoContado | number:'1.2-2' }}</dd></div>
+              @if (importeSeparado > 0 && !pagoSeparacionAgregado) {
+                <button type="button" class="vf-callout" (click)="agregarPagoSeparacion()">
+                  <span>
+                    <strong>Incluir el pago de la separación</strong>
+                    <small>S/ {{ importeSeparado | number:'1.2-2' }} el {{ separacion()!.fecha_inicio }}</small>
+                  </span>
+                  <span class="vf-callout-cta">Incluir</span>
+                </button>
               }
-            </dl>
-            @if (pagosExcedenPrecio) {
-              <p class="vf-hint vf-hint-warn">Los pagos registrados superan el precio total de la venta.</p>
-            }
+
+              <div class="vf-pagos">
+                @for (pago of pagosPrevios; track $index) {
+                  <div class="vf-pago-row">
+                    <label class="vf-field">
+                      <span>Monto (S/)</span>
+                      <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="pago.monto" placeholder="0.00" />
+                    </label>
+                    <label class="vf-field">
+                      <span>Fecha</span>
+                      <input type="date" [(ngModel)]="pago.fecha" />
+                    </label>
+                    @if (pagosPrevios.length > 1) {
+                      <button type="button" class="vf-icon-btn vf-pago-del" (click)="quitarFilaPago($index)" aria-label="Quitar pago">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <dl class="vf-lines vf-lines-ink">
+                <div><dt>Total registrado</dt><dd>S/ {{ totalPagosPrevios | number:'1.2-2' }}</dd></div>
+                @if (saldoContado !== null) {
+                  <div class="is-strong"><dt>Saldo por cobrar</dt><dd>S/ {{ saldoContado | number:'1.2-2' }}</dd></div>
+                }
+              </dl>
+              @if (pagosExcedenPrecio) {
+                <p class="vf-hint vf-hint-warn">Los pagos registrados superan el precio total de la venta.</p>
+              }
+            </div>
           </section>
         } @else {
 
           <!-- 3B. CRÉDITO -->
-          <section class="vf-card" id="vf-pago">
-            <header class="vf-card-head">
-              <span class="vf-badge">3</span>
-              <div class="vf-card-title">
-                <h2>Datos del crédito</h2>
-                <p>Inicial, plazo y frecuencia de las cuotas.</p>
-              </div>
-            </header>
-
-            <div class="vf-row-2">
-              <label class="vf-field">
-                <span>Monto de la inicial (S/)</span>
-                <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="datosCredito.inicial_monto" (ngModelChange)="reevaluar()" placeholder="Mínimo 10,000" />
-              </label>
-              <label class="vf-field">
-                <span>Fecha de inicio de intereses</span>
-                <input type="date" [(ngModel)]="datosCredito.fecha_deposito" (ngModelChange)="reevaluar()" />
-              </label>
-            </div>
-
-            <label class="vf-field">
-              <span>N° de operación</span>
-              <input type="text" [(ngModel)]="datosCredito.numero_operacion" autocomplete="off" />
-            </label>
-
-            <div class="vf-field">
-              <span class="vf-label">Voucher del depósito de la inicial</span>
-              @if (datosCredito.voucher_url) {
-                <div class="vf-file">
-                  <span class="vf-file-ok" aria-hidden="true">✓</span>
-                  <a [href]="datosCredito.voucher_url" target="_blank" rel="noopener">Ver voucher subido ↗</a>
-                  <button type="button" class="vf-link" (click)="quitarVoucher()">Cambiar</button>
-                </div>
+          <section class="vf-sec vf-sec-last" id="vf-pago">
+            <div class="vf-sec-node" [class.is-done]="pasoPagoOk" aria-hidden="true">
+              @if (pasoPagoOk) {
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
               } @else {
-                <label class="vf-drop" [class.is-loading]="subiendoVoucher()">
-                  <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onVoucherInicial($event)" [disabled]="subiendoVoucher()" hidden />
-                  <span>{{ subiendoVoucher() ? 'Subiendo...' : 'Subir voucher (JPG, PNG o PDF · máx. 8 MB)' }}</span>
-                </label>
+                3
               }
-              <small class="vf-hint">Se inserta automáticamente en el Contrato Preparatorio como medio de pago.</small>
             </div>
+            <div class="vf-sec-body">
+              <header class="vf-sec-head">
+                <div>
+                  <h2>Datos del crédito</h2>
+                  <p>Inicial, plazo y frecuencia de los pagos.</p>
+                </div>
+              </header>
 
-            <label class="vf-field">
-              <span>Frecuencia de pago</span>
-              <select [(ngModel)]="datosCredito.frecuencia_cuota" (ngModelChange)="onFrecuenciaCambiada()">
-                @for (f of frecuencias; track f.valor) {
-                  <option [value]="f.valor">{{ f.etiqueta }}</option>
-                }
-              </select>
-            </label>
+              <!-- Inicial -->
+              <div class="vf-group vf-group-first">
+                <h3>Inicial</h3>
 
-            @if (!esPersonalizado) {
-              <div class="vf-field">
-                <span class="vf-label">Plazo @if (plazoTexto) { <em>= {{ plazoTexto }}</em> }</span>
-                <div class="vf-quick" role="group" aria-label="Plazos rápidos">
-                  @for (m of plazosRapidos; track m) {
-                    <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">{{ m }} m</button>
+                <div class="vf-row-2">
+                  <label class="vf-field">
+                    <span>Monto de la inicial (S/)</span>
+                    <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="datosCredito.inicial_monto" (ngModelChange)="reevaluar()" placeholder="Mínimo 10,000" />
+                  </label>
+                  <label class="vf-field">
+                    <span>Fecha de inicio de intereses</span>
+                    <input type="date" [(ngModel)]="datosCredito.fecha_deposito" (ngModelChange)="reevaluar()" />
+                  </label>
+                </div>
+
+                <label class="vf-field">
+                  <span>N° de operación</span>
+                  <input type="text" [(ngModel)]="datosCredito.numero_operacion" autocomplete="off" />
+                </label>
+
+                <div class="vf-field">
+                  <span class="vf-label">Voucher del depósito de la inicial</span>
+                  @if (datosCredito.voucher_url) {
+                    <div class="vf-file">
+                      <span class="vf-file-ok" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      </span>
+                      <a [href]="datosCredito.voucher_url" target="_blank" rel="noopener">Ver voucher subido</a>
+                      <button type="button" class="vf-link" (click)="quitarVoucher()">Cambiar</button>
+                    </div>
+                  } @else {
+                    <label class="vf-drop" [class.is-loading]="subiendoVoucher()">
+                      <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onVoucherInicial($event)" [disabled]="subiendoVoucher()" hidden />
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 19h14" /></svg>
+                      <span>{{ subiendoVoucher() ? 'Subiendo...' : 'Subir voucher (JPG, PNG o PDF, máx. 8 MB)' }}</span>
+                    </label>
                   }
+                  <small class="vf-hint">Se inserta automáticamente en el Contrato Preparatorio como medio de pago.</small>
                 </div>
               </div>
 
-              <label class="vf-field">
-                <span>Plazo (meses)</span>
-                <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
-              </label>
-            } @else {
-              <div class="vf-field">
-                <span class="vf-label">Cuotas del cronograma <em>· deja el monto vacío y el sistema lo calcula</em></span>
+              <!-- Financiamiento -->
+              <div class="vf-group">
+                <h3>Financiamiento</h3>
+                <p class="vf-group-sub">Con más de 24 meses entra interés y el pago pasa a ser anual con detalle mensual. La tasa, la mora y la frecuencia se completan solas; puedes cambiarlas a mano.</p>
 
-                <div class="vf-gen">
-                  <span>Generar</span>
-                  <input type="number" min="1" max="60" [(ngModel)]="genN" aria-label="Número de cuotas" />
-                  <span>cuotas cada</span>
-                  <select [(ngModel)]="genCada" aria-label="Cada cuántos meses">
-                    @for (c of opcionesCada; track c) {
-                      <option [ngValue]="c">{{ c }} {{ c === 1 ? 'mes' : 'meses' }}</option>
+                <label class="vf-field">
+                  <span>Frecuencia de pago</span>
+                  <select [(ngModel)]="datosCredito.frecuencia_cuota" (ngModelChange)="onFrecuenciaCambiada()">
+                    @for (f of frecuencias; track f.valor) {
+                      <option [value]="f.valor">{{ f.etiqueta }}</option>
                     }
                   </select>
-                  <button type="button" class="vf-btn vf-btn-soft vf-btn-sm" (click)="generarCuotas()">Generar</button>
-                </div>
+                </label>
 
-                <div class="vf-cuotas">
-                  @for (c of cuotasPers; track $index) {
-                    <div class="vf-cuota-row">
-                      <span class="vf-cuota-n">{{ $index + 1 }}</span>
-                      <input type="date" [(ngModel)]="c.fecha" (ngModelChange)="reevaluar()" aria-label="Fecha de la cuota" />
-                      <div class="vf-money">
-                        <span aria-hidden="true">S/</span>
-                        <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="c.monto" (ngModelChange)="reevaluar()" placeholder="Automático" />
-                      </div>
-                      <button type="button" class="vf-icon-btn" (click)="quitarCuota($index)" aria-label="Quitar cuota">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                      </button>
+                @if (!esPersonalizado) {
+                  <div class="vf-field">
+                    <span class="vf-label">Plazo @if (plazoTexto) { <em>({{ plazoTexto }})</em> }</span>
+                    <div class="vf-quick" role="group" aria-label="Plazos rápidos">
+                      @for (m of plazosRapidos; track m) {
+                        <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">{{ m }} meses</button>
+                      }
                     </div>
-                  }
-                </div>
-                <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarCuota()">+ Agregar cuota</button>
-                <small class="vf-hint">Las cuotas sin monto se reparten el saldo restante. La última cuota cierra el saldo exacto.</small>
+                  </div>
+
+                  <label class="vf-field">
+                    <span>Plazo en meses</span>
+                    <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
+                    @if (plazoInvalidoAnual) {
+                      <small class="vf-hint vf-hint-warn">
+                        Con pago anual el plazo va en múltiplos de 12 meses (5 años = 60).
+                        <button type="button" class="vf-link" (click)="ajustarPlazoAnual()">Usar {{ plazoSugeridoAnual }} meses</button>
+                      </small>
+                    }
+                  </label>
+                } @else {
+                  <div class="vf-field">
+                    <span class="vf-label">Cuotas del cronograma <em>(deja el monto vacío y el sistema lo calcula)</em></span>
+
+                    <div class="vf-gen">
+                      <span>Generar</span>
+                      <input type="number" min="1" max="60" [(ngModel)]="genN" aria-label="Número de cuotas" />
+                      <span>cuotas cada</span>
+                      <select [(ngModel)]="genCada" aria-label="Cada cuántos meses">
+                        @for (c of opcionesCada; track c) {
+                          <option [ngValue]="c">{{ c }} {{ c === 1 ? 'mes' : 'meses' }}</option>
+                        }
+                      </select>
+                      <button type="button" class="vf-btn vf-btn-soft vf-btn-sm" (click)="generarCuotas()">Generar</button>
+                    </div>
+
+                    <div class="vf-cuotas">
+                      @for (c of cuotasPers; track $index) {
+                        <div class="vf-cuota-row">
+                          <span class="vf-cuota-n">{{ $index + 1 }}</span>
+                          <input type="date" [(ngModel)]="c.fecha" (ngModelChange)="reevaluar()" aria-label="Fecha de la cuota" />
+                          <div class="vf-money">
+                            <span aria-hidden="true">S/</span>
+                            <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="c.monto" (ngModelChange)="reevaluar()" placeholder="Automático" />
+                          </div>
+                          <button type="button" class="vf-icon-btn" (click)="quitarCuota($index)" aria-label="Quitar cuota">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                    <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarCuota()">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                      Agregar cuota
+                    </button>
+                    <small class="vf-hint">Las cuotas sin monto se reparten el saldo restante. La última cuota cierra el saldo exacto.</small>
+                  </div>
+                }
+
+                @if (esPersonalizado || datosCredito.plazo_meses > 24) {
+                  <label class="vf-field">
+                    <span>Interés del financiamiento (% anual)</span>
+                    <input type="number" inputmode="decimal" step="0.01" [(ngModel)]="datosCredito.tea_financiamiento" (ngModelChange)="reevaluar()" placeholder="20.98 (estándar)" />
+                    <small class="vf-hint">Solo aplica si el plazo supera los 24 meses. Si lo dejas vacío se usa el 20.98% estándar. Se calcula sobre el saldo pendiente según los días reales de cada mes.</small>
+                  </label>
+                }
+
+                <label class="vf-field">
+                  <span>Interés por mora (% anual, aparece en el documento)</span>
+                  <input type="number" inputmode="decimal" [(ngModel)]="datosCredito.tasa_interes" />
+                </label>
               </div>
-            }
 
-            @if (esPersonalizado || datosCredito.plazo_meses > 24) {
-              <label class="vf-field">
-                <span>Interés del financiamiento (% anual)</span>
-                <input type="number" inputmode="decimal" step="0.01" [(ngModel)]="datosCredito.tea_financiamiento" (ngModelChange)="reevaluar()" placeholder="20.98 (estándar)" />
-                <small class="vf-hint">Solo aplica si el plazo supera los 24 meses. Si lo dejas vacío se usa el 20.98% estándar. Se calcula sobre el saldo pendiente según los días reales de cada cuota.</small>
-              </label>
-            }
-
-            <label class="vf-field">
-              <span>Interés por mora (% anual, aparece en el documento)</span>
-              <input type="number" inputmode="decimal" [(ngModel)]="datosCredito.tasa_interes" />
-            </label>
-
-            <label class="vf-field">
-              <span>Observaciones <em>· opcional</em></span>
-              <textarea rows="2" [(ngModel)]="datosCredito.observaciones" placeholder="Ej: si lo cancela en 3 meses se considera precio al contado"></textarea>
-            </label>
+              <!-- Notas -->
+              <div class="vf-group">
+                <label class="vf-field vf-field-last">
+                  <span>Observaciones <em>(opcional)</em></span>
+                  <textarea rows="2" [(ngModel)]="datosCredito.observaciones" placeholder="Ej: si lo cancela en 3 meses se considera precio al contado"></textarea>
+                </label>
+              </div>
+            </div>
           </section>
         }
 
-        <!-- CRONOGRAMA SIMULADO (en vivo) -->
-        @if (formaPago === 'credito') {
-          @if (evaluacion()) {
-            @if (filasSimuladas.length > 0) {
-              <section class="vf-card vf-sim" aria-label="Cronograma simulado">
-                <header class="vf-card-head">
-                  <div class="vf-card-title">
-                    <h2>Cronograma simulado</h2>
-                    <p>Se actualiza al instante. Al iniciar la venta queda fijo y ya no se puede modificar.</p>
-                  </div>
-                </header>
-
-                <div class="vf-sim-scroll">
-                  <table class="vf-sim-table">
-                    <thead>
-                      <tr>
-                        <th>Nro</th>
-                        <th>Fecha de pago</th>
-                        <th class="num">Capital</th>
-                        <th class="num">Amortización</th>
-                        <th class="num">Interés acumulado</th>
-                        <th class="num">Cuota</th>
-                        <th class="num">Interés mensual</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (f of filasSimuladas; track f.numero; let i = $index) {
-                        <tr [class.is-pago]="f.requiere_pago !== false">
-                          <td>{{ f.numero }}</td>
-                          <td>{{ fmtFecha(f.fecha) }}</td>
-                          <td class="num">{{ capitalFila(i) | number:'1.2-2' }}</td>
-                          <td class="num">
-                            @if (f.requiere_pago !== false) { {{ f.amortizacion | number:'1.2-2' }} }
-                          </td>
-                          <td class="num">{{ f.acumulado | number:'1.2-2' }}</td>
-                          <td class="num">
-                            @if (f.requiere_pago !== false) {
-                              <strong>{{ f.monto | number:'1.2-2' }}</strong>
-                              @if (f.ajustada) { <span class="vf-sim-tag" title="El sistema ajustó esta cuota para cerrar el saldo exacto">Ajustada</span> }
-                            }
-                          </td>
-                          <td class="num">{{ f.interes | number:'1.2-2' }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colspan="3">Totales</td>
-                        <td class="num">{{ totalesSimulados.amortizacion | number:'1.2-2' }}</td>
-                        <td class="num">{{ totalesSimulados.interes | number:'1.2-2' }}</td>
-                        <td class="num">{{ totalesSimulados.cuota | number:'1.2-2' }}</td>
-                        <td class="num">{{ totalesSimulados.interes | number:'1.2-2' }}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </section>
-            }
-          }
-        }
-
         <!-- AVISOS DE REGLAS -->
-        @if (errorEvaluacion()) {
+        @if (errorEvaluacion() && formaPago !== 'credito') {
           <div class="vf-alert vf-alert-warn" role="alert">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3L12 4zM12 10v4M12 17h.01" /></svg>
             <strong>{{ errorEvaluacion() }}</strong>
           </div>
         }
         @if (evaluacion(); as ev) {
           @if (ev.motivos.length > 0) {
-            <section class="vf-card vf-card-warn">
-              <h2 class="vf-warn-title">Requiere autorización de gerencia</h2>
-              <ul class="vf-warn-list">
+            <section class="vf-aviso">
+              <h2>Requiere autorización de gerencia</h2>
+              <ul>
                 @for (mo of ev.motivos; track mo.codigo) {
                   <li>{{ mo.mensaje }}</li>
                 }
               </ul>
-              <p class="vf-muted">Pulsa "Solicitar autorización". Gerencia recibirá el aviso y podrás crear la venta cuando la apruebe.</p>
+              <p>Pulsa "Solicitar autorización". Gerencia recibirá el aviso y podrás crear la venta cuando la apruebe.</p>
             </section>
           }
         }
       </div>
 
-      <!-- ===================== RESUMEN ===================== -->
+      <!-- ===================== HOJA RESUMEN ===================== -->
       <aside class="vf-aside">
-        <section class="vf-card vf-summary" aria-label="Resumen de la venta">
-          <h2 class="vf-summary-title">Resumen</h2>
+        <section class="vf-summary" aria-label="Resumen de la venta">
+          <h2>Hoja resumen</h2>
 
           <dl class="vf-lines">
-            <div><dt>Lote</dt><dd>{{ separacion()!.lote?.codigo }}@if (separacion()!.lote?.manzana_nombre) { · Mz. {{ separacion()!.lote?.manzana_nombre }} }</dd></div>
+            <div><dt>Lote</dt><dd>{{ separacion()!.lote?.codigo }}@if (separacion()!.lote?.manzana_nombre) { , manzana {{ separacion()!.lote?.manzana_nombre }} }</dd></div>
             <div><dt>Área</dt><dd>{{ separacion()!.lote?.area_m2 }} m²</dd></div>
             <div><dt>Forma de pago</dt><dd>{{ formaPago === 'contado' ? 'Contado' : 'Crédito' }}</dd></div>
             <div><dt>Compradores</dt><dd>{{ extras().length + 1 }}</dd></div>
@@ -486,12 +514,14 @@
               }
               @if (evaluacion(); as ev) {
                 <div><dt>Monto a financiar</dt><dd>S/ {{ ev.monto_financiar | number:'1.2-2' }}</dd></div>
-                <div><dt>Número de cuotas</dt><dd>{{ ev.numero_cuotas }}</dd></div>
+                <div><dt>Pagos del cronograma</dt><dd>{{ ev.numero_cuotas }}</dd></div>
                 <div class="is-strong"><dt>Cuota estimada</dt><dd>S/ {{ ev.cuota_estimada | number:'1.2-2' }}</dd></div>
-                <div><dt>TEA</dt><dd>{{ ev.tea_aplicable | number:'1.2-2' }}%</dd></div>
-                @if (ev.tcea) {
-                  <div><dt>TCEA</dt><dd>{{ ev.tcea | number:'1.2-2' }}%</dd></div>
-                  <div><dt>TEM</dt><dd>{{ ev.tem | number:'1.2-2' }}%</dd></div>
+                @if (teaAplicada > 0) {
+                  <div><dt>TEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+                  <div><dt>TCEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+                  <div><dt>TEM</dt><dd>{{ temAplicada | number:'1.2-2' }}%</dd></div>
+                } @else {
+                  <div><dt>Interés</dt><dd>Sin interés</dd></div>
                 }
               }
             }
@@ -510,6 +540,129 @@
         </section>
       </aside>
     </div>
+
+    <!-- ===================== LIBRO DE PAGOS (CRONOGRAMA SIMULADO) ===================== -->
+    @if (formaPago === 'credito') {
+      <section class="vf-libro" id="vf-cronograma" aria-label="Cronograma simulado">
+        <header class="vf-libro-head">
+          <div>
+            <h2>Cronograma simulado</h2>
+            <p>Se actualiza al instante. Al iniciar la venta queda fijo y ya no se puede modificar.</p>
+          </div>
+
+          @if (hayCronograma && totalSpreads > 1) {
+            <div class="vf-libro-nav" role="group" aria-label="Cambiar de libro">
+              <button type="button" class="vf-nav-btn" (click)="irSpread(spreadActual - 1)" [disabled]="spreadActual === 0" aria-label="Libro anterior">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" /></svg>
+              </button>
+              <span>Libro {{ spreadActual + 1 }} de {{ totalSpreads }}</span>
+              <button type="button" class="vf-nav-btn" (click)="irSpread(spreadActual + 1)" [disabled]="spreadActual >= totalSpreads - 1" aria-label="Libro siguiente">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6" /></svg>
+              </button>
+            </div>
+          }
+        </header>
+
+        @if (hayCronograma) {
+          @if (evaluacion(); as ev) {
+            <dl class="vf-terms">
+              <div><dt>Monto a financiar</dt><dd>S/ {{ ev.monto_financiar | number:'1.2-2' }}</dd></div>
+              @if (teaAplicada > 0) {
+                <div><dt>TEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+              } @else {
+                <div><dt>Interés</dt><dd>Sin interés</dd></div>
+              }
+              <div class="is-key"><dt>Cuota</dt><dd>S/ {{ ev.cuota_estimada | number:'1.2-2' }}</dd></div>
+              @if (teaAplicada > 0) {
+                <div><dt>TCEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+              } @else {
+                <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
+              }
+              <div><dt>Pagos</dt><dd>{{ ev.numero_cuotas }}</dd></div>
+              @if (teaAplicada > 0) {
+                <div><dt>TEM</dt><dd>{{ temAplicada | number:'1.2-2' }}%</dd></div>
+              } @else {
+                <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
+              }
+              @if (teaAplicada > 0) {
+                <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
+                <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
+              }
+            </dl>
+          }
+
+          <div class="vf-book">
+            <div class="vf-pages">
+              @for (pag of paginas; track $index; let p = $index) {
+                <article class="vf-page" [class.vf-page-l]="p === 0" [class.vf-page-r]="p === 1" [attr.aria-label]="'Página ' + (spreadActual * 2 + p + 1)">
+                  @if (pag.length > 0) {
+                    <div class="vf-page-scroll">
+                      <table class="vf-ledger">
+                        <thead>
+                          <tr>
+                            <th class="c-n">Nro</th>
+                            <th>Fecha de pago</th>
+                            <th class="num">Capital</th>
+                            <th class="num">Amortización</th>
+                            <th class="num">Interés acumulado</th>
+                            <th class="num">Cuota</th>
+                            <th class="num">Interés mensual</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of pag; track r.fila.numero) {
+                            <tr [class.is-pago]="resaltarPagos && r.fila.requiere_pago !== false">
+                              <td class="c-n">{{ r.fila.numero }}</td>
+                              <td>{{ fmtFecha(r.fila.fecha) }}</td>
+                              <td class="num">{{ r.capital | number:'1.2-2' }}</td>
+                              <td class="num">
+                                @if (r.fila.requiere_pago !== false) { {{ r.fila.amortizacion | number:'1.2-2' }} }
+                              </td>
+                              <td class="num">{{ r.fila.acumulado | number:'1.2-2' }}</td>
+                              <td class="num">
+                                @if (r.fila.requiere_pago !== false) {
+                                  {{ r.fila.monto | number:'1.2-2' }}
+                                  @if (r.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
+                                }
+                              </td>
+                              <td class="num">{{ r.fila.interes | number:'1.2-2' }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <div class="vf-page-blank">Fin del cronograma</div>
+                  }
+                  <footer class="vf-page-foot">
+                    <span class="vf-folio">{{ spreadActual * 2 + p + 1 }}</span>
+                    <span>@if (pag.length > 0) { Filas {{ rango(pag) }} }</span>
+                  </footer>
+                </article>
+              }
+            </div>
+
+            <div class="vf-totales" role="group" aria-label="Totales del cronograma">
+              <span class="vf-totales-t">Totales</span>
+              <div><small>Amortización</small><strong>{{ totalesSimulados.amortizacion | number:'1.2-2' }}</strong></div>
+              <div><small>Interés acumulado</small><strong>{{ totalesSimulados.interes | number:'1.2-2' }}</strong></div>
+              <div class="is-key"><small>Cuota</small><strong>{{ totalesSimulados.cuota | number:'1.2-2' }}</strong></div>
+              <div><small>Interés mensual</small><strong>{{ totalesSimulados.interes | number:'1.2-2' }}</strong></div>
+            </div>
+          </div>
+        } @else {
+          <div class="vf-empty" [class.is-error]="!!errorEvaluacion()" role="status">
+            <span class="vf-empty-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5V19c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5V5.5zM12 6v13.5" /></svg>
+            </span>
+            <div>
+              <strong>{{ errorEvaluacion() ? 'No se pudo calcular el cronograma' : 'Todavía no hay cronograma para mostrar' }}</strong>
+              <p>{{ razonSinCronograma }}</p>
+            </div>
+          </div>
+        }
+      </section>
+    }
 
     <!-- BARRA FIJA EN CELULARES -->
     <div class="vf-mobilebar">

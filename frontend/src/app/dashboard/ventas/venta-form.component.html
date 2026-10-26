@@ -261,8 +261,8 @@
                 <input type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="datosCredito.inicial_monto" (ngModelChange)="reevaluar()" placeholder="Mínimo 10,000" />
               </label>
               <label class="vf-field">
-                <span>Fecha del depósito</span>
-                <input type="date" [(ngModel)]="datosCredito.fecha_deposito" />
+                <span>Fecha de inicio de intereses</span>
+                <input type="date" [(ngModel)]="datosCredito.fecha_deposito" (ngModelChange)="reevaluar()" />
               </label>
             </div>
 
@@ -350,8 +350,8 @@
             @if (esPersonalizado || datosCredito.plazo_meses > 24) {
               <label class="vf-field">
                 <span>Interés del financiamiento (% anual)</span>
-                <input type="number" inputmode="decimal" step="0.01" [(ngModel)]="datosCredito.tea_financiamiento" (ngModelChange)="reevaluar()" placeholder="20 (estándar)" />
-                <small class="vf-hint">Solo aplica si el plazo supera los 24 meses. Si lo dejas vacío se usa el 20% estándar. Se calcula sobre el saldo pendiente según los días reales de cada cuota.</small>
+                <input type="number" inputmode="decimal" step="0.01" [(ngModel)]="datosCredito.tea_financiamiento" (ngModelChange)="reevaluar()" placeholder="20.98 (estándar)" />
+                <small class="vf-hint">Solo aplica si el plazo supera los 24 meses. Si lo dejas vacío se usa el 20.98% estándar. Se calcula sobre el saldo pendiente según los días reales de cada cuota.</small>
               </label>
             }
 
@@ -369,8 +369,8 @@
 
         <!-- CRONOGRAMA SIMULADO (en vivo) -->
         @if (formaPago === 'credito') {
-          @if (evaluacion(); as ev) {
-            @if (ev.cronograma && ev.cronograma.length > 0) {
+          @if (evaluacion()) {
+            @if (filasSimuladas.length > 0) {
               <section class="vf-card vf-sim" aria-label="Cronograma simulado">
                 <header class="vf-card-head">
                   <div class="vf-card-title">
@@ -383,72 +383,46 @@
                   <table class="vf-sim-table">
                     <thead>
                       <tr>
-                        <th>N°</th>
-                        <th>Vence</th>
-                        <th class="num">Cuota</th>
+                        <th>Nro</th>
+                        <th>Fecha de pago</th>
+                        <th class="num">Capital</th>
                         <th class="num">Amortización</th>
-                        <th class="num">Interés</th>
-                        <th class="num">Saldo</th>
+                        <th class="num">Interés acumulado</th>
+                        <th class="num">Cuota</th>
+                        <th class="num">Interés mensual</th>
                       </tr>
                     </thead>
                     <tbody>
-                      @for (c of ev.cronograma ?? []; track c.numero) {
-                        <tr>
-                          <td>{{ c.numero }}</td>
-                          <td>{{ c.fecha }}</td>
-                          <td class="num"><strong>S/ {{ c.monto | number:'1.2-2' }}</strong>
-                            @if (c.ajustada) { <span class="vf-sim-tag" title="El sistema ajustó esta cuota para cerrar el saldo exacto">Ajustada</span> }
+                      @for (f of filasSimuladas; track f.numero; let i = $index) {
+                        <tr [class.is-pago]="f.requiere_pago !== false">
+                          <td>{{ f.numero }}</td>
+                          <td>{{ fmtFecha(f.fecha) }}</td>
+                          <td class="num">{{ capitalFila(i) | number:'1.2-2' }}</td>
+                          <td class="num">
+                            @if (f.requiere_pago !== false) { {{ f.amortizacion | number:'1.2-2' }} }
                           </td>
-                          <td class="num">S/ {{ c.amortizacion | number:'1.2-2' }}</td>
-                          <td class="num">S/ {{ c.interes | number:'1.2-2' }}</td>
-                          <td class="num">S/ {{ c.capital | number:'1.2-2' }}</td>
+                          <td class="num">{{ f.acumulado | number:'1.2-2' }}</td>
+                          <td class="num">
+                            @if (f.requiere_pago !== false) {
+                              <strong>{{ f.monto | number:'1.2-2' }}</strong>
+                              @if (f.ajustada) { <span class="vf-sim-tag" title="El sistema ajustó esta cuota para cerrar el saldo exacto">Ajustada</span> }
+                            }
+                          </td>
+                          <td class="num">{{ f.interes | number:'1.2-2' }}</td>
                         </tr>
                       }
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colspan="3">Totales</td>
+                        <td class="num">{{ totalesSimulados.amortizacion | number:'1.2-2' }}</td>
+                        <td class="num">{{ totalesSimulados.interes | number:'1.2-2' }}</td>
+                        <td class="num">{{ totalesSimulados.cuota | number:'1.2-2' }}</td>
+                        <td class="num">{{ totalesSimulados.interes | number:'1.2-2' }}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
-
-                <dl class="vf-totals">
-                  <div><dt>Interés total</dt><dd>S/ {{ ev.interes_total ?? 0 | number:'1.2-2' }}</dd></div>
-                  <div class="is-strong"><dt>Total a pagar en cuotas</dt><dd>S/ {{ totalSimulado | number:'1.2-2' }}</dd></div>
-                </dl>
-
-                @if (ev.cronograma_mensual && ev.cronograma_mensual.length > 0) {
-                  <header class="vf-card-head" style="margin-top:1.5rem">
-                    <div class="vf-card-title">
-                      <h2>Detalle mensual</h2>
-                      <p>El interés se acumula cada mes y se paga en la fecha anual.</p>
-                    </div>
-                  </header>
-                  <div class="vf-sim-scroll">
-                    <table class="vf-sim-table">
-                      <thead>
-                        <tr>
-                          <th>Mes</th>
-                          <th>Fecha</th>
-                          <th class="num">Interés del mes</th>
-                          <th class="num">Interés acumulado</th>
-                          <th class="num">Capital</th>
-                          <th class="num">Pago</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (m of ev.cronograma_mensual; track m.numero) {
-                          <tr [class.is-pago]="m.requiere_pago">
-                            <td>{{ m.numero }}</td>
-                            <td>{{ m.fecha }}</td>
-                            <td class="num">S/ {{ m.interes | number:'1.2-2' }}</td>
-                            <td class="num">S/ {{ m.acumulado | number:'1.2-2' }}</td>
-                            <td class="num">S/ {{ m.capital | number:'1.2-2' }}</td>
-                            <td class="num">
-                              @if (m.requiere_pago) { <strong>S/ {{ m.monto | number:'1.2-2' }}</strong> } @else { — }
-                            </td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
               </section>
             }
           }
@@ -514,7 +488,11 @@
                 <div><dt>Monto a financiar</dt><dd>S/ {{ ev.monto_financiar | number:'1.2-2' }}</dd></div>
                 <div><dt>Número de cuotas</dt><dd>{{ ev.numero_cuotas }}</dd></div>
                 <div class="is-strong"><dt>Cuota estimada</dt><dd>S/ {{ ev.cuota_estimada | number:'1.2-2' }}</dd></div>
-                <div><dt>Interés anual aplicado</dt><dd>{{ ev.tea_aplicable | number:'1.0-2' }}%</dd></div>
+                <div><dt>TEA</dt><dd>{{ ev.tea_aplicable | number:'1.2-2' }}%</dd></div>
+                @if (ev.tcea) {
+                  <div><dt>TCEA</dt><dd>{{ ev.tcea | number:'1.2-2' }}%</dd></div>
+                  <div><dt>TEM</dt><dd>{{ ev.tem | number:'1.2-2' }}%</dd></div>
+                }
               }
             }
           </dl>

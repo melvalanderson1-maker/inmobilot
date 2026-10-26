@@ -753,3 +753,4 @@
 
 
 .vf-sim-table tr.is-pago { background: rgba(0,0,0,.05); }
+.vf-sim-table tfoot td { font-weight: 700; border-top: 2px solid rgba(128, 128, 128, 0.45); }

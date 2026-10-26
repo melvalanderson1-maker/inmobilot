@@ -396,7 +396,7 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
             "tem": (Decimal(str((1 + float(tea) / 100) ** (1 / 12) - 1)) * 100).quantize(Decimal("0.0001")),
             "monto_financiar": saldo,
             "cuota_estimada": filas_pago[0]["monto"] if filas_pago else Decimal("0"),
-            "interes_total": sum((f["interes"] for f in filas), Decimal("0")),
+            "interes_total": sum((f["monto"] for f in filas_pago), Decimal("0")) - saldo,
             "cronograma": filas_pago,
             "cronograma_mensual": cronograma_mensual,
         })

@@ -296,7 +296,38 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.reevaluar();
   }
 
+  // ---- Valores automáticos según el plazo (más de 24 meses = método del Excel Gruselva) ----
+  readonly TEA_LARGO = 20.98;   // TEA cuando el plazo supera 24 meses
+  readonly MORA_CORTO = 25;     // mora (% anual) hasta 24 meses
+  readonly MORA_LARGO = 40;     // mora (% anual) con más de 24 meses (pie del Excel)
+  private autoTea: number | null = null;
+  private autoMora = 25;
+  private frecuenciaForzada = false;
+
+  /** Pone TEA, mora y frecuencia según el plazo, sin pisar lo que el usuario escribió a mano */
+  private aplicarDefectos(): void {
+    if (this.esPersonalizado) return;
+    const dc = this.datosCredito;
+    const largo = Number(dc.plazo_meses) > 24;
+    const nuevaTea = largo ? this.TEA_LARGO : null;
+    const nuevaMora = largo ? this.MORA_LARGO : this.MORA_CORTO;
+
+    if (dc.tea_financiamiento === this.autoTea) dc.tea_financiamiento = nuevaTea;
+    if (Number(dc.tasa_interes) === this.autoMora) dc.tasa_interes = nuevaMora;
+    this.autoTea = nuevaTea;
+    this.autoMora = nuevaMora;
+
+    if (largo && dc.frecuencia_cuota !== 'anual') {
+      dc.frecuencia_cuota = 'anual';
+      this.frecuenciaForzada = true;
+    } else if (!largo && this.frecuenciaForzada) {
+      dc.frecuencia_cuota = 'mensual';
+      this.frecuenciaForzada = false;
+    }
+  }
+
   reevaluar(): void {
+    this.aplicarDefectos();
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.evaluarAhora(), 350);
   }
@@ -365,6 +396,38 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   get requiereAutorizacion(): boolean {
     return !!this.evaluacion()?.requiere_autorizacion;
+  }
+
+  // ---- Cronograma simulado (mismas columnas del PDF/Excel) ----
+
+  /** Con pago anual: las 61 filas mensuales. Si no: las cuotas normales */
+  get filasSimuladas(): any[] {
+    const ev: any = this.evaluacion();
+    if (!ev) return [];
+    return ev.cronograma_mensual?.length ? ev.cronograma_mensual : (ev.cronograma ?? []);
+  }
+
+  /** CAPITAL como en el Excel: el capital vigente ANTES de amortizar en esa fila */
+  capitalFila(i: number): number {
+    const filas = this.filasSimuladas;
+    const f = filas[i];
+    if (f.requiere_pago === false) return Number(f.capital);
+    return i > 0 ? Number(filas[i - 1].capital) : Number(f.capital) + Number(f.amortizacion);
+  }
+
+  /** TOTALES como en el Excel */
+  get totalesSimulados(): { amortizacion: number; interes: number; cuota: number } {
+    const ev: any = this.evaluacion();
+    const cuota = this.filasSimuladas
+      .filter((f) => f.requiere_pago !== false)
+      .reduce((acc, f) => acc + Number(f.monto), 0);
+    const financiado = Number(ev?.monto_financiar ?? 0);
+    return { amortizacion: financiado, interes: Math.round((cuota - financiado) * 100) / 100, cuota };
+  }
+
+  fmtFecha(f: string): string {
+    const [y, m, d] = String(f).slice(0, 10).split('-');
+    return `${d}/${m}/${y}`;
   }
 
   // ---- Cronograma personalizado ----
@@ -538,7 +601,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     if (this.formaPago === 'credito') {
       const dc = this.datosCredito;
       if (!dc.inicial_monto || !dc.fecha_deposito || !dc.numero_operacion.trim()) {
-        return 'Completa la inicial, la fecha del depósito y el N° de operación del crédito';
+        return 'Completa la inicial, la fecha de inicio de intereses y el N° de operación del crédito';
       }
       if (!dc.voucher_url) return 'Sube el voucher del depósito de la inicial';
       if (this.esPersonalizado) {

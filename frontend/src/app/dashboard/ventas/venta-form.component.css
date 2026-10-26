@@ -749,3 +749,7 @@
 .vf-sim-table th, .vf-sim-table td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
 .vf-sim-table th.num, .vf-sim-table td.num { text-align: right; }
 .vf-sim-tag { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; }
+
+
+
+.vf-sim-table tr.is-pago { background: rgba(0,0,0,.05); }

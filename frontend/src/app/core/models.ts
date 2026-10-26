@@ -809,11 +809,13 @@ export interface CuotaSimulada {
   acumulado: number | string;
   monto: number | string;
   ajustada?: boolean;
+  requiere_pago?: boolean;
 }
 
 export interface EvaluacionVenta {
   interes_total?: number | string;
   cronograma?: CuotaSimulada[];
+  cronograma_mensual?: CuotaSimulada[];
   motivos: { codigo: string; mensaje: string }[];
   requiere_autorizacion: boolean;
   plazo_meses: number;

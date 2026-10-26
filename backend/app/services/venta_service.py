@@ -566,16 +566,10 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
             frecuencia = "mensual"
         if saldo > 0:
             tea = reglas.tea_aplicable(plazo_meses, dc.get("tea_financiamiento"))
-            if frecuencia == "personalizado":
-                filas = reglas.generar_cuotas_personalizadas(
-                    saldo, dc.get("cuotas_personalizadas") or [], tea, fecha_abono
-                )
-                numero_cuotas = len(filas)
-            else:
-                numero_cuotas = reglas.numero_cuotas(frecuencia, plazo_meses)
-                filas = reglas.generar_cuotas(
-                    saldo, numero_cuotas, reglas.meses_por_cuota(frecuencia, plazo_meses), tea, fecha_abono
-                )
+            filas = reglas.construir_cronograma(
+                saldo, frecuencia, plazo_meses, tea, fecha_abono, dc.get("cuotas_personalizadas")
+            )
+            numero_cuotas = sum(1 for f in filas if f.get("requiere_pago", True))
 
             estado_contrato = m.EstadoContratoEnum.vigente
         else:
@@ -623,7 +617,7 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
             interes_mensual=f["interes"],
             interes_acumulado=f["acumulado"],
             monto_cuota=f["monto"],
-            requiere_pago=True,
+            requiere_pago=f.get("requiere_pago", True),
         ))
 
     # --- Pagos de la inicial: entran al circuito Caja -> Facturación ---

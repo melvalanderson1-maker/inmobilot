@@ -137,19 +137,23 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     return (this.plazoMeses() ?? 0) > 24 ? 20 : 0;
   });
 
-  cuotasPagadas = computed(() => this.cronograma().filter((c) => c.estado === 'pagada').length);
+  cronogramaPagos = computed(() => this.cronograma().filter((c) => c.requiere_pago !== false));
+  cronogramaMensual = computed(() =>
+    this.venta()?.datos_credito?.frecuencia_cuota === 'anual' ? this.cronograma() : []
+  );
+
+  cuotasPagadas = computed(() => this.cronogramaPagos().filter((c) => c.estado === 'pagada').length);
 
   progresoCuotas = computed(() => {
-    const total = this.cronograma().length;
+    const total = this.cronogramaPagos().length;
     return total ? Math.round((this.cuotasPagadas() / total) * 100) : 0;
   });
 
-  totalCronograma = computed(() => this.cronograma().reduce((acc, c) => acc + Number(c.monto_cuota), 0));
+  totalCronograma = computed(() => this.cronogramaPagos().reduce((acc, c) => acc + Number(c.monto_cuota), 0));
 
-  totalCobrado = computed(() => this.cronograma().reduce((acc, c) => acc + Number(c.monto_pagado ?? 0), 0));
+  totalCobrado = computed(() => this.cronogramaPagos().reduce((acc, c) => acc + Number(c.monto_pagado ?? 0), 0));
 
   // ---------- Ciclo de vida ----------
-
   ngOnInit(): void {
     this.idVenta = Number(this.route.snapshot.paramMap.get('id'));
     this.cargar();
@@ -427,6 +431,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
       mensual: 'Mensual',
       bimestral: 'Bimestral',
       trimestral: 'Trimestral',
+      anual: 'Anual',
       semestral: 'Semestral',
       unico: 'Pago único',
     };

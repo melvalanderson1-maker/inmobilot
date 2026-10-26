@@ -1100,6 +1100,7 @@ class CuotaSimuladaOut(BaseModel):
     acumulado: Decimal
     monto: Decimal
     ajustada: bool = False
+    requiere_pago: bool = True
 
 
 class EvaluacionVentaOut(BaseModel):
@@ -1112,6 +1113,7 @@ class EvaluacionVentaOut(BaseModel):
     cuota_estimada: Decimal = Decimal("0")
     interes_total: Decimal = Decimal("0")
     cronograma: list[CuotaSimuladaOut] = []
+    cronograma_mensual: list[CuotaSimuladaOut] = []
 
 
 class AutorizacionResolver(BaseModel):

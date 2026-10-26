@@ -65,6 +65,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     { valor: 'bimestral', etiqueta: 'Bimestral' },
     { valor: 'trimestral', etiqueta: 'Trimestral' },
     { valor: 'semestral', etiqueta: 'Semestral' },
+    { valor: 'anual', etiqueta: 'Anual (con detalle mensual)' },
+    { valor: 'anual', etiqueta: 'Anual (con detalle mensual)' },
     { valor: 'unico', etiqueta: 'Pago único al vencimiento' },
     { valor: 'personalizado', etiqueta: 'Cronograma personalizado' },
   ];

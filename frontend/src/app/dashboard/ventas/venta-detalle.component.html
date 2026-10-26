@@ -173,12 +173,12 @@
         </section>
 
         <!-- CRONOGRAMA -->
-        @if (cronograma().length > 0) {
+        @if (cronogramaPagos().length > 0) {
           <section class="vd-card">
             <header class="vd-card-head">
               <div>
                 <h2>Cronograma de pagos</h2>
-                <p>{{ cuotasPagadas() }} de {{ cronograma().length }} cuotas pagadas</p>
+                <p>{{ cuotasPagadas() }} de {{ cronogramaPagos().length }} cuotas pagadas</p>
               </div>
               @if (venta()!.id_contrato) {
                 <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm" (click)="verCronogramaYPagos()">Ver pagos →</button>
@@ -199,7 +199,7 @@
                 <span role="columnheader">Monto</span>
                 <span role="columnheader">Estado</span>
               </div>
-              @for (c of cronograma(); track c.id) {
+              @for (c of cronogramaPagos(); track c.id) {
                 <div class="vd-tr" role="row">
                   <span role="cell" data-label="N°">{{ c.numero_cuota }}</span>
                   <span role="cell" data-label="Vence">{{ c.fecha_pago_programada }}</span>

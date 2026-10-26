@@ -1,4 +1,5 @@
 """Reglas de negocio de la venta (PDF PROCESO DE VENTA) y cálculo del cronograma."""
+import calendar
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -8,8 +9,8 @@ from fastapi import HTTPException
 INICIAL_MINIMA = Decimal("10000")
 PLAZO_MAX_MESES = 24          # 2 años: 24 cuotas mensuales o 4 semestrales
 TEA_DEFECTO = Decimal("20")   # interés anual cuando el plazo supera los 24 meses
-MESES_POR_FRECUENCIA = {"mensual": 1, "bimestral": 2, "trimestral": 3, "semestral": 6}
-FRECUENCIAS = ("mensual", "bimestral", "trimestral", "semestral", "unico", "personalizado")
+MESES_POR_FRECUENCIA = {"mensual": 1, "bimestral": 2, "trimestral": 3, "semestral": 6, "anual": 12}
+FRECUENCIAS = ("mensual", "bimestral", "trimestral", "semestral", "anual", "unico", "personalizado")
 Q2 = Decimal("0.01")
 
 
@@ -89,6 +90,121 @@ def generar_cuotas(saldo, n: int, meses_cuota: int, tea_pct, fecha_base: date) -
             "monto": monto,
         })
     return filas
+
+
+# ----------------------------------------------------------------------------
+# Cronograma ANUAL con detalle MENSUAL (método del Excel de Gruselva)
+# ----------------------------------------------------------------------------
+
+def _fin_de_mes(anio: int, mes: int) -> date:
+    return date(anio, mes, calendar.monthrange(anio, mes)[1])
+
+
+def _sumar_meses_fin_de_mes(d: date, n: int) -> date:
+    t = d.year * 12 + (d.month - 1) + n
+    return _fin_de_mes(t // 12, t % 12 + 1)
+
+
+def _factor_tea(tea: float, dias: int) -> float:
+    """(1+TEA)^(dias/365) - 1 : interés compuesto por días reales."""
+    return (1 + tea) ** (dias / 365) - 1
+
+
+def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> list[dict]:
+    """Una fila por MES (siempre, porque la empresa tributa mensualmente) y un pago por AÑO.
+
+    - Las filas vencen a fin de mes. La primera es el primer fin de mes posterior a la fecha base
+      (el primer período puede ser parcial: se cobran los días reales).
+    - Mes a mes el interés se capitaliza: acumulado = capital * ((1+TEA)^(dias/365) - 1), con días reales.
+    - En el aniversario (fin de mes, 12 meses después, 24, 36...) el cliente paga la cuota anual:
+      del pago, primero se cubre el interés acumulado y el resto amortiza capital. El acumulado
+      vuelve a cero y empieza otro bloque de 12 meses sobre el nuevo capital.
+    - Cuota anual fija = anualidad con la TEA. La última cuota liquida capital + interés exactos.
+    Cada fila trae requiere_pago (True solo en las fechas de pago)."""
+    saldo = Decimal(str(saldo))
+    tea = float(Decimal(str(tea_pct or 0)) / 100)
+    if anios < 1:
+        raise HTTPException(status_code=422, detail="El pago anual requiere un plazo de al menos 12 meses")
+
+    if tea > 0:
+        factor = (1 + tea) ** anios
+        cuota = (saldo * Decimal(str(tea * factor / (factor - 1)))).quantize(Q2, rounding=ROUND_HALF_UP)
+    else:  # sin interés: cuotas anuales iguales
+        cuota = (saldo / anios).quantize(Q2, rounding=ROUND_HALF_UP)
+
+    fechas_pago = [_sumar_meses_fin_de_mes(fecha_base, 12 * (k + 1)) for k in range(anios)]
+    fecha = _fin_de_mes(fecha_base.year, fecha_base.month)
+    if fecha <= fecha_base:
+        fecha = _sumar_meses_fin_de_mes(fecha_base, 1)
+
+    filas: list[dict] = []
+    capital = saldo                 # capital vigente durante el bloque
+    acum_prev = Decimal("0")        # interés acumulado del bloque (mes anterior)
+    previa = fecha_base
+    k = 0
+    primero_del_bloque = True
+    while k < anios:
+        dias = (fecha - previa).days
+        g = _factor_tea(tea, dias)
+        if primero_del_bloque:
+            acum = (capital * Decimal(str(g))).quantize(Q2, rounding=ROUND_HALF_UP)
+        else:
+            acum = ((capital + acum_prev) * Decimal(str(g)) + acum_prev).quantize(Q2, rounding=ROUND_HALF_UP)
+        interes_mes = acum - acum_prev
+        fila = {
+            "numero": len(filas) + 1, "fecha": fecha, "capital": capital, "amortizacion": Decimal("0"),
+            "interes": interes_mes, "acumulado": acum, "monto": Decimal("0"),
+            "requiere_pago": False, "ajustada": False,
+        }
+        if fecha == fechas_pago[k]:
+            if k == anios - 1:
+                amort = capital
+                monto = capital + acum
+                fila["ajustada"] = abs(monto - cuota) > Decimal("0.05")
+            else:
+                monto = cuota
+                amort = monto - acum
+            capital = capital - amort
+            fila.update({"amortizacion": amort, "monto": monto, "requiere_pago": True, "capital": capital})
+            filas.append(fila)
+            acum_prev = Decimal("0")
+            k += 1
+            primero_del_bloque = True
+        else:
+            filas.append(fila)
+            acum_prev = acum
+            primero_del_bloque = False
+        previa = fecha
+        fecha = _sumar_meses_fin_de_mes(fecha, 1)
+    return filas
+
+
+def construir_cronograma(saldo, frecuencia: str, plazo_meses: int, tea_pct, fecha_base: date,
+                         cuotas_personalizadas: list[dict] | None = None) -> list[dict]:
+    """Punto único de entrada: lo usan la vista previa (evaluar) y la creación del contrato."""
+    if frecuencia == "personalizado":
+        filas = generar_cuotas_personalizadas(saldo, cuotas_personalizadas or [], tea_pct, fecha_base)
+    elif frecuencia == "anual":
+        filas = generar_cronograma_anual(saldo, plazo_meses // 12, tea_pct, fecha_base)
+    else:
+        n = numero_cuotas(frecuencia, plazo_meses)
+        filas = generar_cuotas(saldo, n, meses_por_cuota(frecuencia, plazo_meses), tea_pct, fecha_base) if n > 0 else []
+    for f in filas:
+        f.setdefault("requiere_pago", True)
+    return filas
+
+
+def calcular_liquidacion(capital_base, fecha_base: date, tea_pct, fecha_pago: date) -> dict:
+    """Cancelación anticipada: capital pendiente + interés devengado hasta la fecha de pago.
+    No se cobran intereses futuros. capital_base es el capital desde fecha_base (último pago aplicado
+    o inicio del financiamiento); el interés es compuesto por días reales, igual que el cronograma."""
+    capital = Decimal(str(capital_base))
+    tea = float(Decimal(str(tea_pct or 0)) / 100)
+    dias = max((fecha_pago - fecha_base).days, 0)
+    interes = Decimal("0")
+    if tea > 0 and capital > 0:
+        interes = (capital * Decimal(str(_factor_tea(tea, dias)))).quantize(Q2, rounding=ROUND_HALF_UP)
+    return {"capital": capital, "interes": interes, "total": capital + interes, "dias": dias}
 
 
 def generar_cuotas_personalizadas(saldo, cuotas: list[dict], tea_pct, fecha_base: date) -> list[dict]:
@@ -188,7 +304,7 @@ def validar_estructura(forma_pago, precio_total, dc: dict | None) -> None:
         raise HTTPException(status_code=422, detail="La inicial no puede superar el precio total")
     frecuencia = dc.get("frecuencia_cuota", "mensual")
     if frecuencia not in FRECUENCIAS:
-        raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, bimestral, trimestral, semestral, pago único o personalizada")
+        raise HTTPException(status_code=422, detail="La frecuencia debe ser mensual, bimestral, trimestral, semestral, anual, pago único o personalizada")
     if frecuencia == "personalizado":
         cuotas = dc.get("cuotas_personalizadas") or []
         if not cuotas:
@@ -230,6 +346,7 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
         "cuota_estimada": Decimal("0"),
         "interes_total": Decimal("0"),
         "cronograma": [],
+        "cronograma_mensual": [],
     }
 
     es_contado = _es_contado(forma_pago)
@@ -266,20 +383,22 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
         fecha_base = _fecha(dc["fecha_deposito"]) if dc.get("fecha_deposito") else date.today()
         filas: list[dict] = []
         if saldo > 0:
-            if frecuencia == "personalizado":
-                filas = generar_cuotas_personalizadas(saldo, dc.get("cuotas_personalizadas") or [], tea, fecha_base)
-            else:
-                n_regular = numero_cuotas(frecuencia, plazo)
-                if n_regular > 0:
-                    filas = generar_cuotas(saldo, n_regular, meses_por_cuota(frecuencia, plazo), tea, fecha_base)
+            filas = construir_cronograma(saldo, frecuencia, plazo, tea, fecha_base, dc.get("cuotas_personalizadas"))
+        filas_pago = [f for f in filas if f.get("requiere_pago", True)]
+        cronograma_mensual: list[dict] = []
+        if frecuencia == "anual":
+            cronograma_mensual = filas  # detalle mes a mes (todas las filas)
+            # El cronograma de pagos se muestra con numeración 1..N (cuota 1, 2, 3...)
+            filas_pago = [{**f, "numero": i} for i, f in enumerate(filas_pago, 1)]
         resumen.update({
             "plazo_meses": plazo,
-            "numero_cuotas": len(filas),
+            "numero_cuotas": len(filas_pago),
             "tea_aplicable": tea,
             "monto_financiar": saldo,
-            "cuota_estimada": filas[0]["monto"] if filas else Decimal("0"),
+            "cuota_estimada": filas_pago[0]["monto"] if filas_pago else Decimal("0"),
             "interes_total": sum((f["interes"] for f in filas), Decimal("0")),
-            "cronograma": filas,
+            "cronograma": filas_pago,
+            "cronograma_mensual": cronograma_mensual,
         })
 
     return {"motivos": motivos, "requiere_autorizacion": bool(motivos), **resumen}

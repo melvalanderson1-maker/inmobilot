@@ -412,6 +412,43 @@
                   <div><dt>Interés total</dt><dd>S/ {{ ev.interes_total ?? 0 | number:'1.2-2' }}</dd></div>
                   <div class="is-strong"><dt>Total a pagar en cuotas</dt><dd>S/ {{ totalSimulado | number:'1.2-2' }}</dd></div>
                 </dl>
+
+                @if (ev.cronograma_mensual && ev.cronograma_mensual.length > 0) {
+                  <header class="vf-card-head" style="margin-top:1.5rem">
+                    <div class="vf-card-title">
+                      <h2>Detalle mensual</h2>
+                      <p>El interés se acumula cada mes y se paga en la fecha anual.</p>
+                    </div>
+                  </header>
+                  <div class="vf-sim-scroll">
+                    <table class="vf-sim-table">
+                      <thead>
+                        <tr>
+                          <th>Mes</th>
+                          <th>Fecha</th>
+                          <th class="num">Interés del mes</th>
+                          <th class="num">Interés acumulado</th>
+                          <th class="num">Capital</th>
+                          <th class="num">Pago</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (m of ev.cronograma_mensual; track m.numero) {
+                          <tr [class.is-pago]="m.requiere_pago">
+                            <td>{{ m.numero }}</td>
+                            <td>{{ m.fecha }}</td>
+                            <td class="num">S/ {{ m.interes | number:'1.2-2' }}</td>
+                            <td class="num">S/ {{ m.acumulado | number:'1.2-2' }}</td>
+                            <td class="num">S/ {{ m.capital | number:'1.2-2' }}</td>
+                            <td class="num">
+                              @if (m.requiere_pago) { <strong>S/ {{ m.monto | number:'1.2-2' }}</strong> } @else { — }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
               </section>
             }
           }

@@ -451,6 +451,13 @@ async def registrar_pago(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La cuota no pertenece a este contrato")
         if cuota.estado == m.EstadoCuotaEnum.pagada:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Esa cuota ya está pagada")
+
+        if not cuota.requiere_pago:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Esa fila es solo el detalle mensual del interés y no se paga por separado",
+            )
+            
         for p in en_proceso:
             if p.id_cuota == cuota.id or (
                 p.tipo == "cuotas" and p.cuota_desde <= cuota.numero_cuota <= p.cuota_hasta

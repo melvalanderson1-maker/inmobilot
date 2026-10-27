@@ -1162,3 +1162,103 @@
     transition: none !important;
   }
 }
+
+
+/* ---------- Libro de cronograma (capital, amortización, intereses) ---------- */
+.vd-sub-title {
+  margin: 20px 0 10px !important;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.vd-sub-title small {
+  font-weight: 500;
+  color: var(--vd-ink-3);
+}
+
+.vd-ledger-wrap {
+  overflow: auto;
+  border: 1px solid var(--vd-line);
+  border-radius: var(--vd-radius-sm);
+}
+
+.vd-ledger-tall {
+  max-height: 520px;
+}
+
+.vd-ledger {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.vd-ledger th,
+.vd-ledger td {
+  padding: 9px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-top: 1px solid var(--vd-line);
+}
+
+.vd-ledger thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vd-ink-3);
+  background: #f0f2f9;
+  border-top: 0;
+}
+
+.vd-ledger .num { text-align: right; }
+.vd-ledger .c-n { width: 52px; color: var(--vd-ink-3); }
+
+.vd-ledger tbody tr:hover td { background: #fafbff; }
+
+.vd-ledger tbody tr.is-pago td {
+  background: var(--vd-brand-soft);
+  font-weight: 700;
+}
+
+.vd-ledger tfoot td {
+  position: sticky;
+  bottom: 0;
+  font-weight: 800;
+  background: #f0f2f9;
+  border-top: 2px solid var(--vd-line-2);
+}
+
+/* ---------- Correcciones de desborde (tarjetas laterales) ---------- */
+.vd-card,
+.vd-main > *,
+.vd-aside > * {
+  min-width: 0;
+}
+
+.vd-people,
+.vd-lines,
+.vd-pays,
+.vd-docs,
+.vd-dt-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vd-person {
+  min-width: 0;
+}
+
+.vd-person-info strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+@media (max-width: 720px) {
+  .vd-ledger { min-width: 620px; }
+}

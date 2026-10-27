@@ -12,6 +12,17 @@ import { Venta, DocumentoUbicacion, DocumentoUbicacionCreate, CronogramaCuota } 
 
 type EstadoPaso = 'hecho' | 'actual' | 'pendiente';
 
+/** Una fila del cronograma ya calculada: capital, amortización e intereses */
+interface FilaCrono {
+  c: CronogramaCuota;
+  paga: boolean;
+  capital: number;
+  amortizacion: number;
+  acumulado: number;
+  cuota: number;
+  interesMensual: number;
+}
+
 
 interface DocTramite {
   tipo: string;
@@ -155,6 +166,62 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   totalCronograma = computed(() => this.cronogramaPagos().reduce((acc, c) => acc + Number(c.monto_cuota), 0));
 
   totalCobrado = computed(() => this.cronogramaPagos().reduce((acc, c) => acc + Number(c.monto_pagado ?? 0), 0));
+
+  // ---------- Cronograma detallado (capital, amortización, intereses) ----------
+
+  private num(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Todas las filas con las mismas columnas del cronograma simulado.
+   * Usa lo que trae el servidor y completa lo que falte:
+   * capital = vigente ANTES de amortizar; interés acumulado se reinicia en cada fecha de pago.
+   */
+  filasCronograma = computed<FilaCrono[]>(() => {
+    const v = this.venta();
+    const filas = this.cronograma() as any[];
+    const financiado = Math.max(Number(v?.precio_total ?? 0) - Number(v?.datos_credito?.inicial_monto ?? 0), 0);
+    let capital = financiado;
+    let corrido = 0;
+
+    return filas.map((c) => {
+      const paga = c.requiere_pago !== false;
+      const interesMensual = this.num(c.interes_mensual) ?? this.num(c.interes) ?? 0;
+      corrido += interesMensual;
+
+      const acumulado = this.num(c.interes_acumulado) ?? this.num(c.acumulado) ?? corrido;
+      const cuota = paga ? Number(c.monto_cuota ?? 0) : 0;
+      const amortizacion = paga ? (this.num(c.amortizacion) ?? Math.max(cuota - acumulado, 0)) : 0;
+
+      const fila: FilaCrono = { c, paga, capital, amortizacion, acumulado, cuota, interesMensual };
+
+      if (paga) corrido = 0;
+      capital = this.num(c.saldo_capital) ?? Math.max(capital - amortizacion, 0);
+      return fila;
+    });
+  });
+
+  /** Solo las filas donde el cliente paga */
+  filasPago = computed<FilaCrono[]>(() => this.filasCronograma().filter((f) => f.paga));
+
+  totalesCronograma = computed(() => {
+    const r = (n: number) => Math.round(n * 100) / 100;
+    const pagos = this.filasPago();
+    return {
+      amortizacion: r(pagos.reduce((a, f) => a + f.amortizacion, 0)),
+      interes: r(pagos.reduce((a, f) => a + f.acumulado, 0)),
+      cuota: r(pagos.reduce((a, f) => a + f.cuota, 0)),
+    };
+  });
+
+  fmtFecha(f: string | null | undefined): string {
+    if (!f) return '—';
+    const [y, m, d] = String(f).slice(0, 10).split('-');
+    return d && m && y ? `${d}/${m}/${y}` : String(f);
+  }
 
   // ---------- Ciclo de vida ----------
   ngOnInit(): void {

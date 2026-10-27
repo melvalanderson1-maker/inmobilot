@@ -230,43 +230,92 @@
               Cobrado S/ {{ totalCobrado() | number:'1.2-2' }} de S/ {{ totalCronograma() | number:'1.2-2' }}
             </p>
 
-            <div class="vd-table" role="table" aria-label="Cuotas">
-              <div class="vd-tr vd-th" role="row">
-                <span role="columnheader">N°</span>
-                <span role="columnheader">Vence</span>
-                <span role="columnheader">Monto</span>
-                <span role="columnheader">Estado</span>
-              </div>
-              @for (c of cronogramaPagos(); track c.id) {
-                <div class="vd-tr" role="row">
-                  <span role="cell" data-label="N°">{{ c.numero_cuota }}</span>
-                  <span role="cell" data-label="Vence">{{ c.fecha_pago_programada }}</span>
-                  <span role="cell" data-label="Monto">S/ {{ c.monto_cuota | number:'1.2-2' }}</span>
-                  <span role="cell" data-label="Estado"><span class="vd-mini" [attr.data-cuota]="c.estado">{{ c.estado | titlecase }}</span></span>
-                </div>
-              }
+            <!-- Pagos del cliente -->
+            <h3 class="vd-sub-title">
+              {{ cronogramaMensual().length > 0 ? 'Cronograma anual' : 'Cuotas' }}
+              <small>· los {{ filasPago().length }} pagos que hace el cliente</small>
+            </h3>
+            <div class="vd-ledger-wrap">
+              <table class="vd-ledger">
+                <thead>
+                  <tr>
+                    <th class="c-n">Nro</th>
+                    <th>Fecha de pago</th>
+                    <th class="num">Capital</th>
+                    <th class="num">Amortización</th>
+                    <th class="num">Interés</th>
+                    <th class="num">Cuota</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (f of filasPago(); track f.c.id) {
+                    <tr>
+                      <td class="c-n">{{ f.c.numero_cuota }}</td>
+                      <td>{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
+                      <td class="num">{{ f.capital | number:'1.2-2' }}</td>
+                      <td class="num">{{ f.amortizacion | number:'1.2-2' }}</td>
+                      <td class="num">{{ f.acumulado | number:'1.2-2' }}</td>
+                      <td class="num"><strong>{{ f.cuota | number:'1.2-2' }}</strong></td>
+                      <td><span class="vd-mini" [attr.data-cuota]="f.c.estado">{{ f.c.estado | titlecase }}</span></td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3">Totales</td>
+                    <td class="num">{{ totalesCronograma().amortizacion | number:'1.2-2' }}</td>
+                    <td class="num">{{ totalesCronograma().interes | number:'1.2-2' }}</td>
+                    <td class="num">{{ totalesCronograma().cuota | number:'1.2-2' }}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
 
+            <!-- Detalle mensual (pago anual) -->
             @if (cronogramaMensual().length > 0) {
-              <details class="vd-dt-hist vd-mensual">
-                <summary>Detalle mensual ({{ cronogramaMensual().length }} filas)</summary>
-                <div class="vd-table" role="table" aria-label="Detalle mensual">
-                  <div class="vd-tr vd-th" role="row">
-                    <span role="columnheader">N°</span>
-                    <span role="columnheader">Fecha</span>
-                    <span role="columnheader">Interés del mes</span>
-                    <span role="columnheader">Cuota</span>
-                  </div>
-                  @for (c of cronogramaMensual(); track c.id) {
-                    <div class="vd-tr" [class.is-pago]="c.requiere_pago" role="row">
-                      <span role="cell" data-label="N°">{{ c.numero_cuota }}</span>
-                      <span role="cell" data-label="Fecha">{{ c.fecha_pago_programada }}</span>
-                      <span role="cell" data-label="Interés del mes">S/ {{ c.interes_mensual | number:'1.2-2' }}</span>
-                      <span role="cell" data-label="Cuota">{{ c.requiere_pago ? 'S/ ' + (c.monto_cuota | number:'1.2-2') : '—' }}</span>
-                    </div>
-                  }
-                </div>
-              </details>
+              <h3 class="vd-sub-title">
+                Detalle mensual
+                <small>· el interés mes a mes; las filas azules son las fechas de pago</small>
+              </h3>
+              <div class="vd-ledger-wrap vd-ledger-tall">
+                <table class="vd-ledger">
+                  <thead>
+                    <tr>
+                      <th class="c-n">Nro</th>
+                      <th>Fecha de pago</th>
+                      <th class="num">Capital</th>
+                      <th class="num">Amortización</th>
+                      <th class="num">Interés acumulado</th>
+                      <th class="num">Cuota</th>
+                      <th class="num">Interés mensual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of filasCronograma(); track f.c.id) {
+                      <tr [class.is-pago]="f.paga">
+                        <td class="c-n">{{ f.c.numero_cuota }}</td>
+                        <td>{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
+                        <td class="num">{{ f.capital | number:'1.2-2' }}</td>
+                        <td class="num">@if (f.paga) { {{ f.amortizacion | number:'1.2-2' }} }</td>
+                        <td class="num">{{ f.acumulado | number:'1.2-2' }}</td>
+                        <td class="num">@if (f.paga) { {{ f.cuota | number:'1.2-2' }} }</td>
+                        <td class="num">{{ f.interesMensual | number:'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3">Totales</td>
+                      <td class="num">{{ totalesCronograma().amortizacion | number:'1.2-2' }}</td>
+                      <td class="num">{{ totalesCronograma().interes | number:'1.2-2' }}</td>
+                      <td class="num">{{ totalesCronograma().cuota | number:'1.2-2' }}</td>
+                      <td class="num">{{ totalesCronograma().interes | number:'1.2-2' }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             }
           </section>
         }

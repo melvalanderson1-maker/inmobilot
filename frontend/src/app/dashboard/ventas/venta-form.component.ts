@@ -389,7 +389,13 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.evaluacion.set(null);
         const detalle = err?.error?.detail;
-        this.errorEvaluacion.set(typeof detalle === 'string' ? detalle : null);
+        const mensaje =
+          typeof detalle === 'string'
+            ? detalle
+            : Array.isArray(detalle)
+              ? detalle.map((d: any) => d?.msg ?? '').filter(Boolean).join('. ')
+              : 'No se pudo calcular el cronograma. Revisa la respuesta del request evaluar en la pestaña Network.';
+        this.errorEvaluacion.set(mensaje);
       },
     });
   }
@@ -428,6 +434,83 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   fmtFecha(f: string): string {
     const [y, m, d] = String(f).slice(0, 10).split('-');
     return `${d}/${m}/${y}`;
+  }
+
+  // ---- Libro de pagos: 30 filas en la página izquierda y 31 en la derecha ----
+  readonly FILAS_IZQ = 30;
+  readonly FILAS_DER = 31;
+  spread = signal(0);
+
+  get filasPorLibro(): number {
+    return this.FILAS_IZQ + this.FILAS_DER;
+  }
+
+  get totalSpreads(): number {
+    return Math.max(Math.ceil(this.filasSimuladas.length / this.filasPorLibro), 1);
+  }
+
+  get spreadActual(): number {
+    return Math.min(this.spread(), this.totalSpreads - 1);
+  }
+
+  private tramo(desde: number, hasta: number): { fila: any; idx: number; capital: number }[] {
+    return this.filasSimuladas
+      .slice(desde, hasta)
+      .map((fila, k) => ({ fila, idx: desde + k, capital: this.capitalFila(desde + k) }));
+  }
+
+  get paginas(): { fila: any; idx: number; capital: number }[][] {
+    const o = this.spreadActual * this.filasPorLibro;
+    return [this.tramo(o, o + this.FILAS_IZQ), this.tramo(o + this.FILAS_IZQ, o + this.filasPorLibro)];
+  }
+
+  rango(p: { fila: any }[]): string {
+    return p.length ? `${p[0].fila.numero} a ${p[p.length - 1].fila.numero}` : '';
+  }
+
+  irSpread(n: number): void {
+    this.spread.set(Math.min(Math.max(n, 0), this.totalSpreads - 1));
+  }
+
+  get hayCronograma(): boolean {
+    return !!this.evaluacion() && this.filasSimuladas.length > 0;
+  }
+
+  /** Se resaltan las filas de pago solo cuando hay filas intermedias (pago anual con detalle mensual) */
+  get resaltarPagos(): boolean {
+    return this.filasSimuladas.some((f) => f.requiere_pago === false);
+  }
+
+  get teaAplicada(): number {
+    return Number((this.evaluacion() as any)?.tea_aplicable ?? 0);
+  }
+
+  /** TEM = (1+TEA)^(1/12) - 1, igual que el Excel */
+  get temAplicada(): number {
+    return (Math.pow(1 + this.teaAplicada / 100, 1 / 12) - 1) * 100;
+  }
+
+  get plazoInvalidoAnual(): boolean {
+    const p = Number(this.datosCredito.plazo_meses) || 0;
+    return this.datosCredito.frecuencia_cuota === 'anual' && p > 0 && p % 12 !== 0;
+  }
+
+  get plazoSugeridoAnual(): number {
+    return Math.max(12, Math.round((Number(this.datosCredito.plazo_meses) || 12) / 12) * 12);
+  }
+
+  ajustarPlazoAnual(): void {
+    this.setPlazo(this.plazoSugeridoAnual);
+  }
+
+  /** Motivo por el que todavía no hay cronograma en pantalla */
+  get razonSinCronograma(): string {
+    const err = this.errorEvaluacion();
+    if (err) return err;
+    if (!this.precioTotal || this.precioTotal <= 0) return 'Indica el precio total de la venta.';
+    if (!this.datosCredito.inicial_monto) return 'Ingresa el monto de la inicial para calcular el cronograma.';
+    if (this.esPersonalizado && this.cuotasValidas().length === 0) return 'Agrega al menos una cuota con fecha.';
+    return 'Calculando el cronograma...';
   }
 
   // ---- Cronograma personalizado ----

@@ -34,6 +34,17 @@ interface ResumenContrato {
   proximaFecha: string | null;
 }
 
+/** Una fila del cronograma ya calculada: capital, amortización e intereses */
+interface FilaCrono {
+  c: CronogramaCuota;
+  paga: boolean;
+  capital: number;
+  amortizacion: number;
+  acumulado: number;
+  cuota: number;
+  interesMensual: number;
+}
+
 @Component({
   selector: 'app-contratos-list',
   standalone: true,
@@ -413,6 +424,72 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     return todas;
   }
 
+  // ---- Cronograma del drawer: capital, amortización e intereses (mismas columnas del simulado) ----
+
+  private num(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** Monto financiado del contrato: base del capital y de los totales */
+  private financiadoDe(contrato: Contrato): number {
+    const guardado = this.num((contrato as any).saldo_financiado);
+    if (guardado !== null && guardado > 0) return guardado;
+    return Math.max(Number(contrato.precio_total ?? 0) - Number(contrato.inicial_abonado ?? 0), 0);
+  }
+
+  /**
+   * Filas que se muestran en el drawer.
+   * Capital = vigente ANTES de amortizar; el interés acumulado se reinicia en cada fecha de pago.
+   */
+  filasDrawer = computed<FilaCrono[]>(() => {
+    const ct = this.contratoDrawer();
+    if (!ct) return [];
+    const todas = (this.cronogramaPorContrato()[ct.id] ?? []) as any[];
+    let capital = this.financiadoDe(ct);
+    let corrido = 0;
+
+    const filas = todas.map((c) => {
+      const paga = !!c.requiere_pago;
+      const interesMensual = this.num(c.interes_mensual) ?? 0;
+      corrido += interesMensual;
+
+      const acumulado = this.num(c.interes_acumulado) ?? corrido;
+      const cuota = paga ? Number(c.monto_cuota ?? 0) : 0;
+      const amortizacion = paga ? (this.num(c.amortizacion) ?? Math.max(cuota - acumulado, 0)) : 0;
+
+      const fila: FilaCrono = { c, paga, capital, amortizacion, acumulado, cuota, interesMensual };
+
+      if (paga) corrido = 0;
+      capital = Math.max(Math.round((capital - amortizacion) * 100) / 100, 0);
+      return fila;
+    });
+
+    const soloPagos = ct.frecuencia_cuota === 'anual' && !this.detalleMensual()[ct.id];
+    return soloPagos ? filas.filter((f) => f.paga) : filas;
+  });
+
+  /** Totales como en el Excel: amortización = monto financiado, interés = cuotas - financiado */
+  totalesDrawer = computed(() => {
+    const ct = this.contratoDrawer();
+    if (!ct) return { amortizacion: 0, interes: 0, cuota: 0 };
+    const r = (n: number) => Math.round(n * 100) / 100;
+    const financiado = this.financiadoDe(ct);
+    const cuota = r(
+      (this.cronogramaPorContrato()[ct.id] ?? [])
+        .filter((c) => c.requiere_pago)
+        .reduce((acc, c) => acc + Number(c.monto_cuota ?? 0), 0)
+    );
+    return { amortizacion: r(financiado), interes: r(Math.max(cuota - financiado, 0)), cuota };
+  });
+
+  fmtFecha(f: string | null | undefined): string {
+    if (!f) return '—';
+    const [y, m, d] = String(f).slice(0, 10).split('-');
+    return d && m && y ? `${d}/${m}/${y}` : String(f);
+  }
+
   resumen(contrato: Contrato): ResumenContrato {
     const cuotas = (this.cronogramaPorContrato()[contrato.id] ?? []).filter((c) => c.requiere_pago);
     const pagos = (this.pagosPorContrato()[contrato.id] ?? []).filter(
@@ -425,10 +502,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const cuotasPagadas = cuotas.filter((c) => c.estado === 'pagada').length;
     const cuotasPendientes = cuotas.filter((c) => c.estado === 'pendiente' || c.estado === 'parcial').length;
     const cuotasVencidas = cuotas.filter((c) => c.estado === 'vencida').length;
-    const interesTotal = (this.cronogramaPorContrato()[contrato.id] ?? []).reduce(
-      (acc, c) => acc + Number(c.interes_mensual ?? 0),
-      0
-    );
+    const interesTotal = Math.max(Math.round((totalCuotas - this.financiadoDe(contrato)) * 100) / 100, 0);
     const proxima = cuotas.find((c) => c.estado !== 'pagada');
 
     return {

@@ -299,7 +299,7 @@
               <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)">Pagar varias cuotas</button>
             }
 
-            <div class="tabla-scroll">
+            <div class="tabla-scroll" [class.tabla-scroll-alto]="filasDrawer().length > 14">
               <table class="tabla-cronograma">
                 <thead>
                   <tr>
@@ -307,53 +307,74 @@
                     <th>Vencimiento</th>
                     <th class="th-derecha">Capital</th>
                     <th class="th-derecha">Amortiz.</th>
-                    <th class="th-derecha">Interés</th>
                     @if (ct.frecuencia_cuota === 'anual' && detalleMensual()[ct.id]) {
                       <th class="th-derecha">Int. acum.</th>
+                      <th class="th-derecha">Cuota</th>
+                      <th class="th-derecha">Int. mensual</th>
+                    } @else {
+                      <th class="th-derecha">Interés</th>
+                      <th class="th-derecha">Cuota</th>
                     }
-                    <th class="th-derecha">Cuota</th>
                     <th>Estado</th>
                     <th class="th-accion"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (cuota of cuotasVisibles(ct); track cuota.id) {
+                  @for (f of filasDrawer(); track f.c.id) {
                     <tr
-                      [class.fila-sin-pago]="!cuota.requiere_pago"
-                      [class.fila-pagada]="cuota.estado === 'pagada'"
-                      [class.fila-vencida]="cuota.requiere_pago && cuota.estado === 'vencida'"
-                      [class.fila-proxima]="cuota.requiere_pago && cuota.estado !== 'pagada' && cuota.fecha_pago_programada === r.proximaFecha">
+                      [class.fila-sin-pago]="!f.paga"
+                      [class.fila-pagada]="f.c.estado === 'pagada'"
+                      [class.fila-vencida]="f.paga && f.c.estado === 'vencida'"
+                      [class.fila-proxima]="f.paga && f.c.estado !== 'pagada' && f.c.fecha_pago_programada === r.proximaFecha">
                       <td data-label="N°" class="celda-num">
-                        <span class="punto" [ngClass]="cuota.requiere_pago ? 'punto-' + cuota.estado : 'punto-interes'"></span>
-                        {{ cuota.numero_cuota }}
+                        <span class="punto" [ngClass]="f.paga ? 'punto-' + f.c.estado : 'punto-interes'"></span>
+                        {{ f.c.numero_cuota }}
                       </td>
-                      <td data-label="Vencimiento">{{ cuota.fecha_pago_programada }}</td>
-                      <td data-label="Capital" class="num">S/ {{ cuota.capital }}</td>
-                      <td data-label="Amortiz." class="num">{{ cuota.requiere_pago ? 'S/ ' + cuota.amortizacion : '—' }}</td>
-                      <td data-label="Interés" class="num">S/ {{ cuota.interes_mensual }}</td>
+                      <td data-label="Vencimiento">{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
+                      <td data-label="Capital" class="num">S/ {{ f.capital | number:'1.2-2' }}</td>
+                      <td data-label="Amortiz." class="num">{{ f.paga ? 'S/ ' + (f.amortizacion | number:'1.2-2') : '—' }}</td>
                       @if (ct.frecuencia_cuota === 'anual' && detalleMensual()[ct.id]) {
-                        <td data-label="Int. acum." class="num">S/ {{ cuota.interes_acumulado }}</td>
+                        <td data-label="Int. acum." class="num">S/ {{ f.acumulado | number:'1.2-2' }}</td>
+                        <td data-label="Cuota" class="num celda-cuota">{{ f.paga ? 'S/ ' + (f.cuota | number:'1.2-2') : '—' }}</td>
+                        <td data-label="Int. mensual" class="num">S/ {{ f.interesMensual | number:'1.2-2' }}</td>
+                      } @else {
+                        <td data-label="Interés" class="num">S/ {{ f.acumulado | number:'1.2-2' }}</td>
+                        <td data-label="Cuota" class="num celda-cuota">{{ f.paga ? 'S/ ' + (f.cuota | number:'1.2-2') : '—' }}</td>
                       }
-                      <td data-label="Cuota" class="num celda-cuota">{{ cuota.requiere_pago ? 'S/ ' + cuota.monto_cuota : '—' }}</td>
                       <td data-label="Estado">
-                        @if (cuota.requiere_pago) {
-                          <span class="chip" [ngClass]="'chip-' + cuota.estado">{{ cuota.estado }}</span>
+                        @if (f.paga) {
+                          <span class="chip" [ngClass]="'chip-' + f.c.estado">{{ f.c.estado }}</span>
                         } @else {
                           <span class="etiqueta-solo-interes">interés</span>
                         }
                       </td>
                       <td data-label="" class="celda-accion">
-                        @if (cuota.requiere_pago && cuota.estado !== 'pagada') {
-                          @if (pagoEnProceso(ct.id, cuota.id)) {
+                        @if (f.paga && f.c.estado !== 'pagada') {
+                          @if (pagoEnProceso(ct.id, f.c.id)) {
                             <span class="chip chip-pago-pendiente_caja">En validación</span>
                           } @else if (puedeRegistrarPago) {
-                            <button type="button" class="btn-pagar" (click)="abrirRegistrarPago(ct.id, cuota)">Pagar</button>
+                            <button type="button" class="btn-pagar" (click)="abrirRegistrarPago(ct.id, f.c)">Pagar</button>
                           }
                         }
                       </td>
                     </tr>
                   }
                 </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="tf-etiqueta">Totales</td>
+                    <td data-label="Amortiz." class="num">S/ {{ totalesDrawer().amortizacion | number:'1.2-2' }}</td>
+                    @if (ct.frecuencia_cuota === 'anual' && detalleMensual()[ct.id]) {
+                      <td data-label="Int. acum." class="num">S/ {{ totalesDrawer().interes | number:'1.2-2' }}</td>
+                      <td data-label="Cuota" class="num">S/ {{ totalesDrawer().cuota | number:'1.2-2' }}</td>
+                      <td data-label="Int. mensual" class="num">S/ {{ totalesDrawer().interes | number:'1.2-2' }}</td>
+                    } @else {
+                      <td data-label="Interés" class="num">S/ {{ totalesDrawer().interes | number:'1.2-2' }}</td>
+                      <td data-label="Cuota" class="num">S/ {{ totalesDrawer().cuota | number:'1.2-2' }}</td>
+                    }
+                    <td colspan="2" class="tf-vacio"></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
 

@@ -209,11 +209,13 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   totalesCronograma = computed(() => {
     const r = (n: number) => Math.round(n * 100) / 100;
-    const pagos = this.filasPago();
+    const v = this.venta();
+    const financiado = Math.max(Number(v?.precio_total ?? 0) - Number(v?.datos_credito?.inicial_monto ?? 0), 0);
+    const cuota = r(this.filasPago().reduce((a, f) => a + f.cuota, 0));
     return {
-      amortizacion: r(pagos.reduce((a, f) => a + f.amortizacion, 0)),
-      interes: r(pagos.reduce((a, f) => a + f.acumulado, 0)),
-      cuota: r(pagos.reduce((a, f) => a + f.cuota, 0)),
+      amortizacion: r(financiado),
+      interes: r(cuota - financiado),
+      cuota,
     };
   });
 

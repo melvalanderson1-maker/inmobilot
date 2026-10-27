@@ -591,13 +591,64 @@
             </dl>
           }
 
+          @if (filasAnuales.length > 0) {
+            <div class="vf-anual">
+              <header class="vf-sub-head">
+                <h3>Cronograma anual</h3>
+                <p>Los {{ filasAnuales.length }} pagos que hará el cliente, uno por año.</p>
+              </header>
+              <div class="vf-anual-paper">
+                <table class="vf-ledger vf-ledger-anual">
+                  <thead>
+                    <tr>
+                      <th class="c-n">Nro</th>
+                      <th>Fecha de pago</th>
+                      <th class="num">Capital</th>
+                      <th class="num">Amortización</th>
+                      <th class="num">Interés</th>
+                      <th class="num">Cuota</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (a of filasAnuales; track a.fila.numero) {
+                      <tr>
+                        <td class="c-n">{{ a.fila.numero }}</td>
+                        <td>{{ fmtFecha(a.fila.fecha) }}</td>
+                        <td class="num">{{ a.capitalAntes | number:'1.2-2' }}</td>
+                        <td class="num">{{ a.fila.amortizacion | number:'1.2-2' }}</td>
+                        <td class="num">{{ a.fila.acumulado | number:'1.2-2' }}</td>
+                        <td class="num">
+                          <strong>{{ a.fila.monto | number:'1.2-2' }}</strong>
+                          @if (a.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3">Totales</td>
+                      <td class="num">{{ totalesSimulados.amortizacion | number:'1.2-2' }}</td>
+                      <td class="num">{{ totalesSimulados.interes | number:'1.2-2' }}</td>
+                      <td class="num">{{ totalesSimulados.cuota | number:'1.2-2' }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <header class="vf-sub-head">
+              <h3>Detalle mensual</h3>
+              <p>El interés mes a mes. Las filas azules son las fechas de pago.</p>
+            </header>
+          }
+
           <div class="vf-book">
             <div class="vf-pages">
               @for (pag of paginas; track $index; let p = $index) {
                 <article class="vf-page" [class.vf-page-l]="p === 0" [class.vf-page-r]="p === 1" [attr.aria-label]="'Página ' + (spreadActual * 2 + p + 1)">
                   @if (pag.length > 0) {
                     <div class="vf-page-scroll">
-                      <table class="vf-ledger">
+                      <table class="vf-ledger vf-ledger-mes">
                         <thead>
                           <tr>
                             <th class="c-n">Nro</th>

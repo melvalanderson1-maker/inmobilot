@@ -428,7 +428,11 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       .filter((f) => f.requiere_pago !== false)
       .reduce((acc, f) => acc + Number(f.monto), 0);
     const financiado = Number(ev?.monto_financiar ?? 0);
-    return { amortizacion: financiado, interes: Math.round((cuota - financiado) * 100) / 100, cuota };
+    const interes =
+      ev?.interes_total != null
+        ? Math.round(Number(ev.interes_total) * 100) / 100
+        : Math.round((cuota - financiado) * 100) / 100;
+    return { amortizacion: financiado, interes, cuota };
   }
 
   fmtFecha(f: string): string {
@@ -474,6 +478,17 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   get hayCronograma(): boolean {
     return !!this.evaluacion() && this.filasSimuladas.length > 0;
+  }
+
+  /** Los pagos del cronograma anual (hoja "cronograma anual" del Excel). Vacío si la frecuencia no es anual */
+  get filasAnuales(): { fila: any; capitalAntes: number }[] {
+    const ev: any = this.evaluacion();
+    if (!ev?.cronograma_mensual?.length) return [];
+    const pagos: any[] = ev.cronograma ?? [];
+    return pagos.map((fila, i) => ({
+      fila,
+      capitalAntes: i > 0 ? Number(pagos[i - 1].capital) : Number(fila.capital) + Number(fila.amortizacion),
+    }));
   }
 
   /** Se resaltan las filas de pago solo cuando hay filas intermedias (pago anual con detalle mensual) */

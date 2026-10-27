@@ -110,8 +110,14 @@ def _factor_tea(tea: float, dias: int) -> float:
     return (1 + tea) ** (dias / 365) - 1
 
 # Réplica exacta del Excel de Gruselva. Si pones False en cualquiera, ya NO coincide con el PDF.
-EXCEL_PARENTESIS_CUOTA = True   # F15 del Excel: (S*(r*f) - 1)/(f-1) -> cuota 0.63 menor
-EXCEL_BASE_360_ANIO_2 = True    # el Excel usa /360 en los 12 meses del 2.º año
+EXCEL_PARENTESIS_CUOTA = True            # F15 del Excel: (S*(r*f) - 1)/(f-1) -> cuota 0.63 menor
+EXCEL_BASE_360_ANIO_2 = True             # el Excel usa /360 en los 12 meses del 2.º año
+EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA = True   # la última cuota del Excel está tipeada y sube al centavo siguiente
+
+
+class _Filas(list):
+    """Filas del cronograma + interés total exacto (sin redondear mes a mes), como el SUM del Excel."""
+    interes_exacto: Decimal | None = None
 
 
 def _d(x: float) -> Decimal:
@@ -140,6 +146,7 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
 
     filas: list[dict] = []
     capital = S
+    interes_exacto = 0.0
     acum_prev = 0.0
     previa = fecha_base
     k = 0
@@ -156,12 +163,17 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
         }
         if fecha == fechas_pago[k]:
             if k == anios - 1:
-                monto = round(capital + acum, 2)
+                total = capital + acum
+                if EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA:
+                    monto = (-(-round(total * 100, 4) // 1)) / 100   # techo al centavo
+                else:
+                    monto = round(total, 2)
                 fila["ajustada"] = abs(monto - cuota) > 0.05
             else:
                 monto = cuota
             amort = monto - acum
             capital -= amort
+            interes_exacto += acum
             fila.update({"amortizacion": _d(amort), "monto": _d(monto), "requiere_pago": True, "capital": _d(capital)})
             acum_prev = 0.0
             k += 1
@@ -172,7 +184,9 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
         filas.append(fila)
         previa = fecha
         fecha = _sumar_meses_fin_de_mes(fecha, 1)
-    return filas
+    resultado = _Filas(filas)
+    resultado.interes_exacto = _d(interes_exacto)
+    return resultado
 
 
 def construir_cronograma(saldo, frecuencia: str, plazo_meses: int, tea_pct, fecha_base: date,
@@ -396,7 +410,10 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
             "tem": (Decimal(str((1 + float(tea) / 100) ** (1 / 12) - 1)) * 100).quantize(Decimal("0.0001")),
             "monto_financiar": saldo,
             "cuota_estimada": filas_pago[0]["monto"] if filas_pago else Decimal("0"),
-            "interes_total": sum((f["monto"] for f in filas_pago), Decimal("0")) - saldo,
+            "interes_total": (
+                filas.interes_exacto if getattr(filas, "interes_exacto", None) is not None
+                else sum((f["interes"] for f in filas), Decimal("0"))
+            ),
             "cronograma": filas_pago,
             "cronograma_mensual": cronograma_mensual,
         })

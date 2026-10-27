@@ -37,7 +37,7 @@
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
   color: var(--tinta);
-  max-width: 1320px;
+  max-width: 1480px;
   margin: 0 auto;
   padding: 24px clamp(14px, 3vw, 32px) 140px;
   -webkit-font-smoothing: antialiased;
@@ -1134,6 +1134,8 @@
 
 .vf-libro {
   margin-top: 64px;
+  container-type: inline-size;
+  container-name: libro;
 }
 
 .vf-libro-head {
@@ -1237,30 +1239,42 @@
 
 .vf-page-scroll {
   flex: 1;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .vf-ledger {
   width: 100%;
-  min-width: 560px;
   border-collapse: collapse;
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
 }
 
+.vf-ledger-mes {
+  table-layout: fixed;
+}
+
+.vf-ledger-mes th:nth-child(1) { width: 6%; }
+.vf-ledger-mes th:nth-child(2) { width: 15%; }
+.vf-ledger-mes th:nth-child(3) { width: 14%; }
+.vf-ledger-mes th:nth-child(4) { width: 17%; }
+.vf-ledger-mes th:nth-child(5) { width: 17%; }
+.vf-ledger-mes th:nth-child(6) { width: 14%; }
+.vf-ledger-mes th:nth-child(7) { width: 17%; }
+
 .vf-ledger th {
-  padding: 10px 10px;
+  padding: 8px 5px;
   border-bottom: 3px double rgba(7, 70, 58, 0.5);
   background: var(--papel-2);
   color: var(--verde-hondo);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.2;
   text-align: left;
-  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 .vf-ledger td {
   height: 30px;
-  padding: 4px 10px;
+  padding: 4px 5px;
   border-bottom: 1px solid rgba(11, 111, 92, 0.17);
   white-space: nowrap;
 }
@@ -1275,7 +1289,6 @@
 }
 
 .vf-ledger .c-n {
-  width: 48px;
   color: var(--tinta-3);
   text-align: center;
 }
@@ -1369,6 +1382,61 @@
   color: #8ee6cc;
 }
 
+/* Cronograma anual (los pagos) */
+
+.vf-sub-head {
+  margin: 4px 0 14px;
+}
+
+.vf-sub-head h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.vf-sub-head p {
+  color: var(--tinta-2);
+  font-size: 0.875rem;
+}
+
+.vf-anual {
+  margin-bottom: 40px;
+}
+
+.vf-anual-paper {
+  max-width: 900px;
+  overflow: hidden;
+  border: 1px solid var(--regla);
+  border-radius: 10px;
+  background: var(--papel);
+}
+
+.vf-ledger-anual {
+  font-size: 0.875rem;
+}
+
+.vf-ledger-anual th {
+  padding: 10px 12px;
+  font-size: 0.78rem;
+}
+
+.vf-ledger-anual td {
+  height: 38px;
+  padding: 6px 12px;
+}
+
+.vf-ledger-anual .c-n {
+  width: 56px;
+}
+
+.vf-ledger-anual tfoot td {
+  padding: 11px 12px;
+  border-top: 3px double rgba(7, 70, 58, 0.5);
+  border-bottom: 0;
+  background: var(--papel-2);
+  color: var(--verde-hondo);
+  font-weight: 700;
+}
+
 /* Estado vacío del cronograma */
 
 .vf-empty {
@@ -1450,7 +1518,7 @@
    Responsive
    ========================================================================== */
 
-@media (max-width: 1179px) {
+@container libro (max-width: 1099px) {
   .vf-pages {
     grid-template-columns: 1fr;
   }
@@ -1467,6 +1535,21 @@
 
   .vf-page-r .vf-page-foot {
     flex-direction: row;
+  }
+}
+
+@container libro (max-width: 639px) {
+  .vf-page-scroll {
+    overflow-x: auto;
+  }
+
+  .vf-ledger-mes {
+    table-layout: auto;
+    min-width: 540px;
+  }
+
+  .vf-ledger-mes th {
+    white-space: nowrap;
   }
 }
 

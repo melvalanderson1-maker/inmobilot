@@ -10,6 +10,7 @@ from app.models import models as m
 from app.schemas import schemas as s
 from app.services import separacion_service as sep_svc
 from app.services import venta_service as venta_svc
+from app.services import amortizacion_service as amort_svc
 from app.sockets import notificar_pago, notificar_pago_registrado
 
 router = APIRouter(prefix="/pagos", tags=["pagos"])
@@ -43,6 +44,8 @@ def _concepto(p: m.Pago) -> str:
         if p.cuota_hasta and p.cuota_hasta != p.cuota_desde:
             return f"Cuotas {p.cuota_desde} a {p.cuota_hasta}"
         return f"Cuota {p.cuota_desde}"
+    if p.tipo == "amortizacion":
+        return "Amortización a capital (baja la cuota)" if p.modalidad == "amortizar_cuota" else "Amortización a capital (reduce el plazo)"
     if p.cuota:
         return f"Cuota {p.cuota.numero_cuota}"
     return "Pago a cuenta"
@@ -239,6 +242,10 @@ async def subir_comprobante_pago(
                 cuota.fecha_pago_real = pago.fecha_pago
             else:
                 cuota.estado = m.EstadoCuotaEnum.parcial
+    elif pago.tipo == "amortizacion":
+        # Abono a capital: aquí se reescribe el cronograma pendiente.
+        # Si algo no cuadra lanza error y NO se guarda nada.
+        amort_svc.aplicar_amortizacion(db, m, contrato, pago)
 
     destinatarios = sep_svc.unicos(
         sep_svc.usuarios_por_roles(db, contrato.id_empresa, contrato.id_proyecto, ["cobranza", "admin"])

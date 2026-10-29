@@ -496,6 +496,8 @@ class ContratoOut(ORMBase):
     observaciones: Optional[str] = None
     estado: EstadoContratoEnum
     frecuencia_cuota: str
+    tiene_interes: bool = False
+    tea: Optional[Decimal] = None
     lote: Optional[ContratoLoteOut] = None
     clientes: list[ContratoClienteOut] = []
     id_venta: Optional[int] = None
@@ -528,6 +530,8 @@ class ContratoOut(ORMBase):
             observaciones=contrato.observaciones,
             estado=contrato.estado,
             frecuencia_cuota=contrato.frecuencia_cuota,
+            tiene_interes=bool(contrato.tiene_interes),
+            tea=contrato.tea,
             lote=ContratoLoteOut(
                 id=contrato.lote.id,
                 codigo=contrato.lote.codigo,
@@ -570,6 +574,9 @@ class PagoCreate(BaseModel):
     numero_operacion: Optional[str] = None
     comprobante_url: str
     observacion: Optional[str] = None
+    # adelanto = cuotas tal como están | amortizar_cuota = abona a capital y baja la cuota
+    # | amortizar_plazo = abona a capital y mantiene la cuota (termina antes)
+    modalidad: Literal["adelanto", "amortizar_cuota", "amortizar_plazo"] = "adelanto"
 
 
 class PagoOut(ORMBase):
@@ -590,6 +597,8 @@ class PagoOut(ORMBase):
     tipo: str = "cuota"
     cuota_desde: Optional[int] = None
     cuota_hasta: Optional[int] = None
+    modalidad: str = "adelanto"
+    detalle_amortizacion: Optional[dict] = None
 
 
 class PagoRechazo(BaseModel):
@@ -1114,6 +1123,23 @@ class EvaluacionVentaOut(BaseModel):
     interes_total: Decimal = Decimal("0")
     cronograma: list[CuotaSimuladaOut] = []
     cronograma_mensual: list[CuotaSimuladaOut] = []
+
+
+class CotizacionAmortizacionOut(BaseModel):
+    modalidad: str
+    fecha_efectiva: date
+    monto: Decimal
+    capital_antes: Decimal
+    interes_devengado: Decimal
+    a_capital: Decimal
+    capital_despues: Decimal
+    cuota_anterior: Decimal
+    cuota_nueva: Decimal
+    cuotas_antes: int
+    cuotas_despues: int
+    ahorro_interes: Decimal
+    monto_cancelacion: Decimal
+    cronograma: list[CuotaSimuladaOut] = []
 
 
 class AutorizacionResolver(BaseModel):

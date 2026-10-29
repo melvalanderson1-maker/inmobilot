@@ -19,6 +19,7 @@ import {
   CronogramaCuota,
   Pago,
   PagoCreate,
+  CotizacionAmortizacion,
   FormaPago,
   Venta,
   DocumentoUbicacion,
@@ -376,6 +377,9 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   conceptoPago(p: Pago): string {
     if (p.tipo === 'inicial') return 'Inicial';
     if (p.tipo === 'contado') return 'Pago al contado';
+    if (p.tipo === 'amortizacion') {
+      return p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
+    }
     if (p.cuota_desde) {
       return p.cuota_hasta && p.cuota_hasta !== p.cuota_desde
         ? `Cuotas ${p.cuota_desde} a ${p.cuota_hasta}`
@@ -439,6 +443,23 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     return Math.max(Number(contrato.precio_total ?? 0) - Number(contrato.inicial_abonado ?? 0), 0);
   }
 
+  /** Abonos a capital ya aplicados: el capital vigente baja en la fecha efectiva de cada uno */
+  private amortizacionesDe(idContrato: number): { fe: string; aCapital: number; monto: number }[] {
+    return (this.pagosPorContrato()[idContrato] ?? [])
+      .filter((p) => p.tipo === 'amortizacion' && p.estado === 'validado' && !!p.detalle_amortizacion)
+      .map((p) => ({
+        fe: String(p.detalle_amortizacion.fecha_efectiva).slice(0, 10),
+        aCapital: Number(p.detalle_amortizacion.a_capital ?? 0),
+        monto: Number(p.monto ?? 0),
+      }))
+      .sort((a, b) => a.fe.localeCompare(b.fe));
+  }
+
+  /** Suma de los abonos a capital: se agrega a las cuotas para que los totales de interés cuadren */
+  private montoAmortizado(idContrato: number): number {
+    return this.amortizacionesDe(idContrato).reduce((acc, a) => acc + a.monto, 0);
+  }
+
   /**
    * Filas que se muestran en el drawer.
    * Capital = vigente ANTES de amortizar; el interés acumulado se reinicia en cada fecha de pago.
@@ -449,13 +470,22 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const todas = (this.cronogramaPorContrato()[ct.id] ?? []) as any[];
     let capital = this.financiadoDe(ct);
     let corrido = 0;
+    const anual = ct.frecuencia_cuota === 'anual';
+    const abonos = [...this.amortizacionesDe(ct.id)];
 
     const filas = todas.map((c) => {
       const paga = !!c.requiere_pago;
       const interesMensual = this.num(c.interes_mensual) ?? 0;
       corrido += interesMensual;
 
-      const acumulado = this.num(c.interes_acumulado) ?? corrido;
+      // Después de un abono a capital, el capital vigente baja desde la primera fila posterior a su fecha efectiva
+      const fechaFila = String(c.fecha_pago_programada).slice(0, 10);
+      while (abonos.length && abonos[0].fe < fechaFila) {
+        capital = Math.max(Math.round((capital - abonos.shift()!.aCapital) * 100) / 100, 0);
+      }
+
+      // Anual: interés acumulado del período (se reinicia en cada pago). Resto de frecuencias: interés de esa cuota.
+      const acumulado = anual ? (this.num(c.interes_acumulado) ?? corrido) : interesMensual;
       const cuota = paga ? Number(c.monto_cuota ?? 0) : 0;
       const amortizacion = paga ? (this.num(c.amortizacion) ?? Math.max(cuota - acumulado, 0)) : 0;
 
@@ -479,7 +509,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const cuota = r(
       (this.cronogramaPorContrato()[ct.id] ?? [])
         .filter((c) => c.requiere_pago)
-        .reduce((acc, c) => acc + Number(c.monto_cuota ?? 0), 0)
+        .reduce((acc, c) => acc + Number(c.monto_cuota ?? 0), 0) + this.montoAmortizado(ct.id)
     );
     return { amortizacion: r(financiado), interes: r(Math.max(cuota - financiado, 0)), cuota };
   });
@@ -497,7 +527,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     );
 
     const totalPagado = pagos.reduce((acc, p) => acc + Number(p.monto), 0);
-    const totalCuotas = cuotas.reduce((acc, c) => acc + Number(c.monto_cuota), 0);
+    const totalCuotas = cuotas.reduce((acc, c) => acc + Number(c.monto_cuota), 0) + this.montoAmortizado(contrato.id);
     const saldoPendiente = Math.max(totalCuotas - totalPagado, 0);
     const cuotasPagadas = cuotas.filter((c) => c.estado === 'pagada').length;
     const cuotasPendientes = cuotas.filter((c) => c.estado === 'pendiente' || c.estado === 'parcial').length;
@@ -837,6 +867,127 @@ export class ContratosListComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.guardandoPago.set(false);
             this.errorPago.set(err?.error?.detail ?? 'Error al registrar el pago');
+          },
+        });
+      },
+      error: (err) => {
+        this.guardandoPago.set(false);
+        this.errorPago.set(err?.error?.detail ?? 'Error al subir el comprobante');
+      },
+    });
+  }
+
+  // ---- Amortizar capital (solo contratos con interés) ----
+  modalAmortAbierto = signal(false);
+  cotizandoAmort = signal(false);
+  cotizacion = signal<CotizacionAmortizacion | null>(null);
+  private cotizacionClave = '';
+  modalidadAmort: 'amortizar_cuota' | 'amortizar_plazo' = 'amortizar_cuota';
+  montoAmort: number | null = null;
+
+  toNum(v: unknown): number {
+    return Number(v ?? 0);
+  }
+
+  /** ¿Ya hay una amortización esperando a Caja o Facturación? */
+  amortizacionEnProceso(idContrato: number): boolean {
+    return (this.pagosPorContrato()[idContrato] ?? []).some(
+      (p) => p.tipo === 'amortizacion' && (p.estado === 'pendiente_caja' || p.estado === 'pendiente_facturacion')
+    );
+  }
+
+  private claveAmort(): string {
+    return `${this.montoAmort}|${this.fechaPago}|${this.modalidadAmort}`;
+  }
+
+  /** La cotización en pantalla corresponde a lo que está escrito ahora */
+  get cotizacionVigente(): boolean {
+    return !!this.cotizacion() && this.cotizacionClave === this.claveAmort();
+  }
+
+  abrirAmortizar(idContrato: number): void {
+    this.contratoPagoId = idContrato;
+    this.modalidadAmort = 'amortizar_cuota';
+    this.montoAmort = null;
+    this.cotizacion.set(null);
+    this.cotizacionClave = '';
+    this.fechaPago = new Date().toISOString().slice(0, 10);
+    this.metodoPago = 'transferencia';
+    this.numeroOperacion = '';
+    this.observacionPago = '';
+    this.archivoComprobante = null;
+    this.errorPago.set(null);
+    this.modalAmortAbierto.set(true);
+  }
+
+  cerrarModalAmort(): void {
+    this.modalAmortAbierto.set(false);
+  }
+
+  cotizarAmort(): void {
+    if (!this.contratoPagoId || !this.montoAmort || this.montoAmort <= 0) {
+      this.errorPago.set('Indica cuánto va a abonar el cliente');
+      return;
+    }
+    this.errorPago.set(null);
+    this.cotizacion.set(null);
+    this.cotizandoAmort.set(true);
+    const clave = this.claveAmort();
+    this.contratoService
+      .cotizarAmortizacion(this.contratoPagoId, {
+        monto: this.montoAmort,
+        fecha_pago: this.fechaPago,
+        modalidad: this.modalidadAmort,
+      })
+      .subscribe({
+        next: (c) => {
+          this.cotizacion.set(c);
+          this.cotizacionClave = clave;
+          this.cotizandoAmort.set(false);
+        },
+        error: (err) => {
+          this.cotizandoAmort.set(false);
+          this.errorPago.set(err?.error?.detail ?? 'No se pudo calcular la amortización');
+        },
+      });
+  }
+
+  guardarAmortizacion(): void {
+    if (!this.contratoPagoId || !this.montoAmort || !this.cotizacionVigente) {
+      this.errorPago.set('Calcula la amortización antes de confirmar');
+      return;
+    }
+    if (!this.archivoComprobante) {
+      this.errorPago.set('Debes adjuntar el comprobante de pago (imagen o PDF)');
+      return;
+    }
+    this.guardandoPago.set(true);
+    this.errorPago.set(null);
+
+    const formData = new FormData();
+    formData.append('archivo', this.archivoComprobante);
+
+    this.contratoService.subirComprobante(formData).subscribe({
+      next: (res) => {
+        const payload: PagoCreate = {
+          modalidad: this.modalidadAmort,
+          monto: Math.round(this.montoAmort! * 100) / 100,
+          fecha_pago: this.fechaPago,
+          metodo_pago: this.metodoPago,
+          numero_operacion: this.numeroOperacion || undefined,
+          observacion: this.observacionPago || undefined,
+          comprobante_url: res.url,
+        };
+        this.contratoService.registrarPago(this.contratoPagoId!, payload).subscribe({
+          next: () => {
+            this.guardandoPago.set(false);
+            this.modalAmortAbierto.set(false);
+            this.toastService.exito('Amortización enviada a Caja para su validación');
+            this.cargarCronograma(this.contratoPagoId!);
+          },
+          error: (err) => {
+            this.guardandoPago.set(false);
+            this.errorPago.set(err?.error?.detail ?? 'Error al registrar la amortización');
           },
         });
       },

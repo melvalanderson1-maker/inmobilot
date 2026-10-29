@@ -1,3 +1,4 @@
+from datetime import date
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.core.database import get_db
 from app.deps import require_modulo, require_permiso, get_ids_proyectos_usuario
 from app.services import separacion_service as sep_svc
+from app.services import amortizacion_service as amort_svc
 from app.models import models as m
 from app.schemas import schemas as s
 from app.sockets import notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_pago_registrado, notificar_pago
@@ -369,6 +371,50 @@ def listar_pagos(
     )
 
 
+def _cargar_contrato_pago(db: Session, id_contrato: int, usuario: m.Usuario) -> m.Contrato:
+    contrato = (
+        db.query(m.Contrato)
+        .filter(m.Contrato.id == id_contrato, m.Contrato.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not contrato:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contrato no encontrado")
+    _validar_acceso_proyecto(db, usuario, contrato.id_proyecto)
+    return contrato
+
+
+def _cotizar(db: Session, contrato: m.Contrato, monto: Decimal, fecha_pago: date, modalidad: str) -> dict:
+    cuotas = (
+        db.query(m.CronogramaPago)
+        .filter(m.CronogramaPago.id_contrato == contrato.id)
+        .order_by(m.CronogramaPago.numero_cuota)
+        .all()
+    )
+    previas = [
+        p.detalle_amortizacion
+        for p in db.query(m.Pago).filter(
+            m.Pago.id_contrato == contrato.id, m.Pago.tipo == "amortizacion", m.Pago.estado == "validado"
+        ).all()
+    ]
+    return amort_svc.cotizar(contrato, cuotas, monto, fecha_pago, modalidad, previas)
+
+
+@router.get("/{id_contrato}/cotizar-amortizacion", response_model=s.CotizacionAmortizacionOut)
+def cotizar_amortizacion(
+    id_contrato: int,
+    monto: Decimal,
+    fecha_pago: date,
+    modalidad: str,
+    usuario: m.Usuario = Depends(require_permiso("registrar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Simula cómo queda el cronograma si el cliente abona `monto` a capital. No guarda nada."""
+    contrato = _cargar_contrato_pago(db, id_contrato, usuario)
+    if contrato.estado in (m.EstadoContratoEnum.cancelado, m.EstadoContratoEnum.anulado):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El contrato ya está cerrado")
+    return _cotizar(db, contrato, monto, fecha_pago, modalidad)
+
+
 @router.post("/{id_contrato}/pagos", response_model=s.PagoOut, status_code=status.HTTP_201_CREATED)
 async def registrar_pago(
     id_contrato: int,
@@ -397,7 +443,7 @@ async def registrar_pago(
         .filter(
             m.Pago.id_contrato == id_contrato,
             m.Pago.estado.in_(["pendiente_caja", "pendiente_facturacion"]),
-            m.Pago.tipo.in_(["cuota", "cuotas"]),
+            m.Pago.tipo.in_(["cuota", "cuotas", "amortizacion"]),
         )
         .all()
     )
@@ -406,7 +452,23 @@ async def registrar_pago(
     id_cuota = None
     cuota_desde = cuota_hasta = None
 
-    if payload.cantidad_cuotas:
+    if payload.modalidad != "adelanto":
+        # ---- Amortización a capital (solo contratos con interés) ----
+        if payload.cantidad_cuotas or payload.id_cuota:
+            raise HTTPException(status_code=422, detail="La amortización a capital no se asocia a cuotas")
+        if en_proceso:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya hay un pago de cuotas o una amortización en Caja o Facturación. Espera a que se aplique antes de registrar otro",
+            )
+        _cotizar(db, contrato, payload.monto, payload.fecha_pago, payload.modalidad)  # valida que sea posible
+        tipo = "amortizacion"
+        concepto = (
+            "Amortización a capital (baja la cuota)"
+            if payload.modalidad == "amortizar_cuota"
+            else "Amortización a capital (reduce el plazo)"
+        )
+    elif payload.cantidad_cuotas:
         # ---- Varias cuotas: las N primeras pendientes, en orden ----
         if en_proceso:
             raise HTTPException(
@@ -458,6 +520,8 @@ async def registrar_pago(
                 detail="Esa fila es solo el detalle mensual del interés y no se paga por separado",
             )
             
+        if any(p.tipo == "amortizacion" for p in en_proceso):
+            raise HTTPException(status_code=409, detail="Hay una amortización a capital en Caja o Facturación. Espera a que se aplique")
         for p in en_proceso:
             if p.id_cuota == cuota.id or (
                 p.tipo == "cuotas" and p.cuota_desde <= cuota.numero_cuota <= p.cuota_hasta
@@ -488,6 +552,7 @@ async def registrar_pago(
         tipo=tipo,
         cuota_desde=cuota_desde,
         cuota_hasta=cuota_hasta,
+        modalidad=payload.modalidad,
         estado="pendiente_caja",
     )
     db.add(pago)

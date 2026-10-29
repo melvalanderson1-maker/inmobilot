@@ -31,6 +31,16 @@ def _total_pagado(db: Session, id_contrato: int) -> Decimal:
     return Decimal(str(total))
 
 
+def _total_amortizado(db: Session, id_contrato: int) -> Decimal:
+    """Abonos a capital ya validados. El cronograma pendiente se recalcula SIN ellos, así que se suman al total a cobrar."""
+    total = (
+        db.query(func.coalesce(func.sum(m.Pago.monto), 0))
+        .filter(m.Pago.id_contrato == id_contrato, m.Pago.estado == "validado", m.Pago.tipo == "amortizacion")
+        .scalar()
+    )
+    return Decimal(str(total))
+
+
 def _total_a_cobrar(contrato: m.Contrato) -> Decimal:
     """Suma de las cuotas (incluye interés, si lo hay)."""
     return sum((q.monto_cuota for q in contrato.cronograma if q.requiere_pago), CERO)
@@ -81,6 +91,7 @@ def resumen_cobranza(
     ids = [c.id for c in contratos]
     pagado: dict = {}
     ventas: dict = {}
+    amortizado: dict = {}
     if ids:
         pagado = dict(
             db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
@@ -93,6 +104,12 @@ def resumen_cobranza(
             .all()
         )
         ventas = dict(db.query(m.Venta.id_contrato, m.Venta.id).filter(m.Venta.id_contrato.in_(ids)).all())
+        amortizado = dict(
+            db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
+            .filter(m.Pago.id_contrato.in_(ids), m.Pago.estado == "validado", m.Pago.tipo == "amortizacion")
+            .group_by(m.Pago.id_contrato)
+            .all()
+        )
 
     filas: list[s.CobranzaFilaOut] = []
     for c in contratos:
@@ -122,7 +139,7 @@ def resumen_cobranza(
             precio_total=c.precio_total,
             inicial_abonado=c.inicial_abonado or CERO,
             total_pagado=total_pagado,
-            saldo_pendiente=max(sum((q.monto_cuota for q in cuotas), CERO) - total_pagado, CERO),
+            saldo_pendiente=max(sum((q.monto_cuota for q in cuotas), CERO) + Decimal(str(amortizado.get(c.id, 0))) - total_pagado, CERO),
             monto_vencido=monto_vencido,
             cuotas_total=len(cuotas),
             cuotas_pagadas=len(cuotas) - len(pendientes),
@@ -203,7 +220,7 @@ async def cancelar_contrato(
     if en_tramite:
         raise _conflicto("Hay pagos pendientes de Caja o Facturación. Espera a que se apliquen antes de cancelar")
 
-    saldo = _total_a_cobrar(contrato) - _total_pagado(db, contrato.id)
+    saldo = _total_a_cobrar(contrato) + _total_amortizado(db, contrato.id) - _total_pagado(db, contrato.id)
     if saldo > 0:
         raise _conflicto(f"Aún falta cobrar S/ {saldo:,.2f}. Registra el pago antes de cancelar el contrato")
 

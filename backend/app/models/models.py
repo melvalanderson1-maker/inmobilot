@@ -552,10 +552,14 @@ class Pago(Base):
     facturado_por = Column(Integer, ForeignKey("usuarios.id"))
     fecha_facturacion = Column(DateTime)
 
-    # inicial | contado | cuota | cuotas | otro
+    # inicial | contado | cuota | cuotas | amortizacion | otro
     tipo = Column(String(20), nullable=False, default="cuota", server_default="cuota")
     cuota_desde = Column(Integer)
     cuota_hasta = Column(Integer)
+
+    # adelanto | amortizar_cuota | amortizar_plazo   (las dos últimas solo con tipo = 'amortizacion')
+    modalidad = Column(String(20), nullable=False, default="adelanto", server_default="adelanto")
+    detalle_amortizacion = Column(JSONB, nullable=True)  # cómo quedó el contrato al aplicar la amortización
 
     contrato = relationship("Contrato")
     cuota = relationship("CronogramaPago")

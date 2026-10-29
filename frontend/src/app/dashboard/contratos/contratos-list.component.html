@@ -205,7 +205,7 @@
         @if (puedeGestionarCobranza) {
           <div class="acciones-cobranza">
             @if (ct.forma_pago === 'credito' && ct.estado !== 'cancelado' && ct.estado !== 'anulado') {
-              @if (ct.frecuencia_cuota !== 'custom') {
+              @if (ct.frecuencia_cuota !== 'custom' && !ct.tiene_interes) {
                 <button type="button" class="btn-secundario-sm" (click)="recalcularCuotas(ct)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
               }
               <button type="button" class="btn-secundario-sm btn-peligro" (click)="cancelarContrato(ct)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
@@ -296,7 +296,18 @@
             </div>
 
             @if (puedeRegistrarPago && pendientesDe(ct.id).length > 1) {
-              <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)">Pagar varias cuotas</button>
+              <div class="acciones-pago">
+                <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)"
+                        title="Paga las cuotas tal como están en el cronograma (no cambia fechas ni montos)">Adelantar cuotas</button>
+                @if (ct.tiene_interes) {
+                  @if (amortizacionEnProceso(ct.id)) {
+                    <span class="chip chip-pago-pendiente_caja">Amortización en validación</span>
+                  } @else {
+                    <button type="button" class="btn-secundario-sm btn-amortizar" (click)="abrirAmortizar(ct.id)"
+                            title="Abona a capital: baja la cuota o acorta el plazo">Amortizar capital</button>
+                  }
+                }
+              </div>
             }
 
             <div class="tabla-scroll" [class.tabla-scroll-alto]="filasDrawer().length > 14">
@@ -755,6 +766,139 @@
           <button type="button" class="btn-secundario" (click)="cerrarModalVarias()">Cancelar</button>
           <button type="button" class="btn-primary" (click)="guardarPagoVarias()" [disabled]="guardandoPago() || !seleccionVarias">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ============ MODAL: AMORTIZAR CAPITAL ============ -->
+  @if (modalAmortAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModalAmort()">
+      <div class="modal modal-amort" role="dialog" aria-modal="true" aria-label="Amortizar capital" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Amortizar capital</h2>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalAmort()" aria-label="Cerrar">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (errorPago()) {
+            <div class="mensaje-error" role="alert">{{ errorPago() }}</div>
+          }
+
+          <div class="aviso-info">
+            El monto paga primero el <strong>interés generado hasta la fecha de pago</strong> y lo que sobra baja el capital.
+            Las cuotas ya pagadas no cambian. Se aplica cuando Facturación sube el comprobante.
+          </div>
+
+          <div class="amort-opciones" role="radiogroup" aria-label="Qué hacer con el ahorro">
+            <label class="amort-opcion" [class.activa]="modalidadAmort === 'amortizar_cuota'">
+              <input type="radio" name="modalidadAmort" value="amortizar_cuota" [(ngModel)]="modalidadAmort" />
+              <span class="amort-opcion-titulo">Bajar la cuota</span>
+              <span class="amort-opcion-texto">Mismas fechas y misma cantidad de cuotas. Cada cuota baja de monto.</span>
+            </label>
+            <label class="amort-opcion" [class.activa]="modalidadAmort === 'amortizar_plazo'">
+              <input type="radio" name="modalidadAmort" value="amortizar_plazo" [(ngModel)]="modalidadAmort" />
+              <span class="amort-opcion-titulo">Reducir el plazo</span>
+              <span class="amort-opcion-texto">La cuota se mantiene y el contrato termina antes (sobran cuotas al final).</span>
+            </label>
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Monto que paga el cliente (S/)</label>
+              <input [(ngModel)]="montoAmort" type="number" inputmode="decimal" min="0" />
+            </div>
+            <div class="campo">
+              <label>Fecha de pago</label>
+              <input [(ngModel)]="fechaPago" type="date" />
+            </div>
+          </div>
+
+          <button type="button" class="btn-secundario-sm btn-calcular" (click)="cotizarAmort()" [disabled]="cotizandoAmort()">
+            {{ cotizandoAmort() ? 'Calculando...' : 'Calcular cómo queda' }}
+          </button>
+
+          @if (cotizacion(); as cot) {
+            @if (!cotizacionVigente) {
+              <div class="aviso-info">Cambiaste el monto, la fecha o la opción: vuelve a calcular.</div>
+            }
+            <div class="amort-resultado" [class.amort-obsoleta]="!cotizacionVigente">
+              <div class="amort-grid">
+                <div><span class="etiqueta-mini">Interés hasta la fecha</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.interes_devengado) | number:'1.2-2' }}</span></div>
+                <div><span class="etiqueta-mini">Va a capital</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.a_capital) | number:'1.2-2' }}</span></div>
+                <div><span class="etiqueta-mini">Capital pendiente</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.capital_despues) | number:'1.2-2' }}</span></div>
+                <div>
+                  <span class="etiqueta-mini">Cuota</span>
+                  <span class="cuota-resumen-valor">S/ {{ toNum(cot.cuota_anterior) | number:'1.2-2' }} → S/ {{ toNum(cot.cuota_nueva) | number:'1.2-2' }}</span>
+                </div>
+                <div>
+                  <span class="etiqueta-mini">Cuotas que faltan</span>
+                  <span class="cuota-resumen-valor">{{ cot.cuotas_antes }} → {{ cot.cuotas_despues }}</span>
+                </div>
+                <div><span class="etiqueta-mini">Ahorro de intereses</span><span class="cuota-resumen-valor valor-ahorro">S/ {{ toNum(cot.ahorro_interes) | number:'1.2-2' }}</span></div>
+              </div>
+
+              <div class="tabla-scroll tabla-scroll-alto">
+                <table class="tabla-cronograma tabla-amort">
+                  <thead>
+                    <tr>
+                      <th>N°</th>
+                      <th>Vencimiento</th>
+                      <th class="th-derecha">Capital</th>
+                      <th class="th-derecha">Amortiz.</th>
+                      <th class="th-derecha">Cuota</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of cot.cronograma; track f.numero) {
+                      <tr>
+                        <td data-label="N°" class="celda-num">{{ f.numero }}</td>
+                        <td data-label="Vencimiento">{{ fmtFecha(f.fecha) }}</td>
+                        <td data-label="Capital" class="num">S/ {{ toNum(f.capital) | number:'1.2-2' }}</td>
+                        <td data-label="Amortiz." class="num">S/ {{ toNum(f.amortizacion) | number:'1.2-2' }}</td>
+                        <td data-label="Cuota" class="num celda-cuota">S/ {{ toNum(f.monto) | number:'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Método de pago</label>
+              <select [(ngModel)]="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="deposito">Depósito</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>N° de operación (opcional)</label>
+              <input [(ngModel)]="numeroOperacion" type="text" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Comprobante de pago (JPG, PNG o PDF) *</label>
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
+            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+          </div>
+
+          <div class="campo">
+            <label>Observación (opcional)</label>
+            <textarea [(ngModel)]="observacionPago" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secundario" (click)="cerrarModalAmort()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="guardarAmortizacion()" [disabled]="guardandoPago() || !cotizacionVigente">
+            {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar amortización' }}
           </button>
         </div>
       </div>

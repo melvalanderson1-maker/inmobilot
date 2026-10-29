@@ -8,7 +8,7 @@ import { VentaService } from '../../core/services/venta.service';
 import { SocketService } from '../../core/services/socket.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ContratoService } from '../../core/services/contrato.service';
-import { Venta, DocumentoUbicacion, DocumentoUbicacionCreate, CronogramaCuota } from '../../core/models';
+import { Venta, DocumentoUbicacion, DocumentoUbicacionCreate, CronogramaCuota, Pago } from '../../core/models';
 
 type EstadoPaso = 'hecho' | 'actual' | 'pendiente';
 
@@ -50,6 +50,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   venta = signal<Venta | null>(null);
   cronograma = signal<CronogramaCuota[]>([]);
+  pagos = signal<Pago[]>([]);
   cargando = signal(false);
   procesando = signal(false);
   idVenta!: number;
@@ -184,6 +185,8 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     const v = this.venta();
     const filas = this.cronograma() as any[];
     const financiado = Math.max(Number(v?.precio_total ?? 0) - Number(v?.datos_credito?.inicial_monto ?? 0), 0);
+    const anual = v?.datos_credito?.frecuencia_cuota === 'anual';
+    const abonos = [...this.amortizaciones()];
     let capital = financiado;
     let corrido = 0;
 
@@ -192,7 +195,14 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
       const interesMensual = this.num(c.interes_mensual) ?? this.num(c.interes) ?? 0;
       corrido += interesMensual;
 
-      const acumulado = this.num(c.interes_acumulado) ?? this.num(c.acumulado) ?? corrido;
+      // Tras un abono a capital, el capital vigente baja desde la primera fila posterior a su fecha efectiva
+      const fechaFila = String(c.fecha_pago_programada ?? '').slice(0, 10);
+      while (abonos.length && abonos[0].fe < fechaFila) {
+        capital = Math.max(Math.round((capital - abonos.shift()!.aCapital) * 100) / 100, 0);
+      }
+
+      // Anual: interés acumulado del período (se reinicia en cada pago). Resto: interés de esa cuota.
+      const acumulado = anual ? (this.num(c.interes_acumulado) ?? this.num(c.acumulado) ?? corrido) : interesMensual;
       const cuota = paga ? Number(c.monto_cuota ?? 0) : 0;
       const amortizacion = paga ? (this.num(c.amortizacion) ?? Math.max(cuota - acumulado, 0)) : 0;
 
@@ -204,19 +214,29 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     });
   });
 
+  /** Abonos a capital ya aplicados (amortizaciones validadas) */
+  private amortizaciones = computed(() =>
+    this.pagos()
+      .filter((p) => p.tipo === 'amortizacion' && p.estado === 'validado' && !!p.detalle_amortizacion)
+      .map((p) => ({
+        fe: String(p.detalle_amortizacion.fecha_efectiva).slice(0, 10),
+        aCapital: Number(p.detalle_amortizacion.a_capital ?? 0),
+        monto: Number(p.monto ?? 0),
+      }))
+      .sort((a, b) => a.fe.localeCompare(b.fe))
+  );
+
   /** Solo las filas donde el cliente paga */
   filasPago = computed<FilaCrono[]>(() => this.filasCronograma().filter((f) => f.paga));
 
+  /** Totales como en el Excel: amortización = monto financiado, interés = cuotas - financiado */
   totalesCronograma = computed(() => {
     const r = (n: number) => Math.round(n * 100) / 100;
     const v = this.venta();
     const financiado = Math.max(Number(v?.precio_total ?? 0) - Number(v?.datos_credito?.inicial_monto ?? 0), 0);
-    const cuota = r(this.filasPago().reduce((a, f) => a + f.cuota, 0));
-    return {
-      amortizacion: r(financiado),
-      interes: r(cuota - financiado),
-      cuota,
-    };
+    const abonado = this.amortizaciones().reduce((a, x) => a + x.monto, 0); // abonos a capital ya pagados
+    const cuota = r(this.filasPago().reduce((a, f) => a + f.cuota, 0) + abonado);
+    return { amortizacion: r(financiado), interes: r(Math.max(cuota - financiado, 0)), cuota };
   });
 
   fmtFecha(f: string | null | undefined): string {
@@ -252,8 +272,10 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
         this.cargando.set(false);
         if (res.id_contrato && res.forma_pago === 'credito') {
           this.contratoService.cronograma(res.id_contrato).subscribe((c) => this.cronograma.set(c));
+          this.contratoService.listarPagos(res.id_contrato).subscribe((p) => this.pagos.set(p));
         } else {
           this.cronograma.set([]);
+          this.pagos.set([]);
         }
       },
       error: () => this.cargando.set(false),

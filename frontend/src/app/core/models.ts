@@ -366,6 +366,8 @@ export interface Contrato {
   frecuencia_cuota: string;
   saldo_financiado: number;
   numero_cuotas: number;
+  tiene_interes?: boolean;
+  tea?: number | string | null;
   tipo_contrato?: string;
   observaciones?: string;
   estado: EstadoContrato;
@@ -402,6 +404,7 @@ export interface PagoCreate {
   numero_operacion?: string;
   comprobante_url: string;
   observacion?: string;
+  modalidad?: 'adelanto' | 'amortizar_cuota' | 'amortizar_plazo';
 }
 
 
@@ -423,6 +426,8 @@ export interface Pago {
   tipo?: string;
   cuota_desde?: number | null;
   cuota_hasta?: number | null;
+  modalidad?: string;
+  detalle_amortizacion?: any | null;
 }
 
 
@@ -838,4 +843,22 @@ export interface AutorizacionVenta {
   id_venta?: number;
   created_at: string;
   resuelto_at?: string;
+}
+
+
+export interface CotizacionAmortizacion {
+  modalidad: string;
+  fecha_efectiva: string;
+  monto: number | string;
+  capital_antes: number | string;
+  interes_devengado: number | string;
+  a_capital: number | string;
+  capital_despues: number | string;
+  cuota_anterior: number | string;
+  cuota_nueva: number | string;
+  cuotas_antes: number;
+  cuotas_despues: number;
+  ahorro_interes: number | string;
+  monto_cancelacion: number | string;
+  cronograma: CuotaSimulada[];
 }

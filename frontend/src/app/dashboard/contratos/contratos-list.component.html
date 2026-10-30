@@ -339,7 +339,7 @@
                       [class.fila-proxima]="f.paga && f.c.estado !== 'pagada' && f.c.fecha_pago_programada === r.proximaFecha">
                       <td data-label="N°" class="celda-num">
                         <span class="punto" [ngClass]="f.paga ? 'punto-' + f.c.estado : 'punto-interes'"></span>
-                        {{ f.c.numero_cuota }}
+                        {{ f.paga ? (f.c.numero_pago ?? f.c.numero_cuota) : f.c.numero_cuota }}
                       </td>
                       <td data-label="Vencimiento">{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
                       <td data-label="Capital" class="num">S/ {{ f.capital | number:'1.2-2' }}</td>
@@ -632,7 +632,7 @@
           <div class="cuota-resumen">
             <div>
               <span class="etiqueta-mini">Cuota</span>
-              <span class="cuota-resumen-valor">N° {{ cuotaSeleccionada?.numero_cuota }}</span>
+              <span class="cuota-resumen-valor">N° {{ cuotaSeleccionada?.numero_pago ?? cuotaSeleccionada?.numero_cuota }}</span>
             </div>
             <div>
               <span class="etiqueta-mini">Vence</span>
@@ -787,8 +787,8 @@
           }
 
           <div class="aviso-info">
-            El monto paga primero el <strong>interés generado hasta la fecha de pago</strong> y lo que sobra baja el capital.
-            Las cuotas ya pagadas no cambian. Se aplica cuando Facturación sube el comprobante.
+            El monto paga primero las <strong>cuotas que ya vencieron</strong> (si hay), luego el <strong>interés generado hasta la fecha de pago</strong>,
+            y lo que sobra baja el capital. Las cuotas ya pagadas no cambian. Se aplica cuando Facturación sube el comprobante.
           </div>
 
           <div class="amort-opciones" role="radiogroup" aria-label="Qué hacer con el ahorro">
@@ -824,6 +824,12 @@
               <div class="aviso-info">Cambiaste el monto, la fecha o la opción: vuelve a calcular.</div>
             }
             <div class="amort-resultado" [class.amort-obsoleta]="!cotizacionVigente">
+              @if (cot.cuotas_cubiertas?.length) {
+                <div class="aviso-info">
+                  Este pago cubre primero {{ cot.cuotas_cubiertas!.length > 1 ? 'las cuotas ' + cot.cuotas_cubiertas![0] + ' a ' + cot.cuotas_cubiertas![cot.cuotas_cubiertas!.length - 1] : 'la cuota ' + cot.cuotas_cubiertas![0] }}
+                  (S/ {{ toNum(cot.monto_cuotas_cubiertas) | number:'1.2-2' }}), que ya {{ cot.cuotas_cubiertas!.length > 1 ? 'vencieron' : 'venció' }}.
+                </div>
+              }
               <div class="amort-grid">
                 <div><span class="etiqueta-mini">Interés hasta la fecha</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.interes_devengado) | number:'1.2-2' }}</span></div>
                 <div><span class="etiqueta-mini">Va a capital</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.a_capital) | number:'1.2-2' }}</span></div>

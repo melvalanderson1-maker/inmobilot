@@ -4,6 +4,14 @@ Modalidades de pago:
   - adelanto          -> no cambia el cronograma (lo resuelve pagos.py como siempre).
   - amortizar_cuota   -> el cliente abona capital y baja la cuota; mismas fechas y misma cantidad de cuotas.
   - amortizar_plazo   -> el cliente abona capital y mantiene la cuota; el contrato termina antes.
+
+Reglas:
+  1. El monto primero paga las cuotas que ya vencieron (completas), luego el interés devengado desde el
+     último pago aplicado hasta la fecha del pago (interés compuesto por días reales, igual que
+     reglas_venta.calcular_liquidacion). Lo que sobra baja el capital.
+  2. Las cuotas ya pagadas y el historial no se tocan. Se recalculan solo las filas con fecha posterior al pago.
+  3. Se respeta la frecuencia con la que se creó la venta: mensual / bimestral / trimestral / semestral /
+     anual (con detalle mensual) / pago único / personalizada.
 """
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
@@ -50,9 +58,10 @@ def situacion(contrato, cuotas, fecha_pago: date, previas=None) -> dict:
         _err(422, "La amortización a capital solo aplica a contratos con interés")
 
     filas_pago = sorted((c for c in cuotas if c.requiere_pago), key=lambda c: c.numero_cuota)
+    pos = {c.numero_cuota: i + 1 for i, c in enumerate(filas_pago)}  # N° de cuota como lo ve el cliente (1, 2, 3...)
     for c in filas_pago:
         if _estado(c) == "parcial":
-            _err(409, f"La cuota {c.numero_cuota} tiene un pago parcial. Complétala antes de amortizar capital")
+            _err(409, f"La cuota {pos[c.numero_cuota]} tiene un pago parcial. Complétala antes de amortizar capital")
     pendientes = [c for c in filas_pago if _estado(c) != "pagada"]
     pagadas = [c for c in filas_pago if _estado(c) == "pagada"]
     if not pendientes:
@@ -81,8 +90,21 @@ def situacion(contrato, cuotas, fecha_pago: date, previas=None) -> dict:
         acum_base = Decimal(str(p0.interes_acumulado or 0)) - Decimal(str(p0.interes_mensual or 0))
 
     fe = max(fecha_pago, ancla)  # fecha efectiva: el interés ya pagado llega hasta el ancla
-    if pendientes[0].fecha_pago_programada <= fe:
-        _err(409, f"La cuota {pendientes[0].numero_cuota} ya venció o vence en la fecha del pago. Págala antes de amortizar capital")
+
+    # Como en los bancos: las cuotas que ya vencieron (o vencen ese día) se pagan PRIMERO, completas.
+    # Lo que sobre del monto, después del interés, es lo que baja el capital.
+    cubiertas = [c for c in pendientes if c.fecha_pago_programada <= fe]
+    if cubiertas:
+        restantes = pendientes[len(cubiertas):]
+        if not restantes:
+            _err(409, "Todas las cuotas que faltan ya vencieron. Págalas como cuotas normales (Adelantar cuotas) o cancela el contrato")
+        ult = cubiertas[-1]
+        capital = Decimal(str(ult.capital))
+        ancla = ult.fecha_pago_programada
+        acum_base = Decimal(str(ult.interes_acumulado or 0))
+        fe = max(fecha_pago, ancla)
+        pendientes = restantes
+    monto_cubiertas = sum((Decimal(str(c.monto_cuota)) for c in cubiertas), Decimal("0"))
 
     tea_pct = Decimal(str(contrato.tea))
     interes = reglas.calcular_liquidacion(capital, ancla, tea_pct, fe)["interes"]
@@ -90,6 +112,7 @@ def situacion(contrato, cuotas, fecha_pago: date, previas=None) -> dict:
         "capital": capital, "ancla": ancla, "fe": fe, "interes": interes, "acum_base": acum_base,
         "pendientes": pendientes, "fechas": [c.fecha_pago_programada for c in pendientes],
         "tea": float(tea_pct / 100),
+        "cubiertas": cubiertas, "monto_cubiertas": monto_cubiertas, "pos": pos,
     }
 
 
@@ -210,11 +233,20 @@ def cotizar(contrato, cuotas, monto, fecha_pago: date, modalidad: str, previas=N
         _err(422, "Modalidad no válida: use amortizar_cuota o amortizar_plazo")
     monto = _q(monto)
     s = situacion(contrato, cuotas, fecha_pago, previas)
-    if monto <= s["interes"]:
+    minimo = s["monto_cubiertas"] + s["interes"]
+    if monto <= minimo:
+        if s["cubiertas"]:
+            n = [s["pos"][c.numero_cuota] for c in s["cubiertas"]]
+            cuotas_txt = f"la cuota {n[0]}" if len(n) == 1 else f"las cuotas {n[0]} a {n[-1]}"
+            _err(422, (
+                f"El monto (S/ {monto:,.2f}) debe cubrir primero {cuotas_txt} que ya venció "
+                f"(S/ {s['monto_cubiertas']:,.2f}) y el interés hasta la fecha de pago (S/ {s['interes']:,.2f}). "
+                f"Mínimo S/ {minimo:,.2f}: lo que pases de ahí baja el capital"
+            ))
         _err(422, f"El monto (S/ {monto:,.2f}) no cubre el interés devengado (S/ {s['interes']:,.2f}). Para abonar capital paga más que eso")
-    a_capital = monto - s["interes"]
+    a_capital = monto - minimo
     if a_capital >= s["capital"]:
-        _err(422, f"Ese monto cancela todo el saldo (S/ {s['capital'] + s['interes']:,.2f}). Usa la opción de cancelar el contrato")
+        _err(422, f"Ese monto cancela todo el saldo (S/ {minimo + s['capital']:,.2f}). Usa la opción de cancelar el contrato")
     K = s["capital"] - a_capital
 
     tasas = _tasas_periodos(contrato, s)
@@ -226,8 +258,9 @@ def cotizar(contrato, cuotas, monto, fecha_pago: date, modalidad: str, previas=N
         pagos = _pagos_reduciendo_plazo(K, tasas, cuota_ant)
     filas = _armar_filas(contrato, s, pagos)
     cola = [c for c in cuotas if c.fecha_pago_programada > s["fe"]]
-    for i, f in enumerate(filas):  # mismo N° de cuota que ya tienen esas filas en el cronograma
-        f["numero"] = cola[i].numero_cuota if i < len(cola) else (cola[-1].numero_cuota if cola else i + 1)
+    for i, f in enumerate(filas):  # N° que verá el cliente (1, 2, 3...) para filas de pago
+        fila_db = cola[i] if i < len(cola) else (cola[-1] if cola else None)
+        f["numero"] = s["pos"].get(fila_db.numero_cuota, fila_db.numero_cuota) if fila_db else i + 1
     filas_pago = [f for f in filas if f["requiere_pago"]]
 
     viejo_total = sum((Decimal(str(c.monto_cuota)) for c in anteriores), Decimal("0"))
@@ -239,8 +272,10 @@ def cotizar(contrato, cuotas, monto, fecha_pago: date, modalidad: str, previas=N
         "capital_despues": K, "cuota_anterior": cuota_ant, "cuota_nueva": filas_pago[0]["monto"],
         "cuotas_antes": len(anteriores), "cuotas_despues": len(filas_pago),
         "ahorro_interes": max(interes_viejo - interes_nuevo, Decimal("0")),
-        "monto_cancelacion": s["capital"] + s["interes"],
-        "filas": filas, "cronograma": filas_pago,
+        "monto_cancelacion": s["monto_cubiertas"] + s["capital"] + s["interes"],
+        "cuotas_cubiertas": [s["pos"][c.numero_cuota] for c in s["cubiertas"]],
+        "monto_cuotas_cubiertas": s["monto_cubiertas"],
+        "filas": filas, "cronograma": filas_pago, "_cubiertas": s["cubiertas"],
     }
 
 
@@ -263,6 +298,10 @@ def aplicar_amortizacion(db, m, contrato, pago) -> dict:
     ]
     cot = cotizar(contrato, cuotas, pago.monto, pago.fecha_pago, pago.modalidad, previas)
     fe = cot["fecha_efectiva"]
+    for c in cot["_cubiertas"]:  # cuotas vencidas que este pago cubre completas
+        c.monto_pagado = c.monto_cuota
+        c.estado = m.EstadoCuotaEnum.pagada
+        c.fecha_pago_real = pago.fecha_pago
     cola = [c for c in cuotas if c.fecha_pago_programada > fe]
     nuevas = cot["filas"]
     ultimo_numero = max((c.numero_cuota for c in cuotas if c.fecha_pago_programada <= fe), default=0)
@@ -290,8 +329,9 @@ def aplicar_amortizacion(db, m, contrato, pago) -> dict:
             db.delete(c)
 
     contrato.numero_cuotas = sum(1 for c in cuotas if c.requiere_pago and c.fecha_pago_programada <= fe) + cot["cuotas_despues"]
-    detalle = {k: (str(v) if isinstance(v, (Decimal, date)) else v) for k, v in cot.items() if k not in ("filas", "cronograma")}
+    detalle = {
+        k: (str(v) if isinstance(v, (Decimal, date)) else v)
+        for k, v in cot.items() if k not in ("filas", "cronograma", "_cubiertas")
+    }
     pago.detalle_amortizacion = detalle
-    pago.cuota_desde = None
-    pago.cuota_hasta = None
     return cot

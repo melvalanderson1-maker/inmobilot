@@ -391,9 +391,11 @@ export interface CronogramaCuota {
   monto_cuota: number;
   requiere_pago: boolean;
   estado: EstadoCuota;
-  monto_pagado: number;
+  monto_pagado: number; 
   fecha_pago_real?: string;
+  numero_pago?: number;
 }
+
 
 export interface PagoCreate {
   id_cuota?: number;
@@ -858,7 +860,9 @@ export interface CotizacionAmortizacion {
   cuota_nueva: number | string;
   cuotas_antes: number;
   cuotas_despues: number;
-  ahorro_interes: number | string;
-  monto_cancelacion: number | string;
+  ahorro_interes: number | string; 
+  monto_cancelacion: number | string; 
   cronograma: CuotaSimulada[];
+  cuotas_cubiertas?: number[]; 
+  monto_cuotas_cubiertas?: number | string;
 }

@@ -251,7 +251,7 @@
                 <tbody>
                   @for (f of filasPago(); track f.c.id) {
                     <tr>
-                      <td class="c-n">{{ f.c.numero_cuota }}</td>
+                      <td class="c-n">{{ f.c.numero_pago ?? f.c.numero_cuota }}</td>
                       <td>{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
                       <td class="num">{{ f.capital | number:'1.2-2' }}</td>
                       <td class="num">{{ f.amortizacion | number:'1.2-2' }}</td>
@@ -295,7 +295,7 @@
                   <tbody>
                     @for (f of filasCronograma(); track f.c.id) {
                       <tr [class.is-pago]="f.paga">
-                        <td class="c-n">{{ f.c.numero_cuota }}</td>
+                        <td class="c-n">{{ f.paga ? (f.c.numero_pago ?? f.c.numero_cuota) : f.c.numero_cuota }}</td>
                         <td>{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
                         <td class="num">{{ f.capital | number:'1.2-2' }}</td>
                         <td class="num">@if (f.paga) { {{ f.amortizacion | number:'1.2-2' }} }</td>

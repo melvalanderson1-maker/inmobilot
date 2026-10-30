@@ -563,6 +563,7 @@ class CronogramaOut(ORMBase):
     estado: EstadoCuotaEnum
     monto_pagado: Decimal
     fecha_pago_real: Optional[date] = None
+    numero_pago: Optional[int] = None  # N° de cuota que ve el cliente (1, 2, 3...); solo en filas que se pagan
 
 
 class PagoCreate(BaseModel):
@@ -1140,6 +1141,8 @@ class CotizacionAmortizacionOut(BaseModel):
     ahorro_interes: Decimal
     monto_cancelacion: Decimal
     cronograma: list[CuotaSimuladaOut] = []
+    cuotas_cubiertas: list[int] = []  # cuotas vencidas que este mismo pago cubre primero (N° visible)
+    monto_cuotas_cubiertas: Decimal = Decimal("0")
 
 
 class AutorizacionResolver(BaseModel):

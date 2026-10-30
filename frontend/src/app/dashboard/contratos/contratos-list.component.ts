@@ -371,19 +371,30 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   numeroCuota(idContrato: number, idCuota?: number | null): string {
     if (!idCuota) return '—';
     const cuota = (this.cronogramaPorContrato()[idContrato] ?? []).find((q) => q.id === idCuota);
-    return cuota ? String(cuota.numero_cuota) : '—';
+    return cuota ? String(cuota.numero_pago ?? cuota.numero_cuota) : '—';
   }
 
+  /** N° que ve el cliente: en crédito anual el N° interno es el del mes (13, 25...) y aquí se muestra 1, 2, 3... */
+  numeroPago(idContrato: number, numeroCuota: number): number {
+    const fila = (this.cronogramaPorContrato()[idContrato] ?? []).find((q) => q.numero_cuota === numeroCuota);
+    return fila?.numero_pago ?? numeroCuota;
+  }
   conceptoPago(p: Pago): string {
     if (p.tipo === 'inicial') return 'Inicial';
     if (p.tipo === 'contado') return 'Pago al contado';
     if (p.tipo === 'amortizacion') {
-      return p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
+      const base = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
+      if (!p.cuota_desde) return base;
+      const idc = this.contratoDrawer()!.id;
+      const d = this.numeroPago(idc, p.cuota_desde);
+      const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
+      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + ${base}`;
     }
     if (p.cuota_desde) {
-      return p.cuota_hasta && p.cuota_hasta !== p.cuota_desde
-        ? `Cuotas ${p.cuota_desde} a ${p.cuota_hasta}`
-        : `Cuota ${p.cuota_desde}`;
+      const idc = this.contratoDrawer()!.id;
+      const d = this.numeroPago(idc, p.cuota_desde);
+      const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
+      return h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`;
     }
     if (p.id_cuota) return this.numeroCuota(this.contratoDrawer()!.id, p.id_cuota);
     return '—';
@@ -811,7 +822,12 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const cuotas = this.pendientesDe(id).slice(0, n);
     if (cuotas.length === 0) return null;
     const total = cuotas.reduce((a, c) => a + (Number(c.monto_cuota) - Number(c.monto_pagado ?? 0)), 0);
-    return { cuotas, total, desde: cuotas[0].numero_cuota, hasta: cuotas[cuotas.length - 1].numero_cuota };
+    return {
+      cuotas,
+      total,
+      desde: cuotas[0].numero_pago ?? cuotas[0].numero_cuota,
+      hasta: cuotas[cuotas.length - 1].numero_pago ?? cuotas[cuotas.length - 1].numero_cuota,
+    };
   }
 
   abrirPagarVarias(idContrato: number): void {

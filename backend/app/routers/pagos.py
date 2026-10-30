@@ -2,7 +2,8 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from decimal import Decimal
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload, object_session, selectinload
 
 from app.core.database import get_db
 from app.deps import require_permiso
@@ -34,20 +35,49 @@ def _cargar_pago(db: Session, id_pago: int, usuario: m.Usuario) -> m.Pago:
     return pago
 
 
+def _n_pago(p: m.Pago, numero: Optional[int]) -> Optional[int]:
+    """N° de cuota como lo ve el cliente. En crédito anual el N° interno es el del mes (13, 25...): se muestra 1, 2, 3..."""
+    if numero is None:
+        return None
+    contrato = p.contrato
+    db = object_session(p)
+    if contrato is None or db is None or contrato.frecuencia_cuota != "anual":
+        return numero
+    total = (
+        db.query(func.count(m.CronogramaPago.id))
+        .filter(
+            m.CronogramaPago.id_contrato == contrato.id,
+            m.CronogramaPago.requiere_pago.is_(True),
+            m.CronogramaPago.numero_cuota <= numero,
+        )
+        .scalar()
+    )
+    return total or numero
+
+
+def _rango_cuotas(p: m.Pago) -> str:
+    desde = _n_pago(p, p.cuota_desde)
+    hasta = _n_pago(p, p.cuota_hasta or p.cuota_desde)
+    return f"Cuotas {desde} a {hasta}" if hasta != desde else f"Cuota {desde}"
+
+
 def _concepto(p: m.Pago) -> str:
     """Qué es este pago, en palabras que el usuario entienda."""
     if p.tipo == "inicial":
         return "Inicial"
     if p.tipo == "contado":
         return "Pago al contado"
-    if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
-        if p.cuota_hasta and p.cuota_hasta != p.cuota_desde:
-            return f"Cuotas {p.cuota_desde} a {p.cuota_hasta}"
-        return f"Cuota {p.cuota_desde}"
     if p.tipo == "amortizacion":
-        return "Amortización a capital (baja la cuota)" if p.modalidad == "amortizar_cuota" else "Amortización a capital (reduce el plazo)"
+        base = (
+            "Amortización a capital (baja la cuota)"
+            if p.modalidad == "amortizar_cuota"
+            else "Amortización a capital (reduce el plazo)"
+        )
+        return f"{_rango_cuotas(p)} + {base}" if p.cuota_desde else base
+    if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
+        return _rango_cuotas(p)
     if p.cuota:
-        return f"Cuota {p.cuota.numero_cuota}"
+        return f"Cuota {_n_pago(p, p.cuota.numero_cuota)}"
     return "Pago a cuenta"
 
 
@@ -64,7 +94,7 @@ def _a_fila(p: m.Pago) -> s.PagoColaOut:
         id=p.id, id_contrato=c.id, id_proyecto=c.id_proyecto, numero_contrato=c.numero_contrato,
         lote_codigo=c.lote.codigo if c.lote else None,
         cliente_nombre=nombre, cliente_documento=documento,
-        numero_cuota=p.cuota.numero_cuota if p.cuota else None,
+        numero_cuota=_n_pago(p, p.cuota.numero_cuota) if p.cuota else None,
         monto=p.monto, fecha_pago=p.fecha_pago, metodo_pago=p.metodo_pago,
         numero_operacion=p.numero_operacion, comprobante_url=p.comprobante_url,
         estado=p.estado, motivo_rechazo=p.motivo_rechazo,

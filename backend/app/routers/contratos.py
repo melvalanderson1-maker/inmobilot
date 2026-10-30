@@ -343,12 +343,20 @@ def ver_cronograma(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contrato no encontrado")
     _validar_acceso_proyecto(db, usuario, contrato.id_proyecto)
 
-    return (
+    filas = (
         db.query(m.CronogramaPago)
         .filter(m.CronogramaPago.id_contrato == id_contrato)
         .order_by(m.CronogramaPago.numero_cuota.asc())
         .all()
     )
+    salida, n = [], 0
+    for q in filas:
+        fila = s.CronogramaOut.model_validate(q)
+        if q.requiere_pago:
+            n += 1
+            fila.numero_pago = n  # "Cuota 1, 2, 3..." como lo ve el cliente (en anual el N° interno es el del mes)
+        salida.append(fila)
+    return salida
 
 
 
@@ -381,6 +389,21 @@ def _cargar_contrato_pago(db: Session, id_contrato: int, usuario: m.Usuario) -> 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contrato no encontrado")
     _validar_acceso_proyecto(db, usuario, contrato.id_proyecto)
     return contrato
+
+
+
+def _n_pago(db: Session, id_contrato: int, numero: int) -> int:
+    """N° de cuota como lo ve el cliente (posición entre las filas que se pagan)."""
+    total = (
+        db.query(m.CronogramaPago)
+        .filter(
+            m.CronogramaPago.id_contrato == id_contrato,
+            m.CronogramaPago.requiere_pago.is_(True),
+            m.CronogramaPago.numero_cuota <= numero,
+        )
+        .count()
+    )
+    return total or numero
 
 
 def _cotizar(db: Session, contrato: m.Contrato, monto: Decimal, fecha_pago: date, modalidad: str) -> dict:
@@ -461,13 +484,18 @@ async def registrar_pago(
                 status_code=409,
                 detail="Ya hay un pago de cuotas o una amortización en Caja o Facturación. Espera a que se aplique antes de registrar otro",
             )
-        _cotizar(db, contrato, payload.monto, payload.fecha_pago, payload.modalidad)  # valida que sea posible
+        cot = _cotizar(db, contrato, payload.monto, payload.fecha_pago, payload.modalidad)  # valida que sea posible
         tipo = "amortizacion"
         concepto = (
             "Amortización a capital (baja la cuota)"
             if payload.modalidad == "amortizar_cuota"
             else "Amortización a capital (reduce el plazo)"
         )
+        if cot["_cubiertas"]:  # el mismo pago cubre antes las cuotas ya vencidas
+            cuota_desde = cot["_cubiertas"][0].numero_cuota
+            cuota_hasta = cot["_cubiertas"][-1].numero_cuota
+            d_, h_ = cot["cuotas_cubiertas"][0], cot["cuotas_cubiertas"][-1]
+            concepto = f"{'Cuota ' + str(d_) if d_ == h_ else 'Cuotas ' + str(d_) + ' a ' + str(h_)} + {concepto}"
     elif payload.cantidad_cuotas:
         # ---- Varias cuotas: las N primeras pendientes, en orden ----
         if en_proceso:
@@ -499,9 +527,9 @@ async def registrar_pago(
             id_cuota = elegidas[0].id
         else:
             tipo = "cuotas"
-        concepto = (
-            f"Cuotas {cuota_desde} a {cuota_hasta}" if cuota_desde != cuota_hasta else f"Cuota {cuota_desde}"
-        )
+        d_ = _n_pago(db, id_contrato, cuota_desde)
+        h_ = _n_pago(db, id_contrato, cuota_hasta)
+        concepto = f"Cuotas {d_} a {h_}" if d_ != h_ else f"Cuota {d_}"
     elif payload.id_cuota:
         # ---- Una sola cuota ----
         cuota = (
@@ -535,7 +563,7 @@ async def registrar_pago(
             )
         id_cuota = cuota.id
         cuota_desde = cuota_hasta = cuota.numero_cuota
-        concepto = f"Cuota {cuota.numero_cuota}"
+        concepto = f"Cuota {_n_pago(db, id_contrato, cuota.numero_cuota)}"
     else:
         raise HTTPException(status_code=422, detail="Indica la cuota o cuántas cuotas va a pagar")
 

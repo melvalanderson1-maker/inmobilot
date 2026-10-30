@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.sockets import socket_app
 
 
-from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones, ventas, empresa_config, cobranza, pagos
+from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones, proformas, ventas, empresa_config, cobranza, pagos
 
 DOCS_HABILITADOS = settings.ENV != "production"
 
@@ -40,6 +40,7 @@ app.include_router(config_publico.router)
 app.include_router(setup.router)
 app.include_router(clientes.router)
 app.include_router(separaciones.router)
+app.include_router(proformas.router)
 app.include_router(ventas.router)
 app.include_router(cobranza.router)
 app.include_router(pagos.router)

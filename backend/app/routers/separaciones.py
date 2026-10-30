@@ -118,7 +118,7 @@ async def crear_separacion(
         raise _conflicto("Este lote ya tiene una separación en curso")
 
     sep = m.Separacion(
-        **payload.model_dump(exclude={"id_lote", "id_cliente"}),
+        **payload.model_dump(exclude={"id_lote", "id_cliente", "id_proforma"}),
         id_empresa=usuario.id_empresa,
         id_proyecto=lote.id_proyecto,
         id_lote=lote.id,
@@ -132,6 +132,25 @@ async def crear_separacion(
     except IntegrityError:
         db.rollback()
         raise _conflicto("Este lote ya tiene una separación en curso")
+
+    # Si viene de una proforma rápida: queda vinculada y su documento pasa a ser la proforma de la separación
+    if payload.id_proforma:
+        pf = (
+            db.query(m.Proforma)
+            .filter(m.Proforma.id == payload.id_proforma, m.Proforma.id_empresa == usuario.id_empresa)
+            .with_for_update()
+            .first()
+        )
+        if not pf or pf.id_lote != lote.id:
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La proforma no corresponde a este lote")
+        if pf.estado == "convertida":
+            db.rollback()
+            raise _conflicto("Esa proforma ya se usó en otra separación")
+        pf.estado = "convertida"
+        pf.id_separacion = sep.id
+        if not sep.proforma_url:
+            sep.proforma_url = pf.documento_url
 
     destinatarios = svc.usuarios_por_roles(
         db, usuario.id_empresa, lote.id_proyecto, ["caja", "admin"], excluir_id=usuario.id
@@ -251,6 +270,10 @@ async def rechazar_voucher(
 
     sep.estado = E.rechazada
     sep.motivo_rechazo = motivo
+    # La proforma que originó esta separación vuelve a quedar disponible
+    db.query(m.Proforma).filter(m.Proforma.id_separacion == sep.id).update(
+        {m.Proforma.estado: "emitida", m.Proforma.id_separacion: None}, synchronize_session=False
+    )
     sep.validado_por = usuario.id
     sep.fecha_validacion = svc.ahora_utc()
 

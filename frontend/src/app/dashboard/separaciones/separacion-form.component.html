@@ -32,6 +32,15 @@
     </div>
   }
 
+  @if (idProforma) {
+    <div class="mensaje-error" role="status" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;">
+      <span>
+        Esta separación parte de la <strong>proforma n.º {{ idProforma }}</strong>: el lote, el precio y la validez ya vienen cargados.
+        @if (avisoProforma(); as aviso) { <br />{{ aviso }} }
+      </span>
+    </div>
+  }
+
   <div class="layout">
     <!-- COLUMNA PRINCIPAL -->
     <div class="col-main">

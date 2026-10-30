@@ -4,13 +4,22 @@
       <h1>Separaciones</h1>
       <p class="subtitle">Sigue el estado de cada separación, desde el voucher hasta el comprobante</p>
     </div>
-    <button class="btn-primary" (click)="irANueva()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <line x1="12" y1="5" x2="12" y2="19"></line>
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-      </svg>
-      <span>Nueva separación</span>
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-secundario" (click)="irAProformaRapida()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+          <path d="M14 3v5h5M9 13h6M9 17h4"></path>
+        </svg>
+        <span>Proforma rápida</span>
+      </button>
+      <button class="btn-primary" (click)="irANueva()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Nueva separación</span>
+      </button>
+    </div>
   </div>
 
   <div class="filtros-bar">

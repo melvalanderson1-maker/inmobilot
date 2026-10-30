@@ -97,6 +97,12 @@ export const routes: Routes = [
           import('./dashboard/separaciones/separacion-form.component').then((c) => c.SeparacionFormComponent),
       },
       {
+        path: 'separaciones/proformas',
+        canActivate: [moduloGuard('separaciones')],
+        loadComponent: () =>
+          import('./dashboard/proforma-rapida/proforma-rapida.component').then((c) => c.ProformaRapidaComponent),
+      },
+      {
         path: 'separaciones/:id',
         canActivate: [moduloGuard('separaciones')],
         loadComponent: () =>

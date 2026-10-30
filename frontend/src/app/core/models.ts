@@ -539,6 +539,7 @@ export interface SeparacionCreate {
   agenda_fecha?: string;
   precio_valido_hasta: string;
   precio_descontado?: number;
+  id_proforma?: number;
 }
 
 export interface SeparacionUpdate {
@@ -772,7 +773,6 @@ export interface CobranzaFila {
   estado: string;
 }
 
-
 export interface PagoCola {
   id: number;
   id_contrato: number;
@@ -804,8 +804,6 @@ export interface PagoComprobanteIn {
   numero: string;
   archivo_url: string;
 }
-
-
 
 export interface CuotaSimulada {
   numero: number;
@@ -847,7 +845,6 @@ export interface AutorizacionVenta {
   resuelto_at?: string;
 }
 
-
 export interface CotizacionAmortizacion {
   modalidad: string;
   fecha_efectiva: string;
@@ -865,4 +862,40 @@ export interface CotizacionAmortizacion {
   cronograma: CuotaSimulada[];
   cuotas_cubiertas?: number[]; 
   monto_cuotas_cubiertas?: number | string;
+}
+
+// ------------------------------------------------------------- PROFORMAS --
+
+export interface Proforma {
+  id: number;
+  id_proyecto: number;
+  id_lote: number;
+  id_cliente?: number | null;
+  lote_codigo?: string | null;
+  manzana_nombre?: string | null;
+  cliente_nombre: string;
+  cliente_documento?: string | null;
+  cliente_telefono?: string | null;
+  tipo_pago?: string | null;
+  precio_descontado?: number | string | null;
+  precio_valido_hasta: string;
+  importe?: number | string | null;
+  fecha_emision: string;
+  documento_url?: string | null;
+  estado: string; // emitida | convertida
+  id_separacion?: number | null;
+  ejecutivo_nombre?: string | null;
+  created_at?: string | null;
+}
+
+export interface ProformaCreate {
+  id_lote: number;
+  id_cliente?: number;
+  prospecto_nombre?: string;
+  prospecto_documento?: string;
+  prospecto_telefono?: string;
+  tipo_pago?: FormaPago;
+  precio_descontado?: number;
+  precio_valido_hasta: string;
+  importe?: number;
 }

@@ -5,9 +5,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ApiService } from '../../core/services/api.service';
 import { ClienteService } from '../../core/services/cliente.service';
+import { ProformaService } from '../../core/services/proforma.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Cliente, FormaPago, Lote, Manzana } from '../../core/models';
+import { Cliente, FormaPago, Lote, Manzana, Proforma } from '../../core/models';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 @Component({
@@ -48,6 +49,12 @@ export class SeparacionFormComponent implements OnInit {
     precio_descontado: null as number | null,
   };
 
+  /** Proforma rápida de la que viene esta separación (se conserva si hay que registrar al cliente y volver) */
+  idProforma: number | null = null;
+  private proformaPendiente: Proforma | null = null;
+  avisoProforma = signal<string | null>(null);
+  private readonly CLAVE_PROFORMA = 'sep_id_proforma';
+
   subiendoDniFrente = signal(false);
   subiendoDniReverso = signal(false);
   subiendoVoucher = signal(false);
@@ -59,6 +66,7 @@ export class SeparacionFormComponent implements OnInit {
     private api: ApiService,
     private clienteService: ClienteService,
     private separacionService: SeparacionService,
+    private proformaService: ProformaService,
     private toastService: ToastService,
     private route: ActivatedRoute,
     private router: Router
@@ -69,6 +77,14 @@ export class SeparacionFormComponent implements OnInit {
       const id = Number(params['id_proyecto']);
       this.idProyecto = id || null;
       if (this.idProyecto) this.cargarLotes();
+
+      // Viene de una proforma rápida ("Separar este lote")
+      const idPf = Number(params['id_proforma']) || this.leerProformaGuardada();
+      if (idPf && idPf !== this.idProforma) {
+        this.idProforma = idPf;
+        this.guardarProforma(idPf);
+        this.cargarProforma(idPf);
+      }
 
       // Volvemos desde "crear cliente nuevo" con el cliente ya creado
       const idCliente = Number(params['id_cliente']);
@@ -87,9 +103,79 @@ export class SeparacionFormComponent implements OnInit {
     return new Date().toISOString().slice(0, 10);
   }
 
+  // ------------------------------------------------ proforma rápida ---
+
+  private leerProformaGuardada(): number | null {
+    try {
+      return Number(sessionStorage.getItem(this.CLAVE_PROFORMA)) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private guardarProforma(id: number | null): void {
+    try {
+      if (id) sessionStorage.setItem(this.CLAVE_PROFORMA, String(id));
+      else sessionStorage.removeItem(this.CLAVE_PROFORMA);
+    } catch {
+      /* sin almacenamiento: solo se pierde la recuperación al volver de crear cliente */
+    }
+  }
+
+  private cargarProforma(id: number): void {
+    this.proformaService.obtener(id).subscribe({
+      next: (pf) => {
+        if (pf.estado === 'convertida') {
+          this.toastService.error('Esa proforma ya se usó en otra separación');
+          this.idProforma = null;
+          this.guardarProforma(null);
+          return;
+        }
+        this.proformaPendiente = pf;
+        this.aplicarProforma();
+      },
+      error: () => {
+        this.toastService.error('No se pudo cargar la proforma');
+        this.idProforma = null;
+        this.guardarProforma(null);
+      },
+    });
+  }
+
+  /** Rellena el formulario con la proforma (cuando ya están cargados los lotes y la proforma) */
+  private aplicarProforma(): void {
+    const pf = this.proformaPendiente;
+    if (!pf || this.lotesTodos().length === 0) return;
+    this.proformaPendiente = null;
+
+    const lote = this.lotesLibres().find((l) => l.id === pf.id_lote);
+    if (!lote) {
+      this.toastService.error(`El lote ${pf.lote_codigo ?? ''} ya no está libre`);
+      this.idProforma = null;
+      this.guardarProforma(null);
+      return;
+    }
+
+    this.form.tipo_pago = (pf.tipo_pago as FormaPago | null) ?? null;
+    this.form.id_lote = lote.id;
+    this.onLoteSeleccionado();
+    if (pf.precio_descontado != null) this.form.precio_descontado = Number(pf.precio_descontado);
+    if (pf.precio_valido_hasta) this.form.precio_valido_hasta = pf.precio_valido_hasta;
+    if (pf.importe != null && Number(pf.importe) > 0) this.form.importe = Number(pf.importe);
+
+    if (pf.id_cliente && !this.clienteEncontrado()) {
+      this.clienteService.obtener(pf.id_cliente).subscribe((c) => this.onClienteElegido(c));
+    } else if (!pf.id_cliente && !this.clienteEncontrado()) {
+      this.avisoProforma.set(
+        `Proforma de ${pf.cliente_nombre}: falta registrar al cliente para poder separar. Búscalo o créalo abajo.`
+      );
+    }
+  }
+
   cargarLotes(): void {
     this.api.get<Lote[]>('/lotes', { id_proyecto: this.idProyecto }).subscribe((res) => {
       this.lotesTodos.set(res);
+      this.aplicarProforma();
     });
     this.api.get<Manzana[]>(`/proyectos/${this.idProyecto}/manzanas`).subscribe((res) => this.manzanas.set(res));
 
@@ -196,6 +282,7 @@ export class SeparacionFormComponent implements OnInit {
   onClienteElegido(cliente: Cliente): void {
     this.clienteEncontrado.set(cliente);
     this.clienteNoEncontrado.set(false);
+    this.avisoProforma.set(null);
     this.dniFrenteUrl = cliente.dni_frente_url ?? null;
     this.dniReversoUrl = cliente.dni_reverso_url ?? null;
   }
@@ -319,10 +406,12 @@ export class SeparacionFormComponent implements OnInit {
         medio_pago: this.form.medio_pago.trim(),
         precio_valido_hasta: this.form.precio_valido_hasta,
         precio_descontado: this.form.precio_descontado ?? undefined,
+        id_proforma: this.idProforma ?? undefined,
       })
       .subscribe({
         next: (sep) => {
           this.guardando.set(false);
+          this.guardarProforma(null);
           this.toastService.exito('Separación registrada. Caja debe validar el voucher.');
           this.router.navigate(['/dashboard/separaciones', sep.id]);
         },
@@ -356,6 +445,7 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   cancelar(): void {
+    this.guardarProforma(null);
     this.router.navigate(['/dashboard/separaciones']);
   }
 }

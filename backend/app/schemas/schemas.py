@@ -764,6 +764,7 @@ class SeparacionCreate(BaseModel):
     agenda_fecha: Optional[datetime] = None
     precio_valido_hasta: date
     precio_descontado: Optional[Decimal] = Field(default=None, gt=0)
+    id_proforma: Optional[int] = None  # proforma rápida que origina esta separación
 
     @model_validator(mode="after")
     def _validar_fechas(self):
@@ -782,6 +783,65 @@ class SeparacionUpdate(BaseModel):
     contrato_firmado_url: Optional[str] = None
     precio_valido_hasta: Optional[date] = None
     precio_descontado: Optional[Decimal] = Field(default=None, gt=0)
+
+
+class ProformaCreate(BaseModel):
+    id_lote: int
+    id_cliente: Optional[int] = None
+    prospecto_nombre: Optional[str] = Field(default=None, max_length=150)
+    prospecto_documento: Optional[str] = Field(default=None, max_length=20)
+    prospecto_telefono: Optional[str] = Field(default=None, max_length=20)
+    tipo_pago: Optional[FormaPagoEnum] = None
+    precio_descontado: Optional[Decimal] = Field(default=None, gt=0)
+    precio_valido_hasta: date
+    importe: Optional[Decimal] = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def _validar_interesado(self):
+        if not self.id_cliente and not (self.prospecto_nombre or "").strip():
+            raise ValueError("Indica el cliente o, al menos, el nombre del interesado")
+        return self
+
+
+class ProformaOut(ORMBase):
+    id: int
+    id_proyecto: int
+    id_lote: int
+    id_cliente: Optional[int] = None
+    lote_codigo: Optional[str] = None
+    manzana_nombre: Optional[str] = None
+    cliente_nombre: str = ""
+    cliente_documento: Optional[str] = None
+    cliente_telefono: Optional[str] = None
+    tipo_pago: Optional[str] = None
+    precio_descontado: Optional[Decimal] = None
+    precio_valido_hasta: date
+    importe: Optional[Decimal] = None
+    fecha_emision: date
+    documento_url: Optional[str] = None
+    estado: str
+    id_separacion: Optional[int] = None
+    ejecutivo_nombre: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    @classmethod
+    def desde_proforma(cls, pf) -> "ProformaOut":
+        cli = pf.cliente
+        if cli is not None:
+            nombre = f"{cli.nombres} {cli.apellidos}".strip()
+            documento, telefono = cli.numero_documento, cli.telefono
+        else:
+            nombre, documento, telefono = pf.prospecto_nombre or "", pf.prospecto_documento, pf.prospecto_telefono
+        return cls(
+            id=pf.id, id_proyecto=pf.id_proyecto, id_lote=pf.id_lote, id_cliente=pf.id_cliente,
+            lote_codigo=pf.lote.codigo if pf.lote else None,
+            manzana_nombre=pf.lote.manzana_nombre if pf.lote else None,
+            cliente_nombre=nombre, cliente_documento=documento, cliente_telefono=telefono,
+            tipo_pago=pf.tipo_pago, precio_descontado=pf.precio_descontado,
+            precio_valido_hasta=pf.precio_valido_hasta, importe=pf.importe, fecha_emision=pf.fecha_emision,
+            documento_url=pf.documento_url, estado=pf.estado, id_separacion=pf.id_separacion,
+            ejecutivo_nombre=pf.ejecutivo.nombre if pf.ejecutivo else None, created_at=pf.created_at,
+        )
 
 
 class SeparacionRechazo(BaseModel):

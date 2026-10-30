@@ -94,6 +94,12 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     });
   }
 
+  irAProformaRapida(): void {
+    this.router.navigate(['/dashboard/separaciones/proformas'], {
+      queryParams: { id_proyecto: this.idProyectoSeleccionado },
+    });
+  }
+
   irANueva(): void {
     this.router.navigate(['/dashboard/separaciones/nueva'], {
       queryParams: { id_proyecto: this.idProyectoSeleccionado },

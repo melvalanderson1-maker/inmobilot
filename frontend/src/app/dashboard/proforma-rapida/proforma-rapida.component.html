@@ -1,0 +1,186 @@
+<div class="pr-page">
+  <header class="pr-head">
+    <button type="button" class="pr-back" (click)="volver()">← Separaciones</button>
+    <div>
+      <h1>Proforma rápida</h1>
+      <p>Para cuando un cliente pide información al instante. No separa el lote: si decide separar, continúas desde aquí.</p>
+    </div>
+  </header>
+
+  @if ((intentoGuardar() && mensajeFaltante()) || error()) {
+    <div class="pr-error" role="alert">{{ (intentoGuardar() && mensajeFaltante()) || error() }}</div>
+  }
+
+  @if (ultima(); as pf) {
+    <section class="pr-card pr-ok" aria-live="polite">
+      <div>
+        <strong>Proforma generada · Lote {{ pf.lote_codigo }}</strong>
+        <span>{{ pf.cliente_nombre }} · válida hasta {{ fmtFecha(pf.precio_valido_hasta) }}</span>
+      </div>
+      <div class="pr-ok-acciones">
+        @if (pf.documento_url) {
+          <a class="pr-btn pr-btn-ghost" [href]="pf.documento_url" target="_blank" rel="noopener">Abrir proforma ↗</a>
+        }
+        <button type="button" class="pr-btn pr-btn-primary" (click)="separar(pf)">Separar este lote</button>
+        <button type="button" class="pr-btn pr-btn-ghost" (click)="nueva()">Nueva proforma</button>
+      </div>
+    </section>
+  } @else {
+    <div class="pr-grid">
+      <!-- 1. INTERESADO -->
+      <section class="pr-card">
+        <h2><span class="pr-step">1</span> Interesado</h2>
+
+        @if (clienteEncontrado(); as c) {
+          <div class="pr-cliente">
+            <div>
+              <strong>{{ c.nombres }} {{ c.apellidos }}</strong>
+              <span>{{ c.tipo_documento }} {{ c.numero_documento }}{{ c.telefono ? ' · ' + c.telefono : '' }}</span>
+            </div>
+            <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" (click)="cambiarCliente()">Cambiar</button>
+          </div>
+        } @else if (!sinRegistrar()) {
+          <app-cliente-buscador (seleccionado)="onClienteElegido($event)" (crearNuevo)="irACrearClienteNuevo($event)" />
+          <p class="pr-ayuda">Busca por DNI, celular o nombre.</p>
+          <button type="button" class="pr-link" (click)="sinRegistrar.set(true)">No quiere dar sus datos / aún no está registrado →</button>
+        } @else {
+          <div class="pr-campo">
+            <label for="pr-nombre">Nombre del interesado</label>
+            <input id="pr-nombre" type="text" [(ngModel)]="prospecto.nombre" maxlength="150" placeholder="Ej: Juan Pérez" />
+          </div>
+          <div class="pr-fila">
+            <div class="pr-campo">
+              <label for="pr-doc">DNI <em>· opcional</em></label>
+              <input id="pr-doc" type="text" [(ngModel)]="prospecto.documento" maxlength="20" inputmode="numeric" />
+            </div>
+            <div class="pr-campo">
+              <label for="pr-tel">Celular <em>· opcional</em></label>
+              <input id="pr-tel" type="text" [(ngModel)]="prospecto.telefono" maxlength="20" inputmode="tel" />
+            </div>
+          </div>
+          <button type="button" class="pr-link" (click)="sinRegistrar.set(false)">← Buscar cliente registrado</button>
+        }
+      </section>
+
+      <!-- 2. LOTE Y PRECIO -->
+      <section class="pr-card">
+        <h2><span class="pr-step">2</span> Lote y precio</h2>
+
+        <div class="pr-campo">
+          <label for="pr-lote">Lote libre</label>
+          <select id="pr-lote" [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
+            <option [ngValue]="null" disabled>Selecciona un lote</option>
+            @for (l of lotesLibres(); track l.id) {
+              <option [ngValue]="l.id">Mz. {{ nombreManzana(l) }} · {{ l.codigo }} — {{ l.area_m2 }} m²</option>
+            }
+          </select>
+          @if (lotesLibres().length === 0) {
+            <small class="pr-ayuda pr-warn">No hay lotes libres en este proyecto.</small>
+          }
+        </div>
+
+        @if (loteSeleccionado(); as l) {
+          <dl class="pr-datos">
+            <div><dt>Manzana</dt><dd>{{ nombreManzana(l) }}</dd></div>
+            <div><dt>Área</dt><dd>{{ l.area_m2 }} m²</dd></div>
+            @if (l.precio_total_base) { <div><dt>Precio regular</dt><dd>S/ {{ l.precio_total_base | number:'1.2-2' }}</dd></div> }
+            @if (l.precio_total_contado) { <div><dt>Contado</dt><dd>S/ {{ l.precio_total_contado | number:'1.2-2' }}</dd></div> }
+            @if (l.precio_total_financiado) { <div><dt>Financiado</dt><dd>S/ {{ l.precio_total_financiado | number:'1.2-2' }}</dd></div> }
+          </dl>
+        }
+
+        <div class="pr-campo">
+          <span class="pr-label" id="pr-tipo-lbl">Tipo de pago</span>
+          <div class="pr-seg" role="radiogroup" aria-labelledby="pr-tipo-lbl">
+            <label [class.activa]="form.tipo_pago === null"><input type="radio" name="tp" [value]="null" [(ngModel)]="form.tipo_pago" (ngModelChange)="aplicarPrecioReferencia()" />Sin definir</label>
+            <label [class.activa]="form.tipo_pago === 'contado'"><input type="radio" name="tp" value="contado" [(ngModel)]="form.tipo_pago" (ngModelChange)="aplicarPrecioReferencia()" />Contado</label>
+            <label [class.activa]="form.tipo_pago === 'credito'"><input type="radio" name="tp" value="credito" [(ngModel)]="form.tipo_pago" (ngModelChange)="aplicarPrecioReferencia()" />Crédito</label>
+          </div>
+        </div>
+
+        <div class="pr-fila">
+          <div class="pr-campo">
+            <label for="pr-precio">Precio final (S/)</label>
+            <input id="pr-precio" type="number" inputmode="decimal" [(ngModel)]="form.precio_descontado" placeholder="0.00" />
+          </div>
+          <div class="pr-campo">
+            <label for="pr-valido">Precio válido hasta</label>
+            <input id="pr-valido" type="date" [(ngModel)]="form.precio_valido_hasta" />
+          </div>
+        </div>
+        @if (loteSeleccionado()) {
+          @if (precioReferencia(); as ref) {
+            <small class="pr-ayuda">
+              {{ etiquetaPrecioReferencia() }}: S/ {{ ref | number:'1.2-2' }}.
+              @if (descuento !== null && descuento > 0) { Descuento: <strong>S/ {{ descuento | number:'1.2-2' }}</strong>. }
+              @if (descuento !== 0) { <button type="button" class="pr-link" (click)="aplicarPrecioReferencia()">Restablecer</button> }
+            </small>
+          } @else {
+            <small class="pr-ayuda pr-warn">Este lote no tiene cargado el {{ etiquetaPrecioReferencia().toLowerCase() }}. Ingresa el precio manualmente.</small>
+          }
+        }
+
+        <div class="pr-campo">
+          <label for="pr-importe">Importe de separación a proponer (S/) <em>· opcional</em></label>
+          <input id="pr-importe" type="number" inputmode="decimal" [(ngModel)]="form.importe" placeholder="0.00" />
+        </div>
+
+        <button type="button" class="pr-btn pr-btn-primary pr-btn-block" (click)="generar()" [disabled]="guardando()">
+          {{ guardando() ? 'Generando...' : 'Generar proforma' }}
+        </button>
+      </section>
+    </div>
+  }
+
+  <!-- LISTA -->
+  <section class="pr-card">
+    <div class="pr-lista-head">
+      <h2>Proformas emitidas</h2>
+      <input type="search" class="pr-buscar" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)" placeholder="Buscar por nombre, DNI, celular o lote" aria-label="Buscar proformas" />
+    </div>
+
+    @if (cargandoLista()) {
+      <p class="pr-vacio">Cargando...</p>
+    } @else if (proformasFiltradas().length === 0) {
+      <p class="pr-vacio">{{ proformas().length === 0 ? 'Aún no hay proformas en este proyecto.' : 'Ninguna coincide con la búsqueda.' }}</p>
+    } @else {
+      <div class="pr-tabla-wrap">
+        <table class="pr-tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Interesado</th><th>Lote</th><th>Pago</th><th class="num">Precio</th><th>Válida hasta</th><th>Estado</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of proformasFiltradas(); track p.id) {
+              <tr>
+                <td>{{ fmtFecha(p.fecha_emision) }}</td>
+                <td>
+                  <strong>{{ p.cliente_nombre }}</strong>
+                  <small>{{ p.cliente_telefono || p.cliente_documento || '' }}</small>
+                </td>
+                <td>{{ p.lote_codigo }}</td>
+                <td>{{ etiquetaTipoPago(p.tipo_pago) }}</td>
+                <td class="num">{{ p.precio_descontado ? 'S/ ' + (p.precio_descontado | number:'1.2-2') : 'Lista' }}</td>
+                <td>{{ fmtFecha(p.precio_valido_hasta) }}</td>
+                <td><span class="pr-chip" [attr.data-e]="estadoVisible(p)">{{ etiquetaEstado(estadoVisible(p)) }}</span></td>
+                <td class="pr-acciones">
+                  @if (p.documento_url) {
+                    <a class="pr-btn pr-btn-ghost pr-btn-sm" [href]="p.documento_url" target="_blank" rel="noopener">Ver</a>
+                  }
+                  @if (estadoVisible(p) === 'vigente') {
+                    <button type="button" class="pr-btn pr-btn-primary pr-btn-sm" (click)="separar(p)">Separar</button>
+                  } @else if (estadoVisible(p) === 'vencida') {
+                    <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" (click)="reusar(p)">Nueva con estos datos</button>
+                  } @else if (p.id_separacion) {
+                    <button type="button" class="pr-btn pr-btn-ghost pr-btn-sm" (click)="verSeparacion(p.id_separacion)">Ver separación</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

@@ -273,3 +273,40 @@ def generar_documento(db: Session, sep: m.Separacion, con_clausulas: bool) -> st
     contenido = doc.generar_docx(sep, nombre_proyecto(db, sep.id_proyecto), con_clausulas)
     prefijo = "contrato" if con_clausulas else "proforma"
     return doc.guardar_documento(prefijo, sep.id, contenido, settings.PUBLIC_URL_BASE)
+
+
+def generar_documento_proforma(db: Session, pf: m.Proforma) -> str:
+    """Proforma rápida: reutiliza el mismo documento de la separación, sin guardar ninguna separación.
+    Se arma una Separacion SOLO en memoria (nunca se agrega a la sesión) con los datos de la proforma."""
+    from decimal import Decimal
+
+    from app.services import documento_separacion as doc
+
+    cliente = pf.cliente or m.Cliente(
+        tipo_persona="natural",
+        tipo_documento="DNI",
+        numero_documento=pf.prospecto_documento or "",
+        nombres=pf.prospecto_nombre or "",
+        apellidos="",
+        telefono=pf.prospecto_telefono,
+        activo=True,
+    )
+    sep = m.Separacion(
+        id=pf.id,
+        id_empresa=pf.id_empresa,
+        id_proyecto=pf.id_proyecto,
+        id_lote=pf.id_lote,
+        fecha_inicio=pf.fecha_emision,
+        fecha_vencimiento=pf.precio_valido_hasta,
+        importe=pf.importe if pf.importe is not None else Decimal("0"),
+        tipo_pago=m.FormaPagoEnum(pf.tipo_pago) if pf.tipo_pago else None,
+        precio_valido_hasta=pf.precio_valido_hasta,
+        precio_descontado=pf.precio_descontado,
+        estado=E.vigente,
+    )
+    sep.lote = pf.lote
+    sep.cliente = cliente
+    sep.ejecutivo = pf.ejecutivo
+
+    contenido = doc.generar_docx(sep, nombre_proyecto(db, pf.id_proyecto), False)
+    return doc.guardar_documento("proforma_rapida", pf.id, contenido, settings.PUBLIC_URL_BASE)

@@ -731,6 +731,39 @@ class Separacion(Base):
     devoluciones = relationship("Devolucion", back_populates="separacion")
 
 
+class Proforma(Base):
+    """Proforma rápida: se entrega al interesado sin separar el lote."""
+    __tablename__ = "proformas"
+
+    id = Column(Integer, primary_key=True)
+    id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    id_proyecto = Column(Integer, ForeignKey("proyectos.id"), nullable=False)
+    id_lote = Column(Integer, ForeignKey("lotes.id"), nullable=False)
+    id_cliente = Column(Integer, ForeignKey("clientes.id"), nullable=True)
+    id_ejecutivo = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    prospecto_nombre = Column(String(150))
+    prospecto_documento = Column(String(20))
+    prospecto_telefono = Column(String(20))
+    tipo_pago = Column(String(10))  # contado | credito | NULL = sin definir
+    precio_descontado = Column(Numeric(12, 2))
+    precio_valido_hasta = Column(Date, nullable=False)
+    importe = Column(Numeric(12, 2))
+    fecha_emision = Column(Date, nullable=False)
+    documento_url = Column(String(300))
+    estado = Column(String(20), nullable=False, default="emitida")  # emitida | convertida
+    id_separacion = Column(Integer, ForeignKey("separaciones.id"), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_proformas_proyecto", "id_proyecto", "estado"),
+        Index("idx_proformas_separacion", "id_separacion"),
+    )
+
+    lote = relationship("Lote")
+    cliente = relationship("Cliente")
+    ejecutivo = relationship("Usuario", foreign_keys=[id_ejecutivo])
+
+
 class ComprobantePago(Base):
     __tablename__ = "comprobantes_pago"
 

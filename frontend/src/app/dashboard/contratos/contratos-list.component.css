@@ -2012,6 +2012,12 @@ textarea {
   border-color: currentColor;
 }
 
+
+.btn-cancelar-credito {
+  color: var(--c-danger, #b91c1c);
+  border-color: currentColor;
+}
+
 .modal-amort {
   max-width: 640px;
 }
@@ -2102,3 +2108,5 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+

@@ -406,7 +406,7 @@ export interface PagoCreate {
   numero_operacion?: string;
   comprobante_url: string;
   observacion?: string;
-  modalidad?: 'adelanto' | 'amortizar_cuota' | 'amortizar_plazo';
+  modalidad?: 'adelanto' | 'amortizar_cuota' | 'amortizar_plazo' | 'cancelar';
 }
 
 
@@ -862,6 +862,21 @@ export interface CotizacionAmortizacion {
   cronograma: CuotaSimulada[];
   cuotas_cubiertas?: number[]; 
   monto_cuotas_cubiertas?: number | string;
+}
+
+
+export interface CotizacionCancelacion {
+  fecha_efectiva: string;
+  con_interes: boolean;
+  dias_interes: number;
+  cuotas_vencidas: number[];
+  monto_cuotas_vencidas: number | string;
+  capital_pendiente: number | string;
+  interes_devengado: number | string;
+  credito_pagos_parciales: number | string;
+  monto_total: number | string;
+  cuotas_que_se_eliminan: number;
+  ahorro_interes: number | string;
 }
 
 // ------------------------------------------------------------- PROFORMAS --

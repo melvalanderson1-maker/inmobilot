@@ -577,7 +577,7 @@ class PagoCreate(BaseModel):
     observacion: Optional[str] = None
     # adelanto = cuotas tal como están | amortizar_cuota = abona a capital y baja la cuota
     # | amortizar_plazo = abona a capital y mantiene la cuota (termina antes)
-    modalidad: Literal["adelanto", "amortizar_cuota", "amortizar_plazo"] = "adelanto"
+    modalidad: Literal["adelanto", "amortizar_cuota", "amortizar_plazo", "cancelar"] = "adelanto"
 
 
 class PagoOut(ORMBase):
@@ -1185,6 +1185,19 @@ class EvaluacionVentaOut(BaseModel):
     cronograma: list[CuotaSimuladaOut] = []
     cronograma_mensual: list[CuotaSimuladaOut] = []
 
+
+class CotizacionCancelacionOut(BaseModel):
+    fecha_efectiva: date
+    con_interes: bool
+    dias_interes: int
+    cuotas_vencidas: list[int] = []
+    monto_cuotas_vencidas: Decimal
+    capital_pendiente: Decimal
+    interes_devengado: Decimal
+    credito_pagos_parciales: Decimal
+    monto_total: Decimal
+    cuotas_que_se_eliminan: int
+    ahorro_interes: Decimal
 
 class CotizacionAmortizacionOut(BaseModel):
     modalidad: str

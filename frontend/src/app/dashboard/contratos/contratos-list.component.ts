@@ -20,6 +20,7 @@ import {
   Pago,
   PagoCreate,
   CotizacionAmortizacion,
+  CotizacionCancelacion,
   FormaPago,
   Venta,
   DocumentoUbicacion,
@@ -382,6 +383,13 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   conceptoPago(p: Pago): string {
     if (p.tipo === 'inicial') return 'Inicial';
     if (p.tipo === 'contado') return 'Pago al contado';
+    if (p.tipo === 'cancelacion') {
+      if (!p.cuota_desde) return 'Cancelación de crédito';
+      const idc = this.contratoDrawer()!.id;
+      const d = this.numeroPago(idc, p.cuota_desde);
+      const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
+      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + Cancelación de crédito`;
+    }
     if (p.tipo === 'amortizacion') {
       const base = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
       if (!p.cuota_desde) return base;
@@ -1004,6 +1012,112 @@ export class ContratosListComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.guardandoPago.set(false);
             this.errorPago.set(err?.error?.detail ?? 'Error al registrar la amortización');
+          },
+        });
+      },
+      error: (err) => {
+        this.guardandoPago.set(false);
+        this.errorPago.set(err?.error?.detail ?? 'Error al subir el comprobante');
+      },
+    });
+  }
+
+
+    // ---- Cancelar el crédito (cualquier frecuencia) ----
+  modalCancelAbierto = signal(false);
+  cotizandoCancel = signal(false);
+  cotizacionCancel = signal<CotizacionCancelacion | null>(null);
+  private cancelClave = '';
+
+  /** ¿Ya hay una cancelación esperando a Caja o Facturación? */
+  cancelacionEnProceso(idContrato: number): boolean {
+    return (this.pagosPorContrato()[idContrato] ?? []).some(
+      (p) => p.tipo === 'cancelacion' && (p.estado === 'pendiente_caja' || p.estado === 'pendiente_facturacion')
+    );
+  }
+
+  /** La liquidación en pantalla corresponde a la fecha escrita ahora */
+  get cancelVigente(): boolean {
+    return !!this.cotizacionCancel() && this.cancelClave === this.fechaPago;
+  }
+
+  abrirCancelar(idContrato: number): void {
+    this.contratoPagoId = idContrato;
+    this.cotizacionCancel.set(null);
+    this.cancelClave = '';
+    this.fechaPago = new Date().toISOString().slice(0, 10);
+    this.metodoPago = 'transferencia';
+    this.numeroOperacion = '';
+    this.observacionPago = '';
+    this.archivoComprobante = null;
+    this.errorPago.set(null);
+    this.modalCancelAbierto.set(true);
+    this.cotizarCancel();
+  }
+
+  cerrarModalCancel(): void {
+    this.modalCancelAbierto.set(false);
+  }
+
+  cotizarCancel(): void {
+    if (!this.contratoPagoId || !this.fechaPago) {
+      this.errorPago.set('Indica la fecha de pago');
+      return;
+    }
+    this.errorPago.set(null);
+    this.cotizacionCancel.set(null);
+    this.cotizandoCancel.set(true);
+    const clave = this.fechaPago;
+    this.contratoService.cotizarCancelacion(this.contratoPagoId, { fecha_pago: clave }).subscribe({
+      next: (c) => {
+        this.cotizacionCancel.set(c);
+        this.cancelClave = clave;
+        this.cotizandoCancel.set(false);
+      },
+      error: (err) => {
+        this.cotizandoCancel.set(false);
+        this.errorPago.set(err?.error?.detail ?? 'No se pudo calcular la cancelación');
+      },
+    });
+  }
+
+  guardarCancelacion(): void {
+    const cot = this.cotizacionCancel();
+    if (!this.contratoPagoId || !cot || !this.cancelVigente) {
+      this.errorPago.set('Calcula la liquidación antes de confirmar');
+      return;
+    }
+    if (!this.archivoComprobante) {
+      this.errorPago.set('Debes adjuntar el comprobante de pago (imagen o PDF)');
+      return;
+    }
+    this.guardandoPago.set(true);
+    this.errorPago.set(null);
+
+    const formData = new FormData();
+    formData.append('archivo', this.archivoComprobante);
+
+    this.contratoService.subirComprobante(formData).subscribe({
+      next: (res) => {
+        const payload: PagoCreate = {
+          modalidad: 'cancelar',
+          monto: Math.round(this.toNum(cot.monto_total) * 100) / 100,
+          fecha_pago: this.fechaPago,
+          metodo_pago: this.metodoPago,
+          numero_operacion: this.numeroOperacion || undefined,
+          observacion: this.observacionPago || undefined,
+          comprobante_url: res.url,
+        };
+        this.contratoService.registrarPago(this.contratoPagoId!, payload).subscribe({
+          next: () => {
+            this.guardandoPago.set(false);
+            this.modalCancelAbierto.set(false);
+            this.toastService.exito('Cancelación enviada a Caja para su validación');
+            this.cargarCronograma(this.contratoPagoId!);
+          },
+          error: (err) => {
+            this.guardandoPago.set(false);
+            this.errorPago.set(err?.error?.detail ?? 'Error al registrar la cancelación');
           },
         });
       },

@@ -438,6 +438,35 @@ def cotizar_amortizacion(
     return _cotizar(db, contrato, monto, fecha_pago, modalidad)
 
 
+def _cotizar_cancelacion(db: Session, contrato: m.Contrato, fecha_pago: date) -> dict:
+    cuotas = (
+        db.query(m.CronogramaPago)
+        .filter(m.CronogramaPago.id_contrato == contrato.id)
+        .order_by(m.CronogramaPago.numero_cuota)
+        .all()
+    )
+    previas = [
+        p.detalle_amortizacion
+        for p in db.query(m.Pago).filter(
+            m.Pago.id_contrato == contrato.id, m.Pago.tipo == "amortizacion", m.Pago.estado == "validado"
+        ).all()
+    ]
+    return amort_svc.cotizar_cancelacion(contrato, cuotas, fecha_pago, previas)
+
+
+@router.get("/{id_contrato}/cotizar-cancelacion", response_model=s.CotizacionCancelacionOut)
+def cotizar_cancelacion(
+    id_contrato: int,
+    fecha_pago: date,
+    usuario: m.Usuario = Depends(require_permiso("registrar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Cuánto cuesta cancelar el crédito hoy: cuotas vencidas + capital + interés hasta la fecha. No guarda nada."""
+    contrato = _cargar_contrato_pago(db, id_contrato, usuario)
+    if contrato.estado in (m.EstadoContratoEnum.cancelado, m.EstadoContratoEnum.anulado):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El contrato ya está cerrado")
+    return _cotizar_cancelacion(db, contrato, fecha_pago)
+
 @router.post("/{id_contrato}/pagos", response_model=s.PagoOut, status_code=status.HTTP_201_CREATED)
 async def registrar_pago(
     id_contrato: int,
@@ -466,7 +495,7 @@ async def registrar_pago(
         .filter(
             m.Pago.id_contrato == id_contrato,
             m.Pago.estado.in_(["pendiente_caja", "pendiente_facturacion"]),
-            m.Pago.tipo.in_(["cuota", "cuotas", "amortizacion"]),
+            m.Pago.tipo.in_(["cuota", "cuotas", "amortizacion", "cancelacion"]),
         )
         .all()
     )
@@ -475,7 +504,27 @@ async def registrar_pago(
     id_cuota = None
     cuota_desde = cuota_hasta = None
 
-    if payload.modalidad != "adelanto":
+    if payload.modalidad == "cancelar":
+        # ---- Cancelación total del crédito (cualquier frecuencia, con o sin interés) ----
+        if payload.cantidad_cuotas or payload.id_cuota:
+            raise HTTPException(status_code=422, detail="La cancelación del crédito no se asocia a cuotas")
+        if en_proceso:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya hay un pago de cuotas, amortización o cancelación en Caja o Facturación. Espera a que se aplique antes de registrar otro",
+            )
+        cot = _cotizar_cancelacion(db, contrato, payload.fecha_pago)
+        if abs(Decimal(str(payload.monto)) - cot["monto_total"]) > Decimal("0.05"):
+            raise HTTPException(
+                status_code=422,
+                detail=f"El monto para cancelar el crédito al {payload.fecha_pago:%d/%m/%Y} es S/ {cot['monto_total']:,.2f}. Vuelve a calcular",
+            )
+        tipo = "cancelacion"
+        concepto = "Cancelación de crédito"
+        if cot["_cubiertas"]:
+            cuota_desde = cot["_cubiertas"][0].numero_cuota
+            cuota_hasta = cot["_cubiertas"][-1].numero_cuota
+    elif payload.modalidad != "adelanto":
         # ---- Amortización a capital (solo contratos con interés) ----
         if payload.cantidad_cuotas or payload.id_cuota:
             raise HTTPException(status_code=422, detail="La amortización a capital no se asocia a cuotas")
@@ -548,7 +597,7 @@ async def registrar_pago(
                 detail="Esa fila es solo el detalle mensual del interés y no se paga por separado",
             )
             
-        if any(p.tipo == "amortizacion" for p in en_proceso):
+        if any(p.tipo in ("amortizacion", "cancelacion") for p in en_proceso):
             raise HTTPException(status_code=409, detail="Hay una amortización a capital en Caja o Facturación. Espera a que se aplique")
         for p in en_proceso:
             if p.id_cuota == cuota.id or (

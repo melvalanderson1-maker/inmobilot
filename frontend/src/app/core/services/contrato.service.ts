@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { ApiService } from './api.service';
-import { Contrato, ContratoCreate, CronogramaCuota, PagoCreate, Pago, CotizacionAmortizacion } from '../models';
+import { Contrato, ContratoCreate, CronogramaCuota, PagoCreate, Pago, CotizacionAmortizacion, CotizacionCancelacion } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ContratoService {
@@ -35,5 +35,9 @@ export class ContratoService {
     params: { monto: number; fecha_pago: string; modalidad: 'amortizar_cuota' | 'amortizar_plazo' }
   ) {
     return this.api.get<CotizacionAmortizacion>(`/contratos/${idContrato}/cotizar-amortizacion`, params);
+  }
+
+  cotizarCancelacion(idContrato: number, params: { fecha_pago: string }) {
+    return this.api.get<CotizacionCancelacion>(`/contratos/${idContrato}/cotizar-cancelacion`, params);
   }
 }

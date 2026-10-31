@@ -295,17 +295,25 @@
               }
             </div>
 
-            @if (puedeRegistrarPago && pendientesDe(ct.id).length > 1) {
+            @if (puedeRegistrarPago && pendientesDe(ct.id).length > 0) {
               <div class="acciones-pago">
-                <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)"
-                        title="Paga las cuotas tal como están en el cronograma (no cambia fechas ni montos)">Adelantar cuotas</button>
-                @if (ct.tiene_interes) {
-                  @if (amortizacionEnProceso(ct.id)) {
-                    <span class="chip chip-pago-pendiente_caja">Amortización en validación</span>
-                  } @else {
-                    <button type="button" class="btn-secundario-sm btn-amortizar" (click)="abrirAmortizar(ct.id)"
-                            title="Abona a capital: baja la cuota o acorta el plazo">Amortizar capital</button>
+                @if (pendientesDe(ct.id).length > 1) {
+                  <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)"
+                          title="Paga las cuotas tal como están en el cronograma (no cambia fechas ni montos)">Adelantar cuotas</button>
+                  @if (ct.tiene_interes) {
+                    @if (amortizacionEnProceso(ct.id)) {
+                      <span class="chip chip-pago-pendiente_caja">Amortización en validación</span>
+                    } @else {
+                      <button type="button" class="btn-secundario-sm btn-amortizar" (click)="abrirAmortizar(ct.id)"
+                              title="Abona a capital: baja la cuota o acorta el plazo">Amortizar capital</button>
+                    }
                   }
+                }
+                @if (cancelacionEnProceso(ct.id)) {
+                  <span class="chip chip-pago-pendiente_caja">Cancelación en validación</span>
+                } @else {
+                  <button type="button" class="btn-secundario-sm btn-cancelar-credito" (click)="abrirCancelar(ct.id)"
+                          title="Liquida todo: cuotas vencidas + capital + interés hasta el día de pago">Cancelar crédito</button>
                 }
               </div>
             }
@@ -766,6 +774,105 @@
           <button type="button" class="btn-secundario" (click)="cerrarModalVarias()">Cancelar</button>
           <button type="button" class="btn-primary" (click)="guardarPagoVarias()" [disabled]="guardandoPago() || !seleccionVarias">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+    <!-- ============ MODAL: CANCELAR CRÉDITO ============ -->
+  @if (modalCancelAbierto()) {
+    <div class="modal-overlay" (click)="cerrarModalCancel()">
+      <div class="modal modal-amort" role="dialog" aria-modal="true" aria-label="Cancelar crédito" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Cancelar crédito</h2>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalCancel()" aria-label="Cerrar">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (errorPago()) {
+            <div class="mensaje-error" role="alert">{{ errorPago() }}</div>
+          }
+
+          <div class="aviso-info">
+            El cliente paga las <strong>cuotas que ya vencieron</strong> (si hay), el <strong>capital que resta</strong> y el
+            <strong>interés generado hasta la fecha de pago</strong>. No se cobran intereses de cuotas futuras.
+            Al validar Facturación el comprobante, el contrato queda <strong>cancelado</strong>.
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Fecha de pago</label>
+              <input [(ngModel)]="fechaPago" type="date" />
+            </div>
+            <div class="campo">
+              <label>&nbsp;</label>
+              <button type="button" class="btn-secundario-sm btn-calcular" (click)="cotizarCancel()" [disabled]="cotizandoCancel()">
+                {{ cotizandoCancel() ? 'Calculando...' : 'Calcular' }}
+              </button>
+            </div>
+          </div>
+
+          @if (cotizacionCancel(); as cot) {
+            @if (!cancelVigente) {
+              <div class="aviso-info">Cambiaste la fecha: vuelve a calcular.</div>
+            }
+            <div class="amort-resultado" [class.amort-obsoleta]="!cancelVigente">
+              <div class="amort-grid">
+                @if (cot.cuotas_vencidas.length) {
+                  <div>
+                    <span class="etiqueta-mini">{{ cot.cuotas_vencidas.length > 1 ? 'Cuotas ' + cot.cuotas_vencidas[0] + ' a ' + cot.cuotas_vencidas[cot.cuotas_vencidas.length - 1] : 'Cuota ' + cot.cuotas_vencidas[0] }} (vencida{{ cot.cuotas_vencidas.length > 1 ? 's' : '' }})</span>
+                    <span class="cuota-resumen-valor">S/ {{ toNum(cot.monto_cuotas_vencidas) | number:'1.2-2' }}</span>
+                  </div>
+                }
+                @if (cot.con_interes) {
+                  <div><span class="etiqueta-mini">Capital que resta</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.capital_pendiente) | number:'1.2-2' }}</span></div>
+                  <div><span class="etiqueta-mini">Interés ({{ cot.dias_interes }} días)</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.interes_devengado) | number:'1.2-2' }}</span></div>
+                }
+                @if (toNum(cot.credito_pagos_parciales) > 0) {
+                  <div><span class="etiqueta-mini">Ya abonado a cuotas futuras</span><span class="cuota-resumen-valor">− S/ {{ toNum(cot.credito_pagos_parciales) | number:'1.2-2' }}</span></div>
+                }
+                @if (cot.con_interes) {
+                  <div><span class="etiqueta-mini">Intereses futuros que NO se cobran</span><span class="cuota-resumen-valor valor-ahorro">S/ {{ toNum(cot.ahorro_interes) | number:'1.2-2' }}</span></div>
+                }
+                <div><span class="etiqueta-mini">TOTAL A PAGAR</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.monto_total) | number:'1.2-2' }}</span></div>
+              </div>
+            </div>
+          }
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Método de pago</label>
+              <select [(ngModel)]="metodoPago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="deposito">Depósito</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>N° de operación (opcional)</label>
+              <input [(ngModel)]="numeroOperacion" type="text" />
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>Comprobante de pago (JPG, PNG o PDF) *</label>
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
+            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+          </div>
+
+          <div class="campo">
+            <label>Observación (opcional)</label>
+            <textarea [(ngModel)]="observacionPago" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secundario" (click)="cerrarModalCancel()">Cerrar</button>
+          <button type="button" class="btn-primary" (click)="guardarCancelacion()" [disabled]="guardandoPago() || !cancelVigente">
+            {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar cancelación' }}
           </button>
         </div>
       </div>

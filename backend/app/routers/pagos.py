@@ -74,6 +74,10 @@ def _concepto(p: m.Pago) -> str:
             else "Amortización a capital (reduce el plazo)"
         )
         return f"{_rango_cuotas(p)} + {base}" if p.cuota_desde else base
+
+    if p.tipo == "cancelacion":
+        return f"{_rango_cuotas(p)} + Cancelación de crédito" if p.cuota_desde else "Cancelación de crédito"
+    
     if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
         return _rango_cuotas(p)
     if p.cuota:
@@ -272,6 +276,12 @@ async def subir_comprobante_pago(
                 cuota.fecha_pago_real = pago.fecha_pago
             else:
                 cuota.estado = m.EstadoCuotaEnum.parcial
+
+    elif pago.tipo == "cancelacion":
+        # Cancelación total: deja el crédito en cero y cierra el contrato (si algo no cuadra no se guarda nada)
+        amort_svc.aplicar_cancelacion(db, m, contrato, pago)
+
+
     elif pago.tipo == "amortizacion":
         # Abono a capital: aquí se reescribe el cronograma pendiente.
         # Si algo no cuadra lanza error y NO se guarda nada.

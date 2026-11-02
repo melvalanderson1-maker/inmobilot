@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -20,6 +21,26 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
   proyectos = signal<Proyecto[]>([]);
   separaciones = signal<Separacion[]>([]);
   cargando = signal(false);
+    private suscripcionSocket?: Subscription;
+
+  // ---- Filtro por ejecutivo (quién generó la separación) ----
+  ejecutivoFiltro = signal<number | 'todos'>('todos');
+
+  /** KPI: cuántas separaciones generó cada ejecutivo (mayor a menor) */
+  ejecutivosKpi = computed(() => {
+    const mapa = new Map<number, { id: number; nombre: string; total: number }>();
+    for (const s of this.separaciones()) {
+      const e = mapa.get(s.id_ejecutivo) ?? { id: s.id_ejecutivo, nombre: s.ejecutivo_nombre || 'Sin nombre', total: 0 };
+      e.total++;
+      mapa.set(s.id_ejecutivo, e);
+    }
+    return [...mapa.values()].sort((a, b) => b.total - a.total);
+  });
+
+  separacionesVista = computed(() => {
+    const ej = this.ejecutivoFiltro();
+    return ej === 'todos' ? this.separaciones() : this.separaciones().filter((s) => s.id_ejecutivo === ej);
+  });
 
   idProyectoSeleccionado: number | null = null;
   filtroEstado: 'todos' | EstadoSeparacion = 'todos';
@@ -53,7 +74,7 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     });
 
     this.socket.conectar();
-    this.socket.onEvento.subscribe((evento) => {
+    this.suscripcionSocket = this.socket.onEvento.subscribe((evento) => {
       if (evento.evento === 'separacion:actualizada') {
         const data = evento.data as { id_proyecto?: number };
         if (data?.id_proyecto === this.idProyectoSeleccionado) {
@@ -64,6 +85,7 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.suscripcionSocket?.unsubscribe();
     this.socket.desconectar();
   }
 
@@ -77,6 +99,7 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
 
   /** Vuelve el filtro de estado a "Todos" y recarga. */
   limpiarFiltros(): void {
+    this.ejecutivoFiltro.set('todos');
     this.filtroEstado = 'todos';
     this.cargarSeparaciones();
   }

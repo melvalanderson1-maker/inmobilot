@@ -43,8 +43,21 @@
     </div>
 
     <span class="filtros-contador">
-      {{ separaciones().length }} {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
+      {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
     </span>
+
+    @if (ejecutivosKpi().length > 0) {
+      <div class="ejecutivos-kpis" role="group" aria-label="Separaciones por ejecutivo de ventas">
+        <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === 'todos'" (click)="ejecutivoFiltro.set('todos')">
+          Todos los ejecutivos
+        </button>
+        @for (e of ejecutivosKpi(); track e.id) {
+          <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === e.id" (click)="ejecutivoFiltro.set(e.id)">
+            {{ e.nombre }} <strong>{{ e.total }}</strong>
+          </button>
+        }
+      </div>
+    }
   </div>
 
   @if (cargando()) {
@@ -89,7 +102,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (sep of separaciones(); track sep.id) {
+          @for (sep of separacionesVista(); track sep.id) {
             <tr tabindex="0" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
               <td class="td-lote">{{ sep.lote?.codigo || '—' }}</td>
               <td>{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : '—' }}</td>
@@ -104,7 +117,7 @@
     </div>
 
     <div class="vista-cards">
-      @for (sep of separaciones(); track sep.id) {
+      @for (sep of separacionesVista(); track sep.id) {
         <div class="sep-card" tabindex="0" role="button" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
           <div class="sep-card-top">
             <strong>{{ sep.lote?.codigo || '—' }}</strong>

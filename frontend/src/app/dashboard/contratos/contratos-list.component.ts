@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/services/api.service';
@@ -77,11 +78,30 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   // ---- Filtro por tipo de documento base (contado = Minuta, crédito = Contrato preparatorio) ----
   formaFiltro = signal<'todas' | 'contado' | 'credito'>('todas');
 
+  // ---- Filtro por ejecutivo (quién registró el contrato) ----
+  ejecutivoFiltro = signal<number | 'todos'>('todos');
+
+  /** KPI: cuántos contratos registró cada ejecutivo (mayor a menor) */
+  ejecutivosKpi = computed(() => {
+    const mapa = new Map<number, { id: number; nombre: string; total: number }>();
+    for (const c of this.contratos()) {
+      if (!c.id_ejecutivo) continue;
+      const e = mapa.get(c.id_ejecutivo) ?? { id: c.id_ejecutivo, nombre: c.ejecutivo_nombre || 'Sin nombre', total: 0 };
+      e.total++;
+      mapa.set(c.id_ejecutivo, e);
+    }
+    return [...mapa.values()].sort((a, b) => b.total - a.total);
+  });
+
   contratosFiltrados = computed(() => {
     const f = this.faseFiltro();
     const forma = this.formaFiltro();
+    const ej = this.ejecutivoFiltro();
     return this.contratos().filter(
-      (c) => (f === 'todas' || c.fase_documental === f) && (forma === 'todas' || c.forma_pago === forma)
+      (c) =>
+        (f === 'todas' || c.fase_documental === f) &&
+        (forma === 'todas' || c.forma_pago === forma) &&
+        (ej === 'todos' || c.id_ejecutivo === ej)
     );
   });
 
@@ -200,7 +220,15 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     });
 
     this.socket.conectar();
-    this.socket.onEvento.subscribe((evento) => {
+    this.suscripcionSocket = this.socket.onEvento.subscribe((evento) => {
+      // Caja valida, rechaza o registra un pago: refresca el drawer y la lista al instante
+      if (evento.evento === 'pago:actualizado') {
+        const idContrato = (evento.data as any)?.id_contrato;
+        this.cargarContratos(true);
+        if (idContrato && this.contratoDrawer()?.id === idContrato) {
+          this.cargarCronograma(idContrato);
+        }
+      }
       if (evento.evento === 'contrato:nuevo') {
         const contrato = evento.data as Contrato;
         if (contrato && contrato.id_proyecto === this.idProyectoSeleccionado) {
@@ -225,6 +253,9 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.suscripcionSocket?.unsubscribe();
+    clearTimeout(this.timerAmort);
+    clearTimeout(this.timerCancel);
     this.socket.desconectar();
   }
 
@@ -901,6 +932,11 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  private suscripcionSocket?: Subscription;
+  private timerAmort: any;
+  private timerCancel: any;
+
   // ---- Amortizar capital (solo contratos con interés) ----
   modalAmortAbierto = signal(false);
   cotizandoAmort = signal(false);
@@ -948,9 +984,19 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.modalAmortAbierto.set(false);
   }
 
+  /** Recalcula solo, medio segundo después de que el usuario deja de escribir */
+  autoCotizarAmort(): void {
+    clearTimeout(this.timerAmort);
+    this.cotizacion.set(null);
+    this.errorPago.set(null);
+    if (!this.montoAmort || this.montoAmort <= 0 || !this.fechaPago) return;
+    this.cotizandoAmort.set(true);
+    this.timerAmort = setTimeout(() => this.cotizarAmort(), 500);
+  }
+
   cotizarAmort(): void {
     if (!this.contratoPagoId || !this.montoAmort || this.montoAmort <= 0) {
-      this.errorPago.set('Indica cuánto va a abonar el cliente');
+      this.cotizandoAmort.set(false);
       return;
     }
     this.errorPago.set(null);
@@ -965,11 +1011,13 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: (c) => {
+          if (clave !== this.claveAmort()) return; // llegó tarde: ya hay otra cotización en camino
           this.cotizacion.set(c);
           this.cotizacionClave = clave;
           this.cotizandoAmort.set(false);
         },
         error: (err) => {
+          if (clave !== this.claveAmort()) return;
           this.cotizandoAmort.set(false);
           this.errorPago.set(err?.error?.detail ?? 'No se pudo calcular la amortización');
         },
@@ -1059,9 +1107,19 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.modalCancelAbierto.set(false);
   }
 
+  /** Recalcula solo al cambiar la fecha */
+  autoCotizarCancel(): void {
+    clearTimeout(this.timerCancel);
+    this.cotizacionCancel.set(null);
+    this.errorPago.set(null);
+    if (!this.fechaPago) return;
+    this.cotizandoCancel.set(true);
+    this.timerCancel = setTimeout(() => this.cotizarCancel(), 400);
+  }
+
   cotizarCancel(): void {
     if (!this.contratoPagoId || !this.fechaPago) {
-      this.errorPago.set('Indica la fecha de pago');
+      this.cotizandoCancel.set(false);
       return;
     }
     this.errorPago.set(null);
@@ -1070,11 +1128,13 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const clave = this.fechaPago;
     this.contratoService.cotizarCancelacion(this.contratoPagoId, { fecha_pago: clave }).subscribe({
       next: (c) => {
+        if (clave !== this.fechaPago) return; // llegó tarde: la fecha ya cambió
         this.cotizacionCancel.set(c);
         this.cancelClave = clave;
         this.cotizandoCancel.set(false);
       },
       error: (err) => {
+        if (clave !== this.fechaPago) return;
         this.cotizandoCancel.set(false);
         this.errorPago.set(err?.error?.detail ?? 'No se pudo calcular la cancelación');
       },

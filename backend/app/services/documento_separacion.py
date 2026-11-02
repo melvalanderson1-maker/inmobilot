@@ -102,6 +102,7 @@ def construir_datos(sep, proyecto_nombre: str) -> dict:
         "FORMA_PAGO": (sep.medio_pago or (sep.tipo_pago.value if sep.tipo_pago else "-")).upper(),
         "VOUCHER": sep.voucher_numero or "-",
         "CLIENTE": nombre.upper(),
+        "EJECUTIVO": (sep.ejecutivo.nombre if sep.ejecutivo else "").upper(),
         "DNI": documento,
         "DIRECCION": cli.direccion or "",
         "EMAIL": cli.correo or "",

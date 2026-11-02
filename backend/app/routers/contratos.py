@@ -169,6 +169,7 @@ def listar_contratos(
         db.query(m.Contrato)
         .options(
             joinedload(m.Contrato.lote),
+            joinedload(m.Contrato.registrador),
             joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
             selectinload(m.Contrato.venta).selectinload(m.Venta.ubicaciones),
         )
@@ -189,6 +190,7 @@ def obtener_contrato(
         db.query(m.Contrato)
         .options(
             joinedload(m.Contrato.lote),
+            joinedload(m.Contrato.registrador),
             joinedload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
         )
         .filter(m.Contrato.id == id_contrato)

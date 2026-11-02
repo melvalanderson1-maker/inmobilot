@@ -504,6 +504,8 @@ class ContratoOut(ORMBase):
     fase_documental: Optional[str] = None
     ubicacion_actual: Optional[str] = None
     tramite_actual: Optional[str] = None
+    id_ejecutivo: Optional[int] = None
+    ejecutivo_nombre: Optional[str] = None
 
 
 
@@ -517,6 +519,8 @@ class ContratoOut(ORMBase):
             ubicacion_actual=ubic,
             tramite_actual=tramite,
             id=contrato.id,
+            id_ejecutivo=contrato.id_usuario_registro,
+            ejecutivo_nombre=contrato.registrador.nombre if contrato.registrador else None,
             numero_contrato=contrato.numero_contrato,
             id_lote=contrato.id_lote,
             id_proyecto=contrato.id_proyecto,

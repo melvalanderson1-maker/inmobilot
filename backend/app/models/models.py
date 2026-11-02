@@ -475,6 +475,8 @@ class Contrato(Base):
     clientes_rel = relationship("ContratoCliente", back_populates="contrato")
     lote = relationship("Lote")
 
+    registrador = relationship("Usuario", foreign_keys=[id_usuario_registro])
+
     # Venta de origen (solo lectura): permite mostrar la fase documental en la lista
     venta = relationship(
         "Venta",

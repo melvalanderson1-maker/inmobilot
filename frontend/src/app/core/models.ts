@@ -377,6 +377,8 @@ export interface Contrato {
   fase_documental?: string | null;   // = estado de la venta
   ubicacion_actual?: string | null;  // ubicación del documento en curso
   tramite_actual?: string | null;    // pendiente | en_proceso | concretado
+  id_ejecutivo?: number | null;      // usuario que registró el contrato
+  ejecutivo_nombre?: string | null;
 }
 
 

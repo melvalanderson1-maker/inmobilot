@@ -2110,3 +2110,12 @@ textarea {
 }
 
 
+/* KPIs por ejecutivo de ventas */
+.ejecutivos-kpis { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; width: 100%; }
+.ejec-chip {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: inherit;
+  padding: 7px 12px; border-radius: 999px; background: transparent; font-size: 13px;
+  border: 1px solid rgba(128,128,128,.35);
+}
+.ejec-chip strong { font-size: 15px; }
+.ejec-chip.activo { background: rgba(139,92,246,.12); border-color: #8b5cf6; }

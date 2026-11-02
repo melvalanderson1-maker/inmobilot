@@ -30,6 +30,20 @@
         }
       </div>
     }
+
+    @if (ejecutivosKpi().length > 0) {
+      <div class="ejecutivos-kpis" role="group" aria-label="Contratos por ejecutivo de ventas">
+        <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === 'todos'" (click)="ejecutivoFiltro.set('todos')">
+          Todos los ejecutivos
+        </button>
+        @for (e of ejecutivosKpi(); track e.id) {
+          <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === e.id" (click)="ejecutivoFiltro.set(e.id)">
+            {{ e.nombre }} <strong>{{ e.total }}</strong>
+          </button>
+        }
+      </div>
+    }
+
   </section>
 
 
@@ -75,6 +89,7 @@
             <th>Forma</th>
             <th>Documento</th>
             <th>Estado</th>
+            <th>Ejecutivo</th>
             <th></th>
           </tr>
         </thead>
@@ -117,6 +132,7 @@
                 }
               </td>
               <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
+              <td data-label="Ejecutivo">{{ c.ejecutivo_nombre || '—' }}</td>
               <td data-label="">
                 @if (c.id_venta) {
                   <button type="button" class="btn-secundario-sm" (click)="verVenta(c, $event)">Ver venta →</button>
@@ -803,20 +819,15 @@
           <div class="campo-doble">
             <div class="campo">
               <label>Fecha de pago</label>
-              <input [(ngModel)]="fechaPago" type="date" />
-            </div>
-            <div class="campo">
-              <label>&nbsp;</label>
-              <button type="button" class="btn-secundario-sm btn-calcular" (click)="cotizarCancel()" [disabled]="cotizandoCancel()">
-                {{ cotizandoCancel() ? 'Calculando...' : 'Calcular' }}
-              </button>
+              <input [(ngModel)]="fechaPago" (ngModelChange)="autoCotizarCancel()" type="date" />
             </div>
           </div>
 
+          @if (cotizandoCancel()) {
+            <div class="aviso-info" role="status">Calculando...</div>
+          }
+
           @if (cotizacionCancel(); as cot) {
-            @if (!cancelVigente) {
-              <div class="aviso-info">Cambiaste la fecha: vuelve a calcular.</div>
-            }
             <div class="amort-resultado" [class.amort-obsoleta]="!cancelVigente">
               <div class="amort-grid">
                 @if (cot.cuotas_vencidas.length) {
@@ -914,22 +925,20 @@
           <div class="campo-doble">
             <div class="campo">
               <label>Monto que paga el cliente (S/)</label>
-              <input [(ngModel)]="montoAmort" type="number" inputmode="decimal" min="0" />
+              <input [(ngModel)]="montoAmort" (ngModelChange)="autoCotizarAmort()" type="number" inputmode="decimal" min="0" />
             </div>
             <div class="campo">
               <label>Fecha de pago</label>
-              <input [(ngModel)]="fechaPago" type="date" />
+              <input [(ngModel)]="fechaPago" (ngModelChange)="autoCotizarAmort()" type="date" />
             </div>
           </div>
 
-          <button type="button" class="btn-secundario-sm btn-calcular" (click)="cotizarAmort()" [disabled]="cotizandoAmort()">
-            {{ cotizandoAmort() ? 'Calculando...' : 'Calcular cómo queda' }}
-          </button>
+          @if (cotizandoAmort()) {
+            <div class="aviso-info" role="status">Calculando...</div>
+          }
 
           @if (cotizacion(); as cot) {
-            @if (!cotizacionVigente) {
-              <div class="aviso-info">Cambiaste el monto, la fecha o la opción: vuelve a calcular.</div>
-            }
+
             <div class="amort-resultado" [class.amort-obsoleta]="!cotizacionVigente">
               @if (cot.cuotas_cubiertas?.length) {
                 <div class="aviso-info">

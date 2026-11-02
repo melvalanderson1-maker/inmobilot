@@ -123,6 +123,8 @@ async def _emitir(pago: m.Pago, contrato: m.Contrato, notifs: list):
         contrato.id_proyecto,
         sep_svc.notificaciones_a_dict(notifs),
     )
+    # Tiempo real: cronogramas y pagos abiertos (Contratos, Cobranza, Venta) se refrescan al instante
+    await notificar_pago_registrado(contrato.id, contrato.id_proyecto, contrato.id_empresa)
 
 
 # ---------------------------------------------------------------- lectura --

@@ -142,6 +142,8 @@ export class PagosListComponent implements OnInit, OnDestroy {
   }
 
   subConcepto(p: PagoCola): string | null {
+    if (p.concepto.includes('Cancelación')) return 'Liquida todo el crédito y cierra el contrato';
+    if (p.concepto.includes('Amortización')) return 'Abono a capital: reescribe el cronograma';
     if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
     if (p.concepto === 'Pago al contado') return 'Venta al contado';
     if (p.concepto.startsWith('Cuotas ')) return 'Un solo depósito para varias cuotas';
@@ -232,9 +234,13 @@ export class PagosListComponent implements OnInit, OnDestroy {
         this.procesando.set(false);
         this.pagoComprobante.set(null);
         this.toastService.exito(
-          p.concepto === 'Inicial' || p.concepto === 'Pago al contado'
-            ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
-            : 'Comprobante registrado. El pago ya se aplicó a la cuota.'
+          p.concepto.includes('Cancelación')
+            ? 'Comprobante registrado. El crédito quedó cancelado.'
+            : p.concepto.includes('Amortización')
+              ? 'Comprobante registrado. El cronograma se actualizó con la amortización.'
+              : p.concepto === 'Inicial' || p.concepto === 'Pago al contado'
+                ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
+                : 'Comprobante registrado. El pago ya se aplicó a la cuota.'
         );
         this.cargar(true);
       },

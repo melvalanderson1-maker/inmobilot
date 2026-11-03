@@ -22,6 +22,10 @@ export class VentaService {
     return this.api.post<Venta>(`/ventas/${id}/documento-firmado`, { url });
   }
 
+  subirDocumentoManual(idVenta: number, url: string) {
+    return this.api.post<Venta>(`/ventas/${idVenta}/documento-manual`, { url });
+  }
+
   registrarUbicacion(id: number, payload: DocumentoUbicacionCreate) {
     return this.api.post<DocumentoUbicacion>(`/ventas/${id}/ubicacion-documento`, payload);
   }

@@ -418,6 +418,26 @@ async def generar_documento(
     return s.VentaOut.desde_venta(venta_completa)
 
 
+@router.post("/{id_venta}/documento-manual", response_model=s.VentaOut)
+async def subir_documento_manual(
+    id_venta: int,
+    payload: s.DocumentoFirmadoIn,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    """Registra un Contrato Preparatorio / Minuta ya existente (venta histórica), sin generarlo.
+    No exige inicial validada: es para alimentar el sistema con documentos que ya están hechos."""
+    venta = svc.cargar_venta(db, id_venta, usuario)
+    if venta.estado in (m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada, m.EstadoVentaEnum.finalizada):
+        raise HTTPException(status_code=409, detail="La venta ya está cerrada")
+    venta.documento_generado_url = payload.url
+    if venta.estado == m.EstadoVentaEnum.iniciada:
+        venta.estado = m.EstadoVentaEnum.documento_generado
+    db.commit()
+    venta_completa = svc.cargar_venta(db, id_venta, usuario)
+    await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
+    return s.VentaOut.desde_venta(venta_completa)
+
 @router.post("/{id_venta}/documento-firmado", response_model=s.VentaOut)
 async def subir_documento_firmado(
     id_venta: int,

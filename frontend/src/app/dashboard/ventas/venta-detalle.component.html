@@ -129,6 +129,11 @@
                       {{ procesando() ? 'Generando...' : 'Generar ' + nombreDocumento() }}
                     </button>
                   }
+                  <label class="vd-btn vd-btn-ghost vd-btn-sm" [class.is-disabled]="subiendoManual() || anulada()"
+                         title="Sube un documento que ya existe; no se genera uno nuevo">
+                    <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onDocumentoManualSeleccionado($event)" [disabled]="subiendoManual() || anulada()" hidden />
+                    {{ subiendoManual() ? 'Subiendo...' : (venta()!.documento_generado_url ? 'Reemplazar con mi archivo' : 'Subir ' + nombreDocumento() + ' (ya hecho)') }}
+                  </label>
                 </div>
               </div>
             </li>

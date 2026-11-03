@@ -63,6 +63,7 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   };
 
   subiendoFirmado = signal(false);
+  subiendoManual = signal(false);
 
   subiendoLegal = signal<'escritura' | 'titulo' | null>(null);
     readonly estadosTramite = [
@@ -319,6 +320,38 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
         this.toastService.error(err?.error?.detail ?? 'No se pudo generar el documento');
       },
     });
+  }
+
+  /** Sube un Contrato Preparatorio / Minuta que ya existe, sin generarlo (ventas históricas) */
+  onDocumentoManualSeleccionado(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    if (!archivo) return;
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoManual.set(true);
+
+    this.ventaService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.ventaService.subirDocumentoManual(this.idVenta, res.url).subscribe({
+          next: () => {
+            this.subiendoManual.set(false);
+            this.toastService.exito(`${this.nombreDocumento()} registrado`);
+            this.cargar();
+          },
+          error: (err) => {
+            this.subiendoManual.set(false);
+            this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el documento');
+          },
+        });
+      },
+      error: (err) => {
+        this.subiendoManual.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+    input.value = '';
   }
 
   onDocumentoFirmadoSeleccionado(event: Event): void {

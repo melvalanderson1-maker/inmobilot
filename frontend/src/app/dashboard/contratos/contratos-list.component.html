@@ -224,7 +224,10 @@
               @if (ct.frecuencia_cuota !== 'custom' && !ct.tiene_interes) {
                 <button type="button" class="btn-secundario-sm" (click)="recalcularCuotas(ct)" [disabled]="procesandoCobranza()">Recalcular cuotas</button>
               }
-              <button type="button" class="btn-secundario-sm btn-peligro" (click)="cancelarContrato(ct)" [disabled]="procesandoCobranza()">Cancelar contrato</button>
+              @if ((cronogramaPorContrato()[ct.id]?.length ?? 0) > 0 && resumen(ct).saldoPendiente <= 0) {
+                <button type="button" class="btn-secundario-sm btn-peligro" (click)="cancelarContrato(ct)" [disabled]="procesandoCobranza()"
+                        title="El cliente ya pagó todo: cierra el contrato">Cerrar contrato (saldo en 0)</button>
+              }
             }
             @if (ct.estado === 'cancelado' && ventaPorContrato()[ct.id] && ventaPorContrato()[ct.id]!.estado !== 'finalizada') {
               <button type="button" class="btn-secundario-sm" (click)="finalizarVenta(ct)" [disabled]="procesandoCobranza()">Finalizar venta</button>

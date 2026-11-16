@@ -22,6 +22,11 @@ export class SeparacionFormComponent implements OnInit {
   idProyecto: number | null = null;
   lotesTodos = signal<Lote[]>([]);
   lotesLibres = computed(() => this.lotesTodos().filter((l) => l.estado === 'libre'));
+
+  /** true = el select muestra TODOS los lotes con su estado (carga de datos históricos).
+   *  Cuando termine la carga, cámbialo a false y solo saldrán los libres. */
+  readonly mostrarTodosLosLotes = true;
+  lotesSeleccionables = computed(() => (this.mostrarTodosLosLotes ? this.lotesTodos() : this.lotesLibres()));
   separacionesPorLote = signal<Record<number, { cliente: string; importe: number }>>({});
   manzanas = signal<Manzana[]>([]);
   loteSeleccionado = signal<Lote | null>(null);
@@ -148,7 +153,7 @@ export class SeparacionFormComponent implements OnInit {
     if (!pf || this.lotesTodos().length === 0) return;
     this.proformaPendiente = null;
 
-    const lote = this.lotesLibres().find((l) => l.id === pf.id_lote);
+    const lote = this.lotesSeleccionables().find((l) => l.id === pf.id_lote);
     if (!lote) {
       this.toastService.error(`El lote ${pf.lote_codigo ?? ''} ya no está libre`);
       this.idProforma = null;
@@ -252,6 +257,12 @@ export class SeparacionFormComponent implements OnInit {
     }
     const etiquetas: Record<string, string> = { vendido: 'Vendido', bloqueado: 'Bloqueado', separado: 'Separado' };
     return ` — ${etiquetas[lote.estado] ?? lote.estado}`;
+  }
+
+  /** Texto de cada opción del select: código, ubicación y estado del lote */
+  etiquetaLote(l: Lote): string {
+    const base = `${l.codigo} — ${l.ubicacion_lote || 'sin ubicación'}`;
+    return l.estado === 'libre' ? `${base} — Libre` : `${base}${this.infoOcupacion(l)}`;
   }
 
   buscarCliente(): void {

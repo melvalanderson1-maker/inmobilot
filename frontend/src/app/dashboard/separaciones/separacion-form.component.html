@@ -90,17 +90,20 @@
           <!-- COLUMNA IZQUIERDA: LOTE -->
           <div class="sep-col">
             <div class="campo">
-              <label>Lote libre</label>
+              <label>{{ mostrarTodosLosLotes ? 'Lote' : 'Lote libre' }}</label>
               <div class="select-wrap">
                 <select [(ngModel)]="form.id_lote" (ngModelChange)="onLoteSeleccionado()">
                   <option [ngValue]="null" disabled>Selecciona un lote</option>
-                  @for (l of lotesLibres(); track l.id) {
-                    <option [ngValue]="l.id">{{ l.codigo }} — {{ l.ubicacion_lote || 'sin ubicación' }}</option>
+                  @for (l of lotesSeleccionables(); track l.id) {
+                    <option [ngValue]="l.id">{{ etiquetaLote(l) }}</option>
                   }
                 </select>
               </div>
-              @if (lotesLibres().length === 0) {
-                <small class="ayuda ayuda-warn">No hay lotes libres en este proyecto.</small>
+              @if (lotesSeleccionables().length === 0) {
+                <small class="ayuda ayuda-warn">No hay lotes {{ mostrarTodosLosLotes ? '' : 'libres ' }}en este proyecto.</small>
+              }
+              @if (loteSeleccionado() && loteSeleccionado()!.estado !== 'libre') {
+                <small class="ayuda ayuda-warn">Este lote figura como {{ loteSeleccionado()!.estado }}. Se registra como carga de datos existentes.</small>
               }
             </div>
 

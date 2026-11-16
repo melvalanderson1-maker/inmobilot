@@ -26,6 +26,10 @@ ESTADOS_ACTIVOS = (
 )
 ESTADOS_CERRADOS = (E.convertida, E.devuelta, E.rechazada)
 
+# Carga de datos históricos: permite registrar separaciones sobre lotes que NO están libres
+# (separado / vendido / bloqueado). El lote conserva su estado. Poner en False al terminar la carga.
+PERMITIR_SEPARAR_LOTES_OCUPADOS = True
+
 _ZONA_PERU = timezone(timedelta(hours=-5))  # Perú no tiene horario de verano
 
 

@@ -96,7 +96,7 @@ async def crear_separacion(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
     svc.validar_acceso_proyecto(db, usuario, lote.id_proyecto)
 
-    if lote.estado != LOTE.libre:
+    if lote.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
         raise _conflicto(f"El lote {lote.codigo} no está libre (estado actual: {lote.estado.value})")
 
     svc.validar_precio_descontado(lote, payload.precio_descontado, payload.tipo_pago)
@@ -223,18 +223,20 @@ async def validar_voucher(
     sep = svc.cargar_separacion(db, id_separacion, usuario)
     if sep.estado != E.pendiente_caja:
         raise _conflicto("Esta separación no está pendiente de validación de Caja")
-    if sep.lote.estado != LOTE.libre:
+    if sep.lote.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
         raise _conflicto(
             f"El lote {sep.lote.codigo} ya no está libre (estado: {sep.lote.estado.value}). Rechaza esta separación."
         )
-
     sep.estado = E.pendiente_facturacion
     sep.validado_por = usuario.id
     sep.fecha_validacion = svc.ahora_utc()
     sep.motivo_rechazo = None
-    cambio = svc.cambiar_estado_lote(
-        db, sep.lote, LOTE.separado, usuario, f"Separación #{sep.id} validada por Caja"
-    )
+    # Lote libre → pasa a separado. Si es carga histórica sobre un lote ocupado, conserva su estado.
+    cambio = False
+    if sep.lote.estado == LOTE.libre:
+        cambio = svc.cambiar_estado_lote(
+            db, sep.lote, LOTE.separado, usuario, f"Separación #{sep.id} validada por Caja"
+        )
 
     destinatarios = svc.unicos(
         svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["facturacion", "admin"])

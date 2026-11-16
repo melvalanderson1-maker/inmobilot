@@ -117,7 +117,7 @@
               <div class="conyuge-info">
                 <strong>{{ cliente()!.conyuge!.nombres }} {{ cliente()!.conyuge!.apellidos }}</strong>
                 <span>{{ cliente()!.conyuge!.numero_documento }} · {{ cliente()!.conyuge!.telefono || 'sin teléfono' }}</span>
-                <span>{{ $any(cliente()!.conyuge!).direccion || 'sin dirección' }}</span>
+                <span>{{ cliente()!.conyuge!.direccion || 'sin dirección' }}</span>
               </div>
               <button class="btn btn-outline btn-sm" (click)="registrarConyugeComoCliente()" [disabled]="registrandoConyuge()">
                 {{ registrandoConyuge() ? 'Registrando...' : 'Registrar como cliente' }}
@@ -219,7 +219,6 @@
             }
           </div>
         </section>
-        }
       </div>
 
       <!-- COLUMNA LATERAL: SEPARACIONES -->

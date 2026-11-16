@@ -551,6 +551,7 @@ export interface SeparacionCreate {
 }
 
 export interface SeparacionUpdate {
+  id_lote?: number;
   fecha_inicio?: string;
   fecha_vencimiento?: string;
   importe?: number;

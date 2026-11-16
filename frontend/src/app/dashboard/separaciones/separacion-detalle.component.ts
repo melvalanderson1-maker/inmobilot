@@ -10,7 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { FormaPago, Separacion, SeparacionUpdate } from '../../core/models';
+import { FormaPago, Lote, Separacion, SeparacionUpdate } from '../../core/models';
 import { AutorizacionVentaComponent } from '../../shared/autorizacion-venta/autorizacion-venta.component';
 
 
@@ -53,7 +53,10 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   /** true = se puede editar todo (campos y archivos) mientras se carga data histórica. Poner en false al terminar. */
   readonly permitirEditarTodo = true;
 
+  lotesEdicion = signal<Lote[]>([]);
+
   editarForm = {
+    id_lote: null as number | null,
     fecha_inicio: '',
     fecha_vencimiento: '',
     importe: null as number | null,
@@ -416,6 +419,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     const sep = this.separacion();
     if (!sep) return;
     this.editarForm = {
+      id_lote: sep.id_lote,
       fecha_inicio: sep.fecha_inicio,
       fecha_vencimiento: sep.fecha_vencimiento,
       importe: sep.importe != null ? Number(sep.importe) : null,
@@ -428,14 +432,23 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       precio_valido_hasta: sep.precio_valido_hasta ?? '',
       precio_descontado: sep.precio_descontado != null ? Number(sep.precio_descontado) : null,
     };
+    if (this.permitirEditarTodo) {
+      this.api.get<Lote[]>('/lotes', { id_proyecto: sep.id_proyecto }).subscribe((res) => this.lotesEdicion.set(res));
+    }
     this.mostrarEditar.set(true);
+  }
+
+  etiquetaLoteEdicion(l: Lote): string {
+    return `${l.codigo} — ${l.ubicacion_lote || 'sin ubicación'} — ${l.estado}`;
   }
 
   guardarEdicion(): void {
     const f = this.editarForm;
+    const loteCambio = this.permitirEditarTodo && f.id_lote && f.id_lote !== this.separacion()?.id_lote;
     this.procesando.set(true);
     this.separacionService
       .actualizar(this.idSeparacion, {
+        id_lote: loteCambio ? f.id_lote! : undefined,
         fecha_inicio: f.fecha_inicio || undefined,
         fecha_vencimiento: f.fecha_vencimiento || undefined,
         importe: f.importe || undefined,

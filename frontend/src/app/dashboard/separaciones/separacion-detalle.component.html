@@ -507,6 +507,17 @@
 
 
       <div class="modal-body">
+
+        @if (permitirEditarTodo) {
+          <div class="campo">
+            <label>Lote</label>
+            <select [(ngModel)]="editarForm.id_lote">
+              @for (l of lotesEdicion(); track l.id) {
+                <option [ngValue]="l.id">{{ etiquetaLoteEdicion(l) }}</option>
+              }
+            </select>
+          </div>
+        }
         <div class="campo">
           <label>Importe (S/)</label>
           <input type="number" [(ngModel)]="editarForm.importe" placeholder="0.00" />

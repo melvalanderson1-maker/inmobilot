@@ -287,9 +287,9 @@ class ClienteConyugeIn(BaseModel):
     apellidos: str
     numero_documento: str
     telefono: Optional[str] = None
+    direccion: Optional[str] = None
     dni_frente_url: Optional[str] = None
     dni_reverso_url: Optional[str] = None
-
 
 class ClienteConyugeOut(ORMBase):
     id: int
@@ -297,9 +297,9 @@ class ClienteConyugeOut(ORMBase):
     apellidos: str
     numero_documento: str
     telefono: Optional[str] = None
+    direccion: Optional[str] = None
     dni_frente_url: Optional[str] = None
     dni_reverso_url: Optional[str] = None
-
 
 class ClienteCreate(BaseModel):
     tipo_persona: str = "natural"  # natural | juridica
@@ -344,6 +344,10 @@ class ClienteCreate(BaseModel):
 
 
 class ClienteUpdate(BaseModel):
+    tipo_documento: Optional[str] = None
+    numero_documento: Optional[str] = None
+    nombres: Optional[str] = None
+    apellidos: Optional[str] = None
     correo: Optional[EmailStr] = None
     telefono: Optional[str] = None
     direccion: Optional[str] = None

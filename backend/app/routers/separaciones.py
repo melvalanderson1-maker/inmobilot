@@ -14,6 +14,8 @@ from app.schemas import schemas as s
 from app.services import separacion_service as svc
 from app.sockets import notificar_separacion, notificar_cambio_estado_lote
 
+from app.services import auditoria as aud
+
 router = APIRouter(prefix="/separaciones", tags=["separaciones"])
 
 E = m.EstadoSeparacionEnum
@@ -216,6 +218,10 @@ async def actualizar_separacion(
             datos["tipo_pago"] if "tipo_pago" in datos else sep.tipo_pago,
         )
 
+    cambios = aud.diferencias({c: getattr(sep, c) for c in datos}, datos)
+    if cambios:
+        aud.registrar(db, usuario, "separacion", sep.id, "editar", cambios)
+
     for campo, valor in datos.items():
         setattr(sep, campo, valor)
 
@@ -384,6 +390,11 @@ async def editar_comprobante(
         datos["numero"] = (datos["numero"] or "").strip()
         if not datos["numero"]:
             raise HTTPException(status_code=422, detail="El número de comprobante es obligatorio")
+
+
+    cambios = aud.diferencias({c: getattr(comp, c) for c in datos}, datos)
+    if cambios:
+        aud.registrar(db, usuario, "comprobante", comp.id, "editar", {"id_separacion": sep.id, **cambios})   
 
     for campo, valor in datos.items():
         setattr(comp, campo, valor)

@@ -55,9 +55,12 @@ export class ClienteFormComponent implements OnInit {
     apellidos: '',
     numero_documento: '',
     telefono: '',
+    direccion: '',
     dni_frente_url: null as string | null,
     dni_reverso_url: null as string | null,
   };
+
+  private estadoCivilOriginal: string = '';
 
   constructor(
     private clienteService: ClienteService,
@@ -112,12 +115,22 @@ export class ClienteFormComponent implements OnInit {
             representante_tipo_documento: c.representante_tipo_documento ?? 'DNI',
             representante_numero_documento: c.representante_numero_documento ?? '',
           };
+
+          if (
+            this.estadoCivilOriginal === 'casado' &&
+            this.form.estado_civil !== 'casado' &&
+            !confirm('Al cambiar el estado civil se eliminará el registro del cónyuge. ¿Continuar?')
+          ) {
+            this.guardando.set(false);
+            return;
+          }
           if (c.conyuge) {
             this.conyuge = {
               nombres: c.conyuge.nombres,
               apellidos: c.conyuge.apellidos,
               numero_documento: c.conyuge.numero_documento,
               telefono: c.conyuge.telefono ?? '',
+              direccion: c.conyuge.direccion ?? '',
               dni_frente_url: c.conyuge.dni_frente_url ?? null,
               dni_reverso_url: c.conyuge.dni_reverso_url ?? null,
             };
@@ -276,28 +289,35 @@ export class ClienteFormComponent implements OnInit {
       ? {
           ...this.conyuge,
           telefono: this.conyuge.telefono || undefined,
+          direccion: this.conyuge.direccion || undefined,
           dni_frente_url: this.conyuge.dni_frente_url || undefined,
           dni_reverso_url: this.conyuge.dni_reverso_url || undefined,
         }
       : undefined;
 
     if (this.esEdicion) {
+      const esJuridicaEd = this.form.tipo_persona === 'juridica';
       const payload: ClienteUpdate = {
-        correo: this.form.correo || undefined,
+        tipo_documento: esJuridicaEd ? 'RUC' : this.form.tipo_documento,
+        numero_documento: esJuridicaEd ? this.form.ruc.trim() : this.form.numero_documento.trim(),
+        ...(esJuridicaEd
+          ? {}
+          : { nombres: this.form.nombres.trim(), apellidos: this.form.apellidos.trim() }),
+        correo: this.form.correo.trim() || null,
         telefono: this.form.telefono,
         direccion: this.form.direccion,
         dni_frente_url: this.form.dni_frente_url || undefined,
         dni_reverso_url: this.form.dni_reverso_url || undefined,
-        fecha_nacimiento: this.form.fecha_nacimiento || undefined,
-        estado_civil: (this.form.estado_civil || undefined) as EstadoCivil | undefined,
-        sexo: (this.form.sexo || undefined) as 'M' | 'F' | undefined,
-        segundo_contacto_nombre: this.form.segundo_contacto_nombre || undefined,
-        segundo_contacto_telefono: this.form.segundo_contacto_telefono || undefined,
-        ruc: this.form.ruc || undefined,
-        razon_social: this.form.razon_social || undefined,
-        representante_legal: this.form.representante_legal || undefined,
-        representante_tipo_documento: this.form.representante_tipo_documento || undefined,
-        representante_numero_documento: this.form.representante_numero_documento || undefined,
+        fecha_nacimiento: this.form.fecha_nacimiento || null,
+        estado_civil: (this.form.estado_civil || null) as EstadoCivil | null,
+        sexo: (this.form.sexo || null) as 'M' | 'F' | null,
+        segundo_contacto_nombre: this.form.segundo_contacto_nombre.trim() || null,
+        segundo_contacto_telefono: this.form.segundo_contacto_telefono.trim() || null,
+        ruc: this.form.ruc.trim() || null,
+        razon_social: this.form.razon_social.trim() || null,
+        representante_legal: this.form.representante_legal.trim() || null,
+        representante_tipo_documento: this.form.representante_tipo_documento || null,
+        representante_numero_documento: this.form.representante_numero_documento.trim() || null,
         conyuge: conyugePayload,
       };
       this.clienteService.actualizar(this.idCliente!, payload).subscribe({

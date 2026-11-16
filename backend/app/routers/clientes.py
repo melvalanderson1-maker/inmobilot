@@ -8,7 +8,12 @@ from app.deps import require_permiso, get_ids_proyectos_usuario
 from app.models import models as m
 from app.schemas import schemas as s
 
+from app.services import auditoria as aud
+
 router = APIRouter(prefix="/clientes", tags=["clientes"])
+
+
+CAMPOS_CONYUGE = ("nombres", "apellidos", "numero_documento", "telefono", "direccion", "dni_frente_url", "dni_reverso_url")
 
 
 def _aplicar_conyuge(db: Session, cliente: m.Cliente, datos_conyuge: Optional[s.ClienteConyugeIn]) -> None:
@@ -20,6 +25,7 @@ def _aplicar_conyuge(db: Session, cliente: m.Cliente, datos_conyuge: Optional[s.
         existente.apellidos = datos_conyuge.apellidos.strip()
         existente.numero_documento = datos_conyuge.numero_documento.strip()
         existente.telefono = datos_conyuge.telefono
+        existente.direccion = datos_conyuge.direccion
         existente.dni_frente_url = datos_conyuge.dni_frente_url
         existente.dni_reverso_url = datos_conyuge.dni_reverso_url
     else:
@@ -29,10 +35,10 @@ def _aplicar_conyuge(db: Session, cliente: m.Cliente, datos_conyuge: Optional[s.
             apellidos=datos_conyuge.apellidos.strip(),
             numero_documento=datos_conyuge.numero_documento.strip(),
             telefono=datos_conyuge.telefono,
+            direccion=datos_conyuge.direccion,
             dni_frente_url=datos_conyuge.dni_frente_url,
             dni_reverso_url=datos_conyuge.dni_reverso_url,
         ))
-
 
 @router.get("/buscar", response_model=Optional[s.ClienteOut])
 def buscar_cliente_por_documento(
@@ -171,6 +177,8 @@ def crear_cliente(
         ruc=payload.ruc,
         razon_social=payload.razon_social,
         representante_legal=payload.representante_legal,
+        representante_tipo_documento=payload.representante_tipo_documento,
+        representante_numero_documento=payload.representante_numero_documento,
     )
     db.add(cliente)
     db.flush()
@@ -202,20 +210,71 @@ def actualizar_cliente(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
 
     datos = payload.model_dump(exclude_unset=True, exclude={"conyuge"})
+
+    for campo in ("nombres", "apellidos"):
+        if campo in datos:
+            valor = (datos[campo] or "").strip()
+            if not valor:
+                raise HTTPException(status_code=422, detail=f"El campo {campo} no puede quedar vacío")
+            datos[campo] = valor
+
+    if "tipo_documento" in datos:
+        datos["tipo_documento"] = (datos["tipo_documento"] or "").strip().upper() or cliente.tipo_documento
+
+    if "numero_documento" in datos:
+        numero = (datos["numero_documento"] or "").strip()
+        if not numero:
+            raise HTTPException(status_code=422, detail="El número de documento no puede quedar vacío")
+        repetido = (
+            db.query(m.Cliente.id)
+            .filter(
+                m.Cliente.id_empresa == usuario.id_empresa,
+                m.Cliente.numero_documento == numero,
+                m.Cliente.id != id_cliente,
+            )
+            .first()
+        )
+        if repetido:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Ya existe otro cliente con ese documento")
+        datos["numero_documento"] = numero
+
+    # --- auditoría: lo que cambia en el cliente (antes de aplicar) ---
+    cambios = aud.diferencias({c: getattr(cliente, c) for c in datos}, datos)
+
     for campo, valor in datos.items():
         setattr(cliente, campo, valor)
 
-    if "conyuge" in payload.model_fields_set:
+    # --- cónyuge ---
+    conyuge_previo = db.query(m.ClienteConyuge).filter(m.ClienteConyuge.id_cliente == cliente.id).first()
+
+    if "estado_civil" in datos and datos["estado_civil"] != "casado":
+        # Dejó de ser casado: se elimina el cónyuge (queda guardado en la auditoría)
+        if conyuge_previo:
+            cambios["conyuge_eliminado"] = {c: getattr(conyuge_previo, c) for c in CAMPOS_CONYUGE}
+            db.delete(conyuge_previo)
+    elif "conyuge" in payload.model_fields_set and payload.conyuge is not None:
+        nuevo = {
+            c: (v.strip() if isinstance(v, str) else v)
+            for c, v in ((c, getattr(payload.conyuge, c)) for c in CAMPOS_CONYUGE)
+        }
+        if conyuge_previo:
+            antes = {c: getattr(conyuge_previo, c) for c in CAMPOS_CONYUGE}
+            dif = aud.diferencias(antes, nuevo)
+            if dif:
+                cambios["conyuge"] = dif
+        else:
+            cambios["conyuge_agregado"] = nuevo
         _aplicar_conyuge(db, cliente, payload.conyuge)
+
+    if cambios:
+        aud.registrar(db, usuario, "cliente", cliente.id, "editar", cambios)
 
     db.commit()
     db.refresh(cliente)
 
-    cliente_completo = (
+    return (
         db.query(m.Cliente).options(joinedload(m.Cliente.conyuge)).filter(m.Cliente.id == cliente.id).first()
     )
-    return cliente_completo
-
 
 
 @router.post("/{id_cliente}/conyuge-como-cliente", response_model=s.ClienteOut)
@@ -255,7 +314,7 @@ def conyuge_como_cliente(
             nombres=cy.nombres,
             apellidos=cy.apellidos,
             telefono=cy.telefono or titular.telefono,
-            direccion=titular.direccion,
+            direccion=cy.direccion or titular.direccion,
             dni_frente_url=cy.dni_frente_url,
             dni_reverso_url=cy.dni_reverso_url,
             estado_civil="casado",
@@ -270,6 +329,7 @@ def conyuge_como_cliente(
                 apellidos=titular.apellidos,
                 numero_documento=titular.numero_documento,
                 telefono=titular.telefono,
+                direccion=titular.direccion,
                 dni_frente_url=titular.dni_frente_url,
                 dni_reverso_url=titular.dni_reverso_url,
             ))
@@ -282,3 +342,47 @@ def conyuge_como_cliente(
         .filter(m.Cliente.id == id_resultado)
         .first()
     )
+
+
+
+@router.delete("/{id_cliente}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_cliente(
+    id_cliente: int,
+    usuario: m.Usuario = Depends(require_permiso("editar_cliente")),
+    db: Session = Depends(get_db),
+):
+    cliente = (
+        db.query(m.Cliente)
+        .filter(m.Cliente.id == id_cliente, m.Cliente.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not cliente:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    en_uso = (
+        db.query(m.Separacion.id).filter(m.Separacion.id_cliente == id_cliente).first()
+        or db.query(m.VentaCliente.id_venta).filter(m.VentaCliente.id_cliente == id_cliente).first()
+        or db.query(m.ContratoCliente.id_contrato).filter(m.ContratoCliente.id_cliente == id_cliente).first()
+        or db.query(m.Proforma.id).filter(m.Proforma.id_cliente == id_cliente).first()
+    )
+    if en_uso:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El cliente ya tiene separaciones, ventas, contratos o proformas. No se puede eliminar; desactívalo.",
+        )
+
+    snapshot = {
+        "tipo_documento": cliente.tipo_documento,
+        "numero_documento": cliente.numero_documento,
+        "nombres": cliente.nombres,
+        "apellidos": cliente.apellidos,
+        "razon_social": cliente.razon_social,
+    }
+    conyuge = db.query(m.ClienteConyuge).filter(m.ClienteConyuge.id_cliente == id_cliente).first()
+    if conyuge:
+        snapshot["conyuge"] = {c: getattr(conyuge, c) for c in CAMPOS_CONYUGE}
+        db.delete(conyuge)   # explícito: la relación ORM no tiene cascade
+
+    aud.registrar(db, usuario, "cliente", cliente.id, "eliminar", snapshot)
+    db.delete(cliente)
+    db.commit()

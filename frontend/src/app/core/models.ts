@@ -255,6 +255,7 @@ export interface ClienteConyugeIn {
   apellidos: string;
   numero_documento: string;
   telefono?: string;
+  direccion?: string;
   dni_frente_url?: string;
   dni_reverso_url?: string;
 }
@@ -265,6 +266,7 @@ export interface ClienteConyugeOut {
   apellidos: string;
   numero_documento: string;
   telefono?: string;
+  direccion?: string;
   dni_frente_url?: string;
   dni_reverso_url?: string;
 }
@@ -294,21 +296,25 @@ export interface ClienteCreate {
 }
 
 export interface ClienteUpdate {
-  correo?: string;
+  tipo_documento?: string;
+  numero_documento?: string;
+  nombres?: string;
+  apellidos?: string;
+  correo?: string | null;
   telefono?: string;
   direccion?: string;
   dni_frente_url?: string;
   dni_reverso_url?: string;
-  fecha_nacimiento?: string;
-  estado_civil?: EstadoCivil;
-  sexo?: 'M' | 'F';
-  segundo_contacto_nombre?: string;
-  segundo_contacto_telefono?: string;
-  ruc?: string;
-  razon_social?: string;
-  representante_legal?: string;
-  representante_tipo_documento?: string;
-  representante_numero_documento?: string;
+  fecha_nacimiento?: string | null;
+  estado_civil?: EstadoCivil | null;
+  sexo?: 'M' | 'F' | null;
+  segundo_contacto_nombre?: string | null;
+  segundo_contacto_telefono?: string | null;
+  ruc?: string | null;
+  razon_social?: string | null;
+  representante_legal?: string | null;
+  representante_tipo_documento?: string | null;
+  representante_numero_documento?: string | null;
   activo?: boolean;
   conyuge?: ClienteConyugeIn;
 }

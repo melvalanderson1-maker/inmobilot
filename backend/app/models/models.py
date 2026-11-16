@@ -431,6 +431,7 @@ class ClienteConyuge(Base):
     apellidos = Column(String(150), nullable=False)
     numero_documento = Column(String(20), nullable=False)
     telefono = Column(String(20))
+    direccion = Column(String(255), nullable=True)
     dni_frente_url = Column(String(300))
     dni_reverso_url = Column(String(300))
 
@@ -893,3 +894,22 @@ class AutorizacionVenta(Base):
     solicitante = relationship("Usuario", foreign_keys=[solicitado_por])
     resolutor = relationship("Usuario", foreign_keys=[resuelto_por])
     separacion = relationship("Separacion")
+
+
+
+class Auditoria(Base):
+    """Quién editó o eliminó qué, con el valor anterior y el nuevo."""
+    __tablename__ = "auditoria"
+
+    id = Column(BigInteger, primary_key=True)
+    id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"))
+    id_usuario = Column(Integer, ForeignKey("usuarios.id"))
+    entidad = Column(String(30), nullable=False)   # cliente | separacion | comprobante
+    id_entidad = Column(Integer, nullable=False)
+    accion = Column(String(20), nullable=False)    # editar | eliminar
+    cambios = Column(JSONB)
+    created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (Index("idx_auditoria_entidad", "entidad", "id_entidad"),)
+
+    usuario = relationship("Usuario", foreign_keys=[id_usuario])

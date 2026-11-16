@@ -12,7 +12,7 @@
 
     <div class="hero-text">
       <h1>{{ esEdicion ? 'Editar cliente' : 'Nuevo cliente' }}</h1>
-      <p>{{ esEdicion ? 'Actualiza los datos de contacto y los documentos del cliente.' : 'Registra los datos, el contacto y los documentos del cliente.' }}</p>
+      <p>{{ esEdicion ? 'Actualiza los datos, el contacto y los documentos del cliente.' : 'Registra los datos, el contacto y los documentos del cliente.' }}</p>
     </div>
 
     <div class="hero-badge">
@@ -103,7 +103,7 @@
               <div class="campo">
                 <label>Tipo de documento</label>
                 <div class="select-wrap">
-                  <select [(ngModel)]="form.tipo_documento" [disabled]="esEdicion">
+                    <select [(ngModel)]="form.tipo_documento">
                     <option value="DNI">DNI</option>
                     <option value="CE">Carné de extranjería</option>
                     <option value="PASAPORTE">Pasaporte</option>
@@ -112,15 +112,15 @@
               </div>
               <div class="campo">
                 <label>Número de documento</label>
-                <input type="text" [(ngModel)]="form.numero_documento" [disabled]="esEdicion" placeholder="Ej: 12345678" />
+                <input type="text" [(ngModel)]="form.numero_documento" placeholder="Ej: 12345678" />
               </div>
               <div class="campo">
                 <label>Nombres</label>
-                <input type="text" [(ngModel)]="form.nombres" [disabled]="esEdicion" placeholder="Nombres" />
+                <input type="text" [(ngModel)]="form.nombres" placeholder="Nombres" />
               </div>
               <div class="campo">
                 <label>Apellidos</label>
-                <input type="text" [(ngModel)]="form.apellidos" [disabled]="esEdicion" placeholder="Apellidos" />
+                <input type="text" [(ngModel)]="form.apellidos" placeholder="Apellidos" />
               </div>
               <div class="campo">
                 <label>Fecha de nacimiento</label>
@@ -171,11 +171,11 @@
             <div class="form-grid">
               <div class="campo">
                 <label>RUC</label>
-                <input type="text" [(ngModel)]="form.ruc" [disabled]="esEdicion" placeholder="11 dígitos" />
+                <input type="text" [(ngModel)]="form.ruc" placeholder="11 dígitos" />
               </div>
               <div class="campo">
                 <label>Razón social</label>
-                <input type="text" [(ngModel)]="form.razon_social" [disabled]="esEdicion" placeholder="Nombre de la empresa" />
+                <input type="text" [(ngModel)]="form.razon_social" placeholder="Nombre de la empresa" />
               </div>
               <div class="campo campo-span-2">
                 <label>Representante legal</label>
@@ -285,10 +285,12 @@
                 <label>Documento</label>
                 <input type="text" [(ngModel)]="conyuge.numero_documento" placeholder="N° de documento" />
               </div>
-              <div class="campo">
-                <label>Teléfono <em>· opcional</em></label>
-                <input type="text" [(ngModel)]="conyuge.telefono" placeholder="9XX XXX XXX" />
+              <div class="campo campo-span-2">
+                <label>Dirección <em>· opcional</em></label>
+                <input type="text" [(ngModel)]="conyuge.direccion" placeholder="Calle, número, distrito" />
               </div>
+
+
             </div>
 
             <div class="docs-grid">

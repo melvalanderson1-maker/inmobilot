@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { ClienteService } from '../../core/services/cliente.service';
 import { ToastService } from '../../core/services/toast.service';
-import { ClienteDetalle } from '../../core/models';
+import { ClienteDetalle, ClienteUpdate } from '../../core/models';
 
 @Component({
   selector: 'app-cliente-detalle',
@@ -20,6 +20,10 @@ export class ClienteDetalleComponent implements OnInit {
 
   registrandoConyuge = signal(false);
 
+  /** true = se pueden cambiar los DNI desde el detalle. Poner en false al terminar la carga de datos. */
+  readonly permitirEditarArchivos = true;
+  reemplazandoDni = signal<string | null>(null);
+
   constructor(
     private clienteService: ClienteService,
     private toastService: ToastService,
@@ -34,6 +38,73 @@ export class ClienteDetalleComponent implements OnInit {
       this.cargar();
     });
   }
+
+
+  onReemplazarDni(event: Event, destino: 'titular_frente' | 'titular_reverso' | 'conyuge_frente' | 'conyuge_reverso'): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.reemplazandoDni.set(destino);
+
+    this.clienteService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        const c = this.cliente();
+        let payload: Record<string, unknown>;
+
+        if (destino === 'titular_frente') payload = { dni_frente_url: res.url };
+        else if (destino === 'titular_reverso') payload = { dni_reverso_url: res.url };
+        else {
+          const cy = c?.conyuge;
+          if (!cy) {
+            this.reemplazandoDni.set(null);
+            return;
+          }
+          // El backend reemplaza el cónyuge completo: se envían todos sus datos
+          payload = {
+            conyuge: {
+              nombres: cy.nombres,
+              apellidos: cy.apellidos,
+              numero_documento: cy.numero_documento,
+              telefono: cy.telefono ?? null,
+              direccion: (cy as unknown as { direccion?: string | null }).direccion ?? null,
+              dni_frente_url: destino === 'conyuge_frente' ? res.url : cy.dni_frente_url ?? null,
+              dni_reverso_url: destino === 'conyuge_reverso' ? res.url : cy.dni_reverso_url ?? null,
+            },
+          };
+        }
+
+        this.clienteService.actualizar(this.idCliente, payload as unknown as ClienteUpdate).subscribe({
+          next: () => {
+            this.reemplazandoDni.set(null);
+            this.toastService.exito('Archivo actualizado');
+            this.cargar();
+          },
+          error: (err) => {
+            this.reemplazandoDni.set(null);
+            this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el archivo');
+          },
+        });
+      },
+      error: (err) => {
+        this.reemplazandoDni.set(null);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+  }
+
 
   registrarConyugeComoCliente(): void {
     this.registrandoConyuge.set(true);

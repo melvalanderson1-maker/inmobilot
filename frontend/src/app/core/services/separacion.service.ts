@@ -44,6 +44,14 @@ export class SeparacionService {
     return this.api.post<Separacion>(`/separaciones/${id}/comprobante`, payload);
   }
 
+  editarComprobante(
+    idSeparacion: number,
+    idComprobante: number,
+    payload: { tipo?: string; numero?: string; archivo_url?: string }
+  ) {
+    return this.api.patch<Separacion>(`/separaciones/${idSeparacion}/comprobante/${idComprobante}`, payload);
+  }
+
   convertir(id: number) {
     return this.api.post<Separacion>(`/separaciones/${id}/convertir`, {});
   }

@@ -545,10 +545,18 @@ export interface SeparacionCreate {
 }
 
 export interface SeparacionUpdate {
+  fecha_inicio?: string;
   fecha_vencimiento?: string;
-  tipo_pago?: FormaPago;
+  importe?: number;
+  motivo?: string;
+  tipo_pago?: FormaPago | null;
   notas?: string;
   agenda_fecha?: string;
+  dni_frente_url?: string;
+  dni_reverso_url?: string;
+  voucher_url?: string;
+  voucher_numero?: string;
+  medio_pago?: string;
   proforma_url?: string;
   contrato_url?: string;
   contrato_firmado_url?: string;

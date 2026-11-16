@@ -30,6 +30,10 @@ ESTADOS_CERRADOS = (E.convertida, E.devuelta, E.rechazada)
 # (separado / vendido / bloqueado). El lote conserva su estado. Poner en False al terminar la carga.
 PERMITIR_SEPARAR_LOTES_OCUPADOS = True
 
+# Mientras dure la carga de datos: permite editar TODO (campos y archivos), incluso en separaciones cerradas.
+# Poner en False al terminar la carga.
+PERMITIR_EDITAR_TODO = True
+
 _ZONA_PERU = timezone(timedelta(hours=-5))  # Perú no tiene horario de verano
 
 

@@ -779,11 +779,20 @@ class SeparacionCreate(BaseModel):
         return self
 
 class SeparacionUpdate(BaseModel):
+    fecha_inicio: Optional[date] = None
     fecha_vencimiento: Optional[date] = None
+    importe: Optional[Decimal] = Field(default=None, gt=0)
+    motivo: Optional[str] = None
     tipo_pago: Optional[FormaPagoEnum] = None
     notas: Optional[str] = None
     agenda_fecha: Optional[datetime] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
+    voucher_url: Optional[str] = None
+    voucher_numero: Optional[str] = Field(default=None, max_length=60)
+    medio_pago: Optional[str] = Field(default=None, max_length=40)
     proforma_url: Optional[str] = None
+    contrato_url: Optional[str] = None
     contrato_firmado_url: Optional[str] = None
     precio_valido_hasta: Optional[date] = None
     precio_descontado: Optional[Decimal] = Field(default=None, gt=0)

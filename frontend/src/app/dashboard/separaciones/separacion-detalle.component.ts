@@ -10,7 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { FormaPago, Separacion } from '../../core/models';
+import { FormaPago, Separacion, SeparacionUpdate } from '../../core/models';
 import { AutorizacionVentaComponent } from '../../shared/autorizacion-venta/autorizacion-venta.component';
 
 
@@ -50,14 +50,28 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   respuestaDevolucion = '';
 
   mostrarEditar = signal(false);
+  /** true = se puede editar todo (campos y archivos) mientras se carga data histórica. Poner en false al terminar. */
+  readonly permitirEditarTodo = true;
+
   editarForm = {
+    fecha_inicio: '',
     fecha_vencimiento: '',
+    importe: null as number | null,
+    motivo: '',
+    medio_pago: '',
+    voucher_numero: '',
     tipo_pago: null as FormaPago | null,
     notas: '',
     agenda_fecha: '',
     precio_valido_hasta: '',
     precio_descontado: null as number | null,
   };
+
+  reemplazandoArchivo = signal(false);
+
+  mostrarEditarComprobante = signal(false);
+  editarComprobanteForm = { id: 0, tipo: 'boleta', numero: '', archivo_url: '' };
+  subiendoArchivoEditarComprobante = signal(false);
 
 
   subiendoContratoFirmado = signal(false);
@@ -393,14 +407,21 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeEditar(): boolean {
     const sep = this.separacion();
-    return !!sep && !['convertida', 'devuelta', 'rechazada'].includes(sep.estado);
+    if (!sep) return false;
+    if (this.permitirEditarTodo) return true;
+    return !['convertida', 'devuelta', 'rechazada'].includes(sep.estado);
   }
 
   abrirEditar(): void {
     const sep = this.separacion();
     if (!sep) return;
     this.editarForm = {
+      fecha_inicio: sep.fecha_inicio,
       fecha_vencimiento: sep.fecha_vencimiento,
+      importe: sep.importe != null ? Number(sep.importe) : null,
+      motivo: sep.motivo ?? '',
+      medio_pago: sep.medio_pago ?? '',
+      voucher_numero: sep.voucher_numero ?? '',
       tipo_pago: sep.tipo_pago ?? null,
       notas: sep.notas ?? '',
       agenda_fecha: sep.agenda_fecha ? sep.agenda_fecha.slice(0, 16) : '',
@@ -411,15 +432,21 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   }
 
   guardarEdicion(): void {
+    const f = this.editarForm;
     this.procesando.set(true);
     this.separacionService
       .actualizar(this.idSeparacion, {
-        fecha_vencimiento: this.editarForm.fecha_vencimiento || undefined,
-        tipo_pago: this.editarForm.tipo_pago || undefined,
-        notas: this.editarForm.notas || undefined,
-        agenda_fecha: this.editarForm.agenda_fecha ? new Date(this.editarForm.agenda_fecha).toISOString() : undefined,
-        precio_valido_hasta: this.editarForm.precio_valido_hasta || undefined,
-        precio_descontado: this.editarForm.precio_descontado || undefined,
+        fecha_inicio: f.fecha_inicio || undefined,
+        fecha_vencimiento: f.fecha_vencimiento || undefined,
+        importe: f.importe || undefined,
+        motivo: f.motivo,
+        medio_pago: f.medio_pago.trim() || undefined,
+        voucher_numero: f.voucher_numero.trim() || undefined,
+        tipo_pago: f.tipo_pago,
+        notas: f.notas,
+        agenda_fecha: f.agenda_fecha ? new Date(f.agenda_fecha).toISOString() : undefined,
+        precio_valido_hasta: f.precio_valido_hasta || undefined,
+        precio_descontado: f.precio_descontado || undefined,
       })
       .subscribe({
         next: () => {
@@ -480,6 +507,109 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       },
     });
     input.value = '';
+  }
+
+
+  private readonly CAMPO_POR_TAB: Record<TabDocClave, string> = {
+    proforma: 'proforma_url',
+    contrato: 'contrato_url',
+    contrato_firmado: 'contrato_firmado_url',
+    dni_frente: 'dni_frente_url',
+    dni_reverso: 'dni_reverso_url',
+    voucher: 'voucher_url',
+  };
+
+  onReemplazarArchivo(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+
+    const campo = this.CAMPO_POR_TAB[this.tabActiva()];
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.reemplazandoArchivo.set(true);
+
+    this.separacionService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.separacionService
+          .actualizar(this.idSeparacion, { [campo]: res.url } as unknown as SeparacionUpdate)
+          .subscribe({
+            next: () => {
+              this.reemplazandoArchivo.set(false);
+              this.toastService.exito('Archivo actualizado');
+              this.cargar(true);
+            },
+            error: (err) => {
+              this.reemplazandoArchivo.set(false);
+              this.toastService.error(err?.error?.detail ?? 'No se pudo guardar el archivo');
+            },
+          });
+      },
+      error: (err) => {
+        this.reemplazandoArchivo.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+  }
+
+  // ---- editar comprobante ----
+
+  abrirEditarComprobante(c: { id: number; tipo: string; numero: string; archivo_url: string }): void {
+    this.editarComprobanteForm = { id: c.id, tipo: c.tipo, numero: c.numero, archivo_url: c.archivo_url };
+    this.mostrarEditarComprobante.set(true);
+  }
+
+  onArchivoEditarComprobante(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.subiendoArchivoEditarComprobante.set(true);
+    this.separacionService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.editarComprobanteForm.archivo_url = res.url;
+        this.subiendoArchivoEditarComprobante.set(false);
+      },
+      error: (err) => {
+        this.subiendoArchivoEditarComprobante.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+  }
+
+  guardarEdicionComprobante(): void {
+    const f = this.editarComprobanteForm;
+    if (!f.numero.trim() || !f.archivo_url) {
+      this.toastService.error('Indica el número y sube el archivo del comprobante');
+      return;
+    }
+    this.procesando.set(true);
+    this.separacionService
+      .editarComprobante(this.idSeparacion, f.id, { tipo: f.tipo, numero: f.numero.trim(), archivo_url: f.archivo_url })
+      .subscribe({
+        next: () => {
+          this.procesando.set(false);
+          this.mostrarEditarComprobante.set(false);
+          this.toastService.exito('Comprobante actualizado');
+          this.cargar(true);
+        },
+        error: (err) => {
+          this.procesando.set(false);
+          this.toastService.error(err?.error?.detail ?? 'No se pudo actualizar el comprobante');
+        },
+      });
   }
 
   generarProforma(): void {

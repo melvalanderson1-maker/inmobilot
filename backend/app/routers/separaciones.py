@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 from typing import Optional
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -170,6 +171,13 @@ async def crear_separacion(
 
 # ----------------------------------------------------------------- editar --
 
+CAMPOS_BASICOS = {
+    "fecha_vencimiento", "tipo_pago", "notas", "agenda_fecha", "proforma_url",
+    "contrato_firmado_url", "precio_valido_hasta", "precio_descontado",
+}
+CAMPOS_OBLIGATORIOS = ("fecha_inicio", "fecha_vencimiento", "importe", "dni_frente_url", "voucher_url")
+
+
 @router.patch("/{id_separacion}", response_model=s.SeparacionOut)
 async def actualizar_separacion(
     id_separacion: int,
@@ -178,15 +186,28 @@ async def actualizar_separacion(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado in svc.ESTADOS_CERRADOS:
+    if sep.estado in svc.ESTADOS_CERRADOS and not svc.PERMITIR_EDITAR_TODO:
         raise _conflicto("La separación ya está cerrada y no se puede modificar")
 
     datos = payload.model_dump(exclude_unset=True)
-    if datos.get("fecha_vencimiento") is None:
-        datos.pop("fecha_vencimiento", None)
-    nueva_venc = datos.get("fecha_vencimiento")
-    if nueva_venc is not None and nueva_venc < sep.fecha_inicio:
-        raise HTTPException(status_code=422, detail="El vencimiento no puede ser anterior a la fecha inicial")
+
+    # Con la edición total apagada, solo se aceptan los campos de siempre
+    if not svc.PERMITIR_EDITAR_TODO:
+        datos = {k: v for k, v in datos.items() if k in CAMPOS_BASICOS}
+
+    # Los campos obligatorios no se pueden dejar vacíos
+    for campo in CAMPOS_OBLIGATORIOS:
+        if campo in datos and datos[campo] is None:
+            datos.pop(campo)
+
+    if {"fecha_inicio", "fecha_vencimiento", "precio_valido_hasta"} & datos.keys():
+        fecha_ini = datos.get("fecha_inicio", sep.fecha_inicio)
+        fecha_ven = datos.get("fecha_vencimiento", sep.fecha_vencimiento)
+        fecha_pv = datos.get("precio_valido_hasta", sep.precio_valido_hasta)
+        if fecha_ven < fecha_ini:
+            raise HTTPException(status_code=422, detail="El vencimiento no puede ser anterior a la fecha inicial")
+        if fecha_pv and fecha_pv < fecha_ini:
+            raise HTTPException(status_code=422, detail="La validez del precio no puede ser anterior a la fecha inicial")
 
     if "precio_descontado" in datos or "tipo_pago" in datos:
         svc.validar_precio_descontado(
@@ -198,6 +219,7 @@ async def actualizar_separacion(
     for campo, valor in datos.items():
         setattr(sep, campo, valor)
 
+    nueva_venc = datos.get("fecha_vencimiento")
     # Prórroga: una separación vencida con el lote aún separado vuelve a vigente
     if (
         sep.estado == E.vencida
@@ -210,7 +232,6 @@ async def actualizar_separacion(
     db.commit()
     await _emitir(db, sep, usuario, [])
     return _detalle(db, id_separacion, usuario)
-
 
 # ------------------------------------------------------------------- caja --
 
@@ -298,7 +319,7 @@ async def rechazar_voucher(
 async def subir_comprobante(
     id_separacion: int,
     payload: s.ComprobanteCreate,
-    usuario: m.Usuario = Depends(require_permiso("emitir_comprobante")),
+    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
@@ -330,6 +351,46 @@ async def subir_comprobante(
     await _emitir(db, sep, usuario, notifs)
     return _detalle(db, id_separacion, usuario)
 
+
+
+
+class ComprobanteUpdate(BaseModel):
+    tipo: Optional[str] = None
+    numero: Optional[str] = None
+    archivo_url: Optional[str] = None
+
+
+@router.patch("/{id_separacion}/comprobante/{id_comprobante}", response_model=s.SeparacionOut)
+async def editar_comprobante(
+    id_separacion: int,
+    id_comprobante: int,
+    payload: ComprobanteUpdate,
+    usuario: m.Usuario = Depends(require_permiso("emitir_comprobante")),
+    db: Session = Depends(get_db),
+):
+    if not svc.PERMITIR_EDITAR_TODO:
+        raise _conflicto("La edición de comprobantes está deshabilitada")
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    comp = next((c for c in sep.comprobantes if c.id == id_comprobante), None)
+    if not comp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comprobante no encontrado")
+
+    datos = payload.model_dump(exclude_unset=True)
+    if "tipo" in datos:
+        datos["tipo"] = (datos["tipo"] or "").strip().lower()
+        if datos["tipo"] not in ("boleta", "factura", "recibo"):
+            raise HTTPException(status_code=422, detail="El tipo debe ser boleta, factura o recibo")
+    if "numero" in datos:
+        datos["numero"] = (datos["numero"] or "").strip()
+        if not datos["numero"]:
+            raise HTTPException(status_code=422, detail="El número de comprobante es obligatorio")
+
+    for campo, valor in datos.items():
+        setattr(comp, campo, valor)
+    db.commit()
+
+    await _emitir(db, sep, usuario, [])
+    return _detalle(db, id_separacion, usuario)
 
 # ------------------------------------------------------------- conversión --
 

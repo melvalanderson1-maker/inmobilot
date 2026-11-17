@@ -785,8 +785,8 @@ class Devolucion(Base):
     __tablename__ = "devoluciones"
 
     id = Column(Integer, primary_key=True)
-    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=True)
-    id_lote = Column(Integer, ForeignKey("lotes.id"), nullable=True)  # venta directa (sin separación)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=False)
+
     monto = Column(Numeric(12, 2), nullable=False)
     sustento = Column(String(500), nullable=False)
     solicitado_por = Column(Integer, ForeignKey("usuarios.id"))
@@ -879,7 +879,8 @@ class AutorizacionVenta(Base):
     id = Column(Integer, primary_key=True)
     id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
     id_proyecto = Column(Integer, ForeignKey("proyectos.id"), nullable=False)
-    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=False)
+    id_separacion = Column(Integer, ForeignKey("separaciones.id", ondelete="CASCADE"), nullable=True)
+    id_lote = Column(Integer, ForeignKey("lotes.id"), nullable=True)  # venta directa (sin separación)
     solicitado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     estado = Column(String(20), nullable=False, default="pendiente")  # pendiente | aprobada | rechazada | usada
     motivos = Column(JSONB, nullable=False)

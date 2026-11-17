@@ -783,6 +783,8 @@ class SeparacionCreate(BaseModel):
         return self
 
 class SeparacionUpdate(BaseModel):
+    id_lote: Optional[int] = None
+    id_cliente: Optional[int] = None
     fecha_inicio: Optional[date] = None
     fecha_vencimiento: Optional[date] = None
     importe: Optional[Decimal] = Field(default=None, gt=0)

@@ -10,6 +10,25 @@ import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Cliente, FormaPago, Lote, Manzana, Proforma } from '../../core/models';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
+import { BorradorService } from '../../core/services/borrador.service';
+
+
+
+
+type FormSeparacion = {
+  id_lote: number | null;
+  fecha_inicio: string;
+  fecha_vencimiento: string;
+  importe: number | null;
+  motivo: string;
+  tipo_pago: FormaPago | null;
+  notas: string;
+  agenda_fecha: string;
+  voucher_numero: string;
+  medio_pago: string;
+  precio_valido_hasta: string;
+  precio_descontado: number | null;
+};
 
 @Component({
   selector: 'app-separacion-form',
@@ -39,19 +58,19 @@ export class SeparacionFormComponent implements OnInit {
   clienteEncontrado = signal<Cliente | null>(null);
   clienteNoEncontrado = signal(false);
 
-  form = {
-    id_lote: null as number | null,
+  form: FormSeparacion = {
+    id_lote: null,
     fecha_inicio: this.hoy(),
     fecha_vencimiento: '',
-    importe: null as number | null,
+    importe: null,
     motivo: '',
-    tipo_pago: null as FormaPago | null,
+    tipo_pago: null,
     notas: '',
     agenda_fecha: '',
     voucher_numero: '',
     medio_pago: '',
     precio_valido_hasta: '',
-    precio_descontado: null as number | null,
+    precio_descontado: null,
   };
 
   /** Proforma rápida de la que viene esta separación (se conserva si hay que registrar al cliente y volver) */
@@ -68,6 +87,7 @@ export class SeparacionFormComponent implements OnInit {
   voucherUrl: string | null = null;
 
   constructor(
+    private borrador: BorradorService,
     private api: ApiService,
     private clienteService: ClienteService,
     private separacionService: SeparacionService,
@@ -76,6 +96,49 @@ export class SeparacionFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router
   ) {}
+
+    private borradorRestaurado = false;
+
+  private get claveBorrador(): string {
+    return `separacion-nueva-${this.idProyecto}`;
+  }
+
+  guardarBorrador(): void {
+    if (!this.idProyecto || !this.borradorRestaurado) return;
+    this.borrador.guardar(this.claveBorrador, {
+      form: this.form,
+      idCliente: this.clienteEncontrado()?.id ?? null,
+      dniFrenteUrl: this.dniFrenteUrl,
+      dniReversoUrl: this.dniReversoUrl,
+      voucherUrl: this.voucherUrl,
+    });
+  }
+
+  private restaurarBorrador(): void {
+    if (this.borradorRestaurado) return;
+    this.borradorRestaurado = true;
+    const b = this.borrador.leer<{
+      form: FormSeparacion;
+      idCliente: number | null;
+      dniFrenteUrl: string | null;
+      dniReversoUrl: string | null;
+      voucherUrl: string | null;
+    }>(this.claveBorrador);
+    if (!b) return;
+
+    this.form = { ...this.form, ...b.form };
+    this.loteSeleccionado.set(this.lotesTodos().find((l) => l.id === this.form.id_lote) ?? null);
+    this.dniFrenteUrl = b.dniFrenteUrl;
+    this.dniReversoUrl = b.dniReversoUrl;
+    this.voucherUrl = b.voucherUrl;
+
+    // Si venimos de crear un cliente nuevo, manda ese y no el del borrador
+    const vieneClienteNuevo = !!this.route.snapshot.queryParamMap.get('id_cliente');
+    if (b.idCliente && !vieneClienteNuevo) {
+      this.clienteService.obtener(b.idCliente).subscribe((c) => this.clienteEncontrado.set(c));
+    }
+    this.toastService.exito('Se recuperó un borrador sin guardar');
+  }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
@@ -180,6 +243,7 @@ export class SeparacionFormComponent implements OnInit {
   cargarLotes(): void {
     this.api.get<Lote[]>('/lotes', { id_proyecto: this.idProyecto }).subscribe((res) => {
       this.lotesTodos.set(res);
+      this.restaurarBorrador();
       this.aplicarProforma();
     });
     this.api.get<Manzana[]>(`/proyectos/${this.idProyecto}/manzanas`).subscribe((res) => this.manzanas.set(res));
@@ -296,6 +360,7 @@ export class SeparacionFormComponent implements OnInit {
     this.avisoProforma.set(null);
     this.dniFrenteUrl = cliente.dni_frente_url ?? null;
     this.dniReversoUrl = cliente.dni_reverso_url ?? null;
+    this.guardarBorrador();
   }
 
   irACrearClienteNuevo(texto: string): void {
@@ -325,6 +390,7 @@ export class SeparacionFormComponent implements OnInit {
     this.documentoBusqueda = '';
     this.dniFrenteUrl = null;
     this.dniReversoUrl = null;
+    this.guardarBorrador();
   }
 
   private subirArchivo(archivo: File, destino: 'frente' | 'reverso' | 'voucher'): void {
@@ -351,6 +417,7 @@ export class SeparacionFormComponent implements OnInit {
         if (destino === 'frente') this.dniFrenteUrl = res.url;
         if (destino === 'reverso') this.dniReversoUrl = res.url;
         if (destino === 'voucher') this.voucherUrl = res.url;
+        this.guardarBorrador();
       },
       error: (err) => {
         flag.set(false);
@@ -423,6 +490,7 @@ export class SeparacionFormComponent implements OnInit {
         next: (sep) => {
           this.guardando.set(false);
           this.guardarProforma(null);
+          this.borrador.borrar(this.claveBorrador);
           this.toastService.exito('Separación registrada. Caja debe validar el voucher.');
           this.router.navigate(['/dashboard/separaciones', sep.id]);
         },
@@ -456,6 +524,7 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   cancelar(): void {
+    this.borrador.borrar(this.claveBorrador);
     this.guardarProforma(null);
     this.router.navigate(['/dashboard/separaciones']);
   }

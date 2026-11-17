@@ -10,8 +10,9 @@ import { AuthService } from '../../core/services/auth.service';
 import { SocketService } from '../../core/services/socket.service';
 import { SeparacionService } from '../../core/services/separacion.service';
 import { ToastService } from '../../core/services/toast.service';
-import { FormaPago, Lote, Separacion, SeparacionUpdate } from '../../core/models';
+import { Cliente, FormaPago, Lote, Separacion, SeparacionUpdate } from '../../core/models';
 import { AutorizacionVentaComponent } from '../../shared/autorizacion-venta/autorizacion-venta.component';
+import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 
 type TabDocClave = 'proforma' | 'contrato' | 'contrato_firmado' | 'dni_frente' | 'dni_reverso' | 'voucher';
@@ -25,7 +26,7 @@ interface DocTab {
 @Component({
   selector: 'app-separacion-detalle',
   standalone: true,
-  imports: [CommonModule, FormsModule, AutorizacionVentaComponent],
+  imports: [CommonModule, FormsModule, AutorizacionVentaComponent, ClienteBuscadorComponent],
   templateUrl: './separacion-detalle.component.html',
   styleUrl: './separacion-detalle.component.css',
 })
@@ -53,10 +54,24 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   /** true = se puede editar todo (campos y archivos) mientras se carga data histórica. Poner en false al terminar. */
   readonly permitirEditarTodo = true;
 
+  clienteEdicion = signal<{ id: number; nombres: string; apellidos: string; numero_documento: string } | null>(null);
+  buscandoClienteEdicion = signal(false);
+
+  elegirClienteEdicion(c: Cliente): void {
+    this.editarForm.id_cliente = c.id;
+    this.clienteEdicion.set(c);
+    this.buscandoClienteEdicion.set(false);
+  }
+
+  crearClienteDesdeEdicion(): void {
+    this.toastService.error('Primero crea el cliente en el módulo Clientes y luego búscalo aquí');
+  }
+
   lotesEdicion = signal<Lote[]>([]);
 
   editarForm = {
     id_lote: null as number | null,
+    id_cliente: null as number | null,
     fecha_inicio: '',
     fecha_vencimiento: '',
     importe: null as number | null,
@@ -420,6 +435,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     if (!sep) return;
     this.editarForm = {
       id_lote: sep.id_lote,
+      id_cliente: sep.id_cliente,
       fecha_inicio: sep.fecha_inicio,
       fecha_vencimiento: sep.fecha_vencimiento,
       importe: sep.importe != null ? Number(sep.importe) : null,
@@ -435,6 +451,8 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     if (this.permitirEditarTodo) {
       this.api.get<Lote[]>('/lotes', { id_proyecto: sep.id_proyecto }).subscribe((res) => this.lotesEdicion.set(res));
     }
+    this.clienteEdicion.set(sep.cliente ?? null);
+    this.buscandoClienteEdicion.set(false);
     this.mostrarEditar.set(true);
   }
 
@@ -445,10 +463,12 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
   guardarEdicion(): void {
     const f = this.editarForm;
     const loteCambio = this.permitirEditarTodo && f.id_lote && f.id_lote !== this.separacion()?.id_lote;
+    const clienteCambio = this.permitirEditarTodo && f.id_cliente && f.id_cliente !== this.separacion()?.id_cliente;
     this.procesando.set(true);
     this.separacionService
       .actualizar(this.idSeparacion, {
         id_lote: loteCambio ? f.id_lote! : undefined,
+        id_cliente: clienteCambio ? f.id_cliente! : undefined,
         fecha_inicio: f.fecha_inicio || undefined,
         fecha_vencimiento: f.fecha_vencimiento || undefined,
         importe: f.importe || undefined,

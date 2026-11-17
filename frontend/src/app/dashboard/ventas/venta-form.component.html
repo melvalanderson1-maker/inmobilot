@@ -1,4 +1,4 @@
-<div class="vf" id="vf-inicio">
+<div class="vf" id="vf-inicio" (input)="guardarBorrador()" (change)="guardarBorrador()" (click)="guardarBorrador()">
   @if (cargando()) {
     <div class="vf-state" role="status" aria-live="polite">
       <span class="vf-spinner" aria-hidden="true"></span>

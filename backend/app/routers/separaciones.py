@@ -202,6 +202,63 @@ async def actualizar_separacion(
         if campo in datos and datos[campo] is None:
             datos.pop(campo)
 
+    # --- cambio de lote ---
+    nuevo_lote = None
+    lote_ant = None
+    if "id_lote" in datos and datos["id_lote"] == sep.id_lote:
+        datos.pop("id_lote")
+    if "id_lote" in datos:
+        tiene_venta = db.query(m.Venta.id).filter(
+            m.Venta.id_separacion == sep.id,
+            m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+        ).first() is not None
+        if tiene_venta:
+            raise _conflicto("Esta separación ya tiene una venta iniciada: no se puede cambiar el lote")
+
+        nuevo_lote = db.query(m.Lote).filter(m.Lote.id == datos["id_lote"]).with_for_update().first()
+        if not nuevo_lote or not nuevo_lote.activo:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lote no encontrado")
+        svc.validar_acceso_proyecto(db, usuario, nuevo_lote.id_proyecto)
+        if nuevo_lote.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
+            raise _conflicto(f"El lote {nuevo_lote.codigo} no está libre (estado actual: {nuevo_lote.estado.value})")
+        otra = (
+            db.query(m.Separacion.id)
+            .filter(
+                m.Separacion.id_lote == nuevo_lote.id,
+                m.Separacion.id != sep.id,
+                m.Separacion.estado.in_(svc.ESTADOS_ACTIVOS),
+            )
+            .first()
+        )
+        if otra:
+            raise _conflicto(f"El lote {nuevo_lote.codigo} ya tiene una separación en curso")
+        lote_ant = sep.lote
+        datos["id_proyecto"] = nuevo_lote.id_proyecto
+
+
+    # --- cambio de cliente ---
+    if "id_cliente" in datos and (datos["id_cliente"] is None or datos["id_cliente"] == sep.id_cliente):
+        datos.pop("id_cliente")
+    if "id_cliente" in datos:
+        tiene_venta_cli = db.query(m.Venta.id).filter(
+            m.Venta.id_separacion == sep.id,
+            m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+        ).first() is not None
+        if tiene_venta_cli:
+            raise _conflicto("Esta separación ya tiene una venta iniciada: no se puede cambiar el cliente")
+        nuevo_cliente = (
+            db.query(m.Cliente)
+            .filter(m.Cliente.id == datos["id_cliente"], m.Cliente.id_empresa == usuario.id_empresa)
+            .first()
+        )
+        if not nuevo_cliente:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+        # El DNI de la separación pasa a ser el del cliente nuevo (si lo tiene y no se envió otro)
+        if nuevo_cliente.dni_frente_url and "dni_frente_url" not in datos:
+            datos["dni_frente_url"] = nuevo_cliente.dni_frente_url
+            datos["dni_reverso_url"] = nuevo_cliente.dni_reverso_url
+    
+
     if {"fecha_inicio", "fecha_vencimiento", "precio_valido_hasta"} & datos.keys():
         fecha_ini = datos.get("fecha_inicio", sep.fecha_inicio)
         fecha_ven = datos.get("fecha_vencimiento", sep.fecha_vencimiento)
@@ -211,9 +268,9 @@ async def actualizar_separacion(
         if fecha_pv and fecha_pv < fecha_ini:
             raise HTTPException(status_code=422, detail="La validez del precio no puede ser anterior a la fecha inicial")
 
-    if "precio_descontado" in datos or "tipo_pago" in datos:
+    if "precio_descontado" in datos or "tipo_pago" in datos or nuevo_lote is not None:
         svc.validar_precio_descontado(
-            sep.lote,
+            nuevo_lote or sep.lote,
             datos["precio_descontado"] if "precio_descontado" in datos else sep.precio_descontado,
             datos["tipo_pago"] if "tipo_pago" in datos else sep.tipo_pago,
         )
@@ -225,20 +282,39 @@ async def actualizar_separacion(
     for campo, valor in datos.items():
         setattr(sep, campo, valor)
 
+    # Si la separación ya tenía el lote anterior como 'separado' y el nuevo está libre, se traspasa el estado
+    cambio_lotes = False
+    id_lote_ant = None
+    if nuevo_lote is not None:
+        id_lote_ant = lote_ant.id
+        if (
+            sep.estado not in svc.ESTADOS_CERRADOS
+            and lote_ant.estado == LOTE.separado
+            and nuevo_lote.estado == LOTE.libre
+        ):
+            svc.cambiar_estado_lote(db, nuevo_lote, LOTE.separado, usuario, f"Separación #{sep.id}: lote asignado")
+            svc.cambiar_estado_lote(db, lote_ant, LOTE.libre, usuario, f"Separación #{sep.id}: pasó a otro lote")
+            cambio_lotes = True
+
     nueva_venc = datos.get("fecha_vencimiento")
     # Prórroga: una separación vencida con el lote aún separado vuelve a vigente
     if (
         sep.estado == E.vencida
         and nueva_venc is not None
         and nueva_venc >= svc.hoy_peru()
-        and sep.lote.estado == LOTE.separado
+        and (nuevo_lote or sep.lote).estado == LOTE.separado
     ):
         sep.estado = E.vigente
 
     db.commit()
-    await _emitir(db, sep, usuario, [])
+    await _emitir(db, sep, usuario, [], cambio_lote=cambio_lotes)
+    if cambio_lotes:
+        await notificar_cambio_estado_lote(
+            svc.lote_out_dict(db, id_lote_ant),
+            id_proyecto=lote_ant.id_proyecto,
+            id_empresa=usuario.id_empresa,
+        )
     return _detalle(db, id_separacion, usuario)
-
 # ------------------------------------------------------------------- caja --
 
 @router.post("/{id_separacion}/validar", response_model=s.SeparacionOut)

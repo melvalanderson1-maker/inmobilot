@@ -518,6 +518,25 @@
             </select>
           </div>
         }
+
+        @if (permitirEditarTodo) {
+          <div class="campo">
+            <label>Cliente</label>
+            @if (!buscandoClienteEdicion()) {
+              <div>
+                <strong>{{ clienteEdicion()?.nombres }} {{ clienteEdicion()?.apellidos }}</strong>
+                <span> · {{ clienteEdicion()?.numero_documento }}</span>
+                <button type="button" class="btn-secundario btn-doc" (click)="buscandoClienteEdicion.set(true)">Cambiar cliente</button>
+              </div>
+            } @else {
+              <app-cliente-buscador (seleccionado)="elegirClienteEdicion($event)" (crearNuevo)="crearClienteDesdeEdicion()" />
+              <button type="button" class="btn-secundario btn-doc" (click)="buscandoClienteEdicion.set(false)">Cancelar</button>
+            }
+          </div>
+        }
+
+
+
         <div class="campo">
           <label>Importe (S/)</label>
           <input type="number" [(ngModel)]="editarForm.importe" placeholder="0.00" />

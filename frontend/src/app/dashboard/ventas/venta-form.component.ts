@@ -10,6 +10,8 @@ import { ToastService } from '../../core/services/toast.service';
 import { Separacion, FormaPago, Cliente, VentaClienteIn, VentaCreate, EvaluacionVenta } from '../../core/models';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
+import { BorradorService } from '../../core/services/borrador.service';
+
 type RolExtra = 'conyuge' | 'copropietario';
 interface CompradorExtra {
   cliente: Cliente;
@@ -24,6 +26,7 @@ interface CompradorExtra {
   styleUrl: './venta-form.component.css',
 })
 export class VentaFormComponent implements OnInit, OnDestroy {
+  private readonly borrador = inject(BorradorService);
   private readonly separacionService = inject(SeparacionService);
   private readonly clienteService = inject(ClienteService);
   private readonly ventaService = inject(VentaService);
@@ -123,43 +126,36 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
-  // ---- Borrador: se conserva al ir a "Crear cliente nuevo" y volver ----
+  // ---- Borrador: se guarda solo y se recupera al recargar o volver ----
 
   private claveBorrador(): string {
-    return `venta-borrador-${this.idSeparacion}`;
+    return `venta-${this.idSeparacion}`;
   }
 
-  private guardarBorrador(): void {
-    sessionStorage.setItem(
-      this.claveBorrador(),
-      JSON.stringify({
-        formaPago: this.formaPago,
-        precioTotal: this.precioTotal,
-        precioEditado: this.precioEditado,
-        pagosPrevios: this.pagosPrevios,
-        datosCredito: this.datosCredito,
-        cuotasPers: this.cuotasPers,
-        extras: this.extras(),
-      })
-    );
+  guardarBorrador(): void {
+    if (this.cargando() || !this.separacion()) return;
+    this.borrador.guardar(this.claveBorrador(), {
+      formaPago: this.formaPago,
+      precioTotal: this.precioTotal,
+      precioEditado: this.precioEditado,
+      pagosPrevios: this.pagosPrevios,
+      datosCredito: this.datosCredito,
+      cuotasPers: this.cuotasPers,
+      extras: this.extras(),
+    });
   }
 
   private restaurarBorrador(): void {
-    const crudo = sessionStorage.getItem(this.claveBorrador());
-    if (!crudo) return;
-    try {
-      const b = JSON.parse(crudo);
-      this.formaPago = b.formaPago ?? this.formaPago;
-      this.precioTotal = b.precioTotal ?? this.precioTotal;
-      this.precioEditado = b.precioEditado ?? this.precioEditado;
-      if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
-      if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
-      if (b.cuotasPers?.length) this.cuotasPers = b.cuotasPers;
-      if (b.extras?.length) this.extras.set(b.extras);
-    } catch {
-      /* borrador dañado: se ignora */
-    }
-    sessionStorage.removeItem(this.claveBorrador());
+    const b = this.borrador.leer<any>(this.claveBorrador());
+    if (!b) return;
+    this.formaPago = b.formaPago ?? this.formaPago;
+    this.precioTotal = b.precioTotal ?? this.precioTotal;
+    this.precioEditado = b.precioEditado ?? this.precioEditado;
+    if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
+    if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
+    if (b.cuotasPers?.length) this.cuotasPers = b.cuotasPers;
+    if (b.extras?.length) this.extras.set(b.extras);
+    this.toastService.exito('Se recuperó un borrador sin guardar');
   }
 
   cargar(): void {
@@ -679,6 +675,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.ventaService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.datosCredito.voucher_url = res.url;
+        this.guardarBorrador();
         this.subiendoVoucher.set(false);
       },
       error: (err) => {
@@ -734,6 +731,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.ventaService.crearDesdeSeparacion(this.idSeparacion, this.armarPayload(false)).subscribe({
       next: (venta) => {
         this.guardando.set(false);
+        this.borrador.borrar(this.claveBorrador());
         this.toastService.exito('Venta iniciada correctamente');
         this.router.navigate(['/dashboard/contratos/venta', venta.id]);
       },
@@ -745,6 +743,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.ventaService.solicitarAutorizacion(this.idSeparacion, this.armarPayload(false)).subscribe({
       next: () => {
         this.guardando.set(false);
+        this.borrador.borrar(this.claveBorrador());
         this.toastService.exito('Solicitud enviada a gerencia. Te avisaremos cuando la resuelva.');
         this.router.navigate(['/dashboard/separaciones', this.idSeparacion]);
       },

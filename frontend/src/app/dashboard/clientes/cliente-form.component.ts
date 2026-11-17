@@ -6,6 +6,41 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ClienteService } from '../../core/services/cliente.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ClienteCreate, ClienteUpdate, EstadoCivil, TipoPersona } from '../../core/models';
+import { BorradorService } from '../../core/services/borrador.service';
+
+
+type FormCliente = {
+  tipo_persona: TipoPersona;
+  tipo_documento: string;
+  numero_documento: string;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  telefono: string;
+  direccion: string;
+  dni_frente_url: string | null;
+  dni_reverso_url: string | null;
+  fecha_nacimiento: string;
+  estado_civil: EstadoCivil | '';
+  sexo: 'M' | 'F' | '';
+  segundo_contacto_nombre: string;
+  segundo_contacto_telefono: string;
+  ruc: string;
+  razon_social: string;
+  representante_legal: string;
+  representante_tipo_documento: string;
+  representante_numero_documento: string;
+};
+
+type ConyugeCliente = {
+  nombres: string;
+  apellidos: string;
+  numero_documento: string;
+  telefono: string;
+  direccion: string;
+  dni_frente_url: string | null;
+  dni_reverso_url: string | null;
+};
 
 @Component({
   selector: 'app-cliente-form',
@@ -27,8 +62,8 @@ export class ClienteFormComponent implements OnInit {
   subiendoDniConyugeFrente = signal(false);
   subiendoDniConyugeReverso = signal(false);
 
-  form = {
-    tipo_persona: 'natural' as TipoPersona,
+  form: FormCliente = {
+    tipo_persona: 'natural',
     tipo_documento: 'DNI',
     numero_documento: '',
     nombres: '',
@@ -36,11 +71,11 @@ export class ClienteFormComponent implements OnInit {
     correo: '',
     telefono: '',
     direccion: '',
-    dni_frente_url: null as string | null,
-    dni_reverso_url: null as string | null,
+    dni_frente_url: null,
+    dni_reverso_url: null,
     fecha_nacimiento: '',
-    estado_civil: '' as EstadoCivil | '',
-    sexo: '' as 'M' | 'F' | '',
+    estado_civil: '',
+    sexo: '',
     segundo_contacto_nombre: '',
     segundo_contacto_telefono: '',
     ruc: '',
@@ -50,19 +85,19 @@ export class ClienteFormComponent implements OnInit {
     representante_numero_documento: '',
   };
 
-  conyuge = {
+  conyuge: ConyugeCliente = {
     nombres: '',
     apellidos: '',
     numero_documento: '',
     telefono: '',
     direccion: '',
-    dni_frente_url: null as string | null,
-    dni_reverso_url: null as string | null,
+    dni_frente_url: null,
+    dni_reverso_url: null,
   };
-
   private estadoCivilOriginal: string = '';
 
   constructor(
+    private borrador: BorradorService,
     private clienteService: ClienteService,
     private toastService: ToastService,
     private route: ActivatedRoute,
@@ -77,9 +112,28 @@ export class ClienteFormComponent implements OnInit {
     return this.form.estado_civil === 'casado';
   }
 
+
+    private get claveBorrador(): string {
+    return this.esEdicion ? `cliente-${this.idCliente}` : 'cliente-nuevo';
+  }
+
+  guardarBorrador(): void {
+    if (this.cargando()) return;
+    this.borrador.guardar(this.claveBorrador, { form: this.form, conyuge: this.conyuge });
+  }
+
+  private restaurarBorrador(): void {
+    const b = this.borrador.leer<{ form: FormCliente; conyuge: ConyugeCliente }>(this.claveBorrador);
+    if (!b) return;
+    this.form = { ...this.form, ...b.form };
+    this.conyuge = { ...this.conyuge, ...b.conyuge };
+    this.toastService.exito('Se recuperó un borrador sin guardar');
+  }
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     this.idCliente = idParam ? Number(idParam) : null;
+
+    if (!this.idCliente) this.restaurarBorrador();
 
     this.route.queryParams.subscribe((params) => {
       this.returnTo = params['returnTo'] ?? null;
@@ -116,14 +170,7 @@ export class ClienteFormComponent implements OnInit {
             representante_numero_documento: c.representante_numero_documento ?? '',
           };
 
-          if (
-            this.estadoCivilOriginal === 'casado' &&
-            this.form.estado_civil !== 'casado' &&
-            !confirm('Al cambiar el estado civil se eliminará el registro del cónyuge. ¿Continuar?')
-          ) {
-            this.guardando.set(false);
-            return;
-          }
+          this.estadoCivilOriginal = c.estado_civil ?? '';
           if (c.conyuge) {
             this.conyuge = {
               nombres: c.conyuge.nombres,
@@ -135,6 +182,8 @@ export class ClienteFormComponent implements OnInit {
               dni_reverso_url: c.conyuge.dni_reverso_url ?? null,
             };
           }
+
+          this.restaurarBorrador();
           this.cargando.set(false);
         },
         error: () => this.cargando.set(false),
@@ -154,6 +203,7 @@ export class ClienteFormComponent implements OnInit {
     this.clienteService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.form.dni_frente_url = res.url;
+        this.guardarBorrador();
         this.subiendoDniFrente.set(false);
       },
       error: (err) => {
@@ -176,6 +226,7 @@ export class ClienteFormComponent implements OnInit {
     this.clienteService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.form.dni_reverso_url = res.url;
+        this.guardarBorrador();
         this.subiendoDniReverso.set(false);
       },
       error: (err) => {
@@ -200,6 +251,7 @@ export class ClienteFormComponent implements OnInit {
     this.clienteService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.conyuge.dni_frente_url = res.url;
+        this.guardarBorrador();
         this.subiendoDniConyugeFrente.set(false);
       },
       error: (err) => {
@@ -222,6 +274,7 @@ export class ClienteFormComponent implements OnInit {
     this.clienteService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.conyuge.dni_reverso_url = res.url;
+        this.guardarBorrador();
         this.subiendoDniConyugeReverso.set(false);
       },
       error: (err) => {
@@ -282,6 +335,15 @@ export class ClienteFormComponent implements OnInit {
       this.error.set(errorValidacion);
       return;
     }
+    if (
+      this.esEdicion &&
+      this.estadoCivilOriginal === 'casado' &&
+      this.form.estado_civil !== 'casado' &&
+      !confirm('Al cambiar el estado civil se eliminará el registro del cónyuge. ¿Continuar?')
+    ) {
+      return;
+    }
+
     this.error.set(null);
     this.guardando.set(true);
 
@@ -323,6 +385,7 @@ export class ClienteFormComponent implements OnInit {
       this.clienteService.actualizar(this.idCliente!, payload).subscribe({
         next: () => {
           this.guardando.set(false);
+          this.borrador.borrar(this.claveBorrador);
           this.toastService.exito('Cliente actualizado correctamente');
           this.router.navigate(['/dashboard/clientes', this.idCliente]);
         },
@@ -361,6 +424,7 @@ export class ClienteFormComponent implements OnInit {
       this.clienteService.crear(payload).subscribe({
         next: (cliente) => {
           this.guardando.set(false);
+          this.borrador.borrar(this.claveBorrador);
           this.toastService.exito('Cliente creado correctamente');
           if (this.returnTo) {
             const queryParams: Record<string, string> = { id_cliente: String(cliente.id) };
@@ -381,6 +445,7 @@ export class ClienteFormComponent implements OnInit {
   }
 
   cancelar(): void {
+    this.borrador.borrar(this.claveBorrador);
     if (this.esEdicion) {
       this.router.navigate(['/dashboard/clientes', this.idCliente]);
     } else {

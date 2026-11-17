@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, HostListener, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -129,11 +129,38 @@ export class ClienteFormComponent implements OnInit {
     this.conyuge = { ...this.conyuge, ...b.conyuge };
     this.toastService.exito('Se recuperó un borrador sin guardar');
   }
+
+
+    private base = '';
+  private salidaLibre = false;
+
+  private instantanea(): string {
+    return JSON.stringify({ form: this.form, conyuge: this.conyuge });
+  }
+
+  private marcarBase(): void {
+    this.base = this.instantanea();
+  }
+
+  tieneCambiosSinGuardar(): boolean {
+    return !this.salidaLibre && !this.cargando() && this.base !== '' && this.instantanea() !== this.base;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  avisarAlCerrar(e: BeforeUnloadEvent): void {
+    if (this.tieneCambiosSinGuardar()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  }
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     this.idCliente = idParam ? Number(idParam) : null;
 
-    if (!this.idCliente) this.restaurarBorrador();
+    if (!this.idCliente) {
+      this.marcarBase();
+      this.restaurarBorrador();
+    }
 
     this.route.queryParams.subscribe((params) => {
       this.returnTo = params['returnTo'] ?? null;
@@ -183,6 +210,7 @@ export class ClienteFormComponent implements OnInit {
             };
           }
 
+          this.marcarBase();
           this.restaurarBorrador();
           this.cargando.set(false);
         },
@@ -386,6 +414,7 @@ export class ClienteFormComponent implements OnInit {
         next: () => {
           this.guardando.set(false);
           this.borrador.borrar(this.claveBorrador);
+          this.salidaLibre = true;
           this.toastService.exito('Cliente actualizado correctamente');
           this.router.navigate(['/dashboard/clientes', this.idCliente]);
         },
@@ -425,6 +454,7 @@ export class ClienteFormComponent implements OnInit {
         next: (cliente) => {
           this.guardando.set(false);
           this.borrador.borrar(this.claveBorrador);
+          this.salidaLibre = true;
           this.toastService.exito('Cliente creado correctamente');
           if (this.returnTo) {
             const queryParams: Record<string, string> = { id_cliente: String(cliente.id) };
@@ -446,6 +476,7 @@ export class ClienteFormComponent implements OnInit {
 
   cancelar(): void {
     this.borrador.borrar(this.claveBorrador);
+    this.salidaLibre = true;
     if (this.esEdicion) {
       this.router.navigate(['/dashboard/clientes', this.idCliente]);
     } else {

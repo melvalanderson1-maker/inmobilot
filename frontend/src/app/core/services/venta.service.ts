@@ -54,6 +54,22 @@ export class VentaService {
     return this.api.post<Venta>(`/ventas/autorizaciones/${id}/crear-venta`, {});
   }
 
+    evaluarDirecta(payload: VentaCreate) {
+    return this.api.post<EvaluacionVenta>('/ventas/directa/evaluar', payload);
+  }
+
+  crearDirecta(payload: VentaCreate) {
+    return this.api.post<Venta>('/ventas/directa', payload);
+  }
+
+  solicitarAutorizacionDirecta(payload: VentaCreate) {
+    return this.api.post<AutorizacionVenta>('/ventas/directa/solicitar-autorizacion', payload);
+  }
+
+  listarAutorizacionesLote(idLote: number) {
+    return this.api.get<AutorizacionVenta[]>('/ventas/autorizaciones-directas', { id_lote: idLote });
+  }
+
   ventaDeContrato(idContrato: number) {
     return this.api.get<{ id_venta: number | null }>(`/ventas/por-contrato/${idContrato}`);
   }

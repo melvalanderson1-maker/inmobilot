@@ -1244,7 +1244,8 @@ class AutorizacionResolver(BaseModel):
 
 class AutorizacionVentaOut(ORMBase):
     id: int
-    id_separacion: int
+    id_separacion: Optional[int] = None
+    id_lote: Optional[int] = None
     estado: str
     motivos: list[dict]
     propuesta: dict

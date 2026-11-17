@@ -745,6 +745,11 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.modalAbierto.set(true);
   }
 
+
+  nuevaVenta(): void {
+    this.router.navigate(['/dashboard/ventas/nueva']);
+  }
+
   onLoteSeleccionado(): void {
     const lote = this.lotesLibres().find((l) => l.id === this.idLote);
     if (!lote) return;

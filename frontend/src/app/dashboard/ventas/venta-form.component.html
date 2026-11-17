@@ -5,14 +5,73 @@
       Cargando separación...
     </div>
   } @else if (!separacion()) {
-    <div class="vf-state">No se encontró la separación</div>
+    @if (!directo) {
+      <div class="vf-state">No se encontró la separación</div>
+    } @else {
+      <header class="vf-header">
+        <button type="button" class="vf-back" (click)="cancelar()">Volver a contratos</button>
+        <div class="vf-headline"><div class="vf-title"><h1>Nueva venta directa</h1></div></div>
+      </header>
+
+      @if (error()) {
+        <div class="vf-alert vf-alert-error" role="alert"><span>{{ error() }}</span></div>
+      }
+
+      <section class="vf-sec vf-sec-last">
+        <div class="vf-sec-body">
+          <header class="vf-sec-head">
+            <div>
+              <h2>Lote y cliente</h2>
+              <p>Elige el lote y el titular. Después completas el precio y los pagos igual que en una venta desde separación.</p>
+            </div>
+          </header>
+
+          <label class="vf-field">
+            <span>Proyecto</span>
+            <select [(ngModel)]="idProyecto" (ngModelChange)="onProyectoDirecto()">
+              @for (p of proyectos(); track p.id) {
+                <option [ngValue]="p.id">{{ p.nombre }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="vf-field">
+            <span>Lote</span>
+            <select [(ngModel)]="idLoteDirecto" (ngModelChange)="guardarSeleccion()">
+              <option [ngValue]="null" disabled>Selecciona un lote</option>
+              @for (l of lotesDirecto(); track l.id) {
+                <option [ngValue]="l.id">{{ etiquetaLoteDirecto(l) }}</option>
+              }
+            </select>
+          </label>
+
+          <div class="vf-field">
+            <span class="vf-label">Cliente titular</span>
+            @if (titularDirecto(); as t) {
+              <div class="vf-person">
+                <span class="vf-avatar" aria-hidden="true">{{ t.nombres.charAt(0) }}</span>
+                <div class="vf-person-info">
+                  <strong>{{ t.nombres }} {{ t.apellidos }}</strong>
+                  <span>{{ t.numero_documento }}</span>
+                </div>
+                <button type="button" class="vf-link" (click)="titularDirecto.set(null)">Cambiar</button>
+              </div>
+            } @else {
+              <app-cliente-buscador (seleccionado)="elegirTitularDirecto($event)" (crearNuevo)="irACrearCliente($event)" />
+            }
+          </div>
+
+          <button type="button" class="vf-btn vf-btn-primary" (click)="armarSeparacionVirtual()">Continuar</button>
+        </div>
+      </section>
+    }
   } @else {
 
     <!-- ===================== ENCABEZADO ===================== -->
     <header class="vf-header">
       <button type="button" class="vf-back" (click)="cancelar()">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-        Volver a la separación
+        {{ directo ? 'Volver a contratos' : 'Volver a la separación' }}
       </button>
 
       <div class="vf-headline">
@@ -23,8 +82,11 @@
               <li>Manzana {{ separacion()!.lote?.manzana_nombre }}</li>
             }
             <li>{{ separacion()!.lote?.area_m2 }} m²</li>
-            <li>Separación n.º {{ separacion()!.id }}</li>
+            @if (!directo) { <li>Separación n.º {{ separacion()!.id }}</li> } @else { <li>Venta directa</li> }
           </ul>
+          @if (directo) {
+            <button type="button" class="vf-link" (click)="reiniciarDirecto()">Cambiar lote o cliente</button>
+          }
         </div>
 
         <nav class="vf-rail" aria-label="Progreso del formulario">
@@ -475,6 +537,27 @@
             </section>
           }
         }
+
+          @if (directo && autorizaciones().length > 0) {
+          <section class="vf-aviso">
+            <h2>Autorizaciones de esta venta</h2>
+            <ul>
+              @for (a of autorizaciones(); track a.id) {
+                <li>
+                  <strong>{{ a.estado }}</strong>
+                  @if (a.respuesta) { · {{ a.respuesta }} }
+                  @if (a.estado === 'pendiente' && puedeResolver) {
+                    <button type="button" class="vf-btn vf-btn-soft vf-btn-sm" (click)="resolverAut(a, true)">Aprobar</button>
+                    <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="resolverAut(a, false)">Rechazar</button>
+                  }
+                  @if (a.estado === 'aprobada') {
+                    <button type="button" class="vf-btn vf-btn-primary vf-btn-sm" (click)="crearAutorizada(a)" [disabled]="guardando()">Crear venta con lo aprobado</button>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
       </div>
 
       <!-- ===================== HOJA RESUMEN ===================== -->
@@ -501,7 +584,9 @@
             @if (descuento !== null && descuento > 0) {
               <div class="is-good"><dt>Descuento</dt><dd>− S/ {{ descuento | number:'1.2-2' }}</dd></div>
             }
-            <div><dt>Separación pagada</dt><dd>S/ {{ importeSeparado | number:'1.2-2' }}</dd></div>
+            @if (!directo) {
+              <div><dt>Separación pagada</dt><dd>S/ {{ importeSeparado | number:'1.2-2' }}</dd></div>
+            }
 
             @if (formaPago === 'contado') {
               <div><dt>Pagos registrados</dt><dd>S/ {{ totalPagosPrevios | number:'1.2-2' }}</dd></div>

@@ -10,6 +10,7 @@ from app.schemas import schemas as s
 from app.services import reglas_venta as reglas
 from app.services import separacion_service as sep_svc
 from app.services import venta_service as svc
+from app.services import auditoria as aud
 from app.sockets import (
     notificar_venta,
     notificar_cambio_estado_lote,
@@ -129,18 +130,58 @@ def _datos_credito(payload: s.VentaCreate) -> dict | None:
     return payload.datos_credito.model_dump(mode="json") if payload.datos_credito else None
 
 
-def _evaluar(sep: m.Separacion, payload: s.VentaCreate) -> dict:
+def _evaluar_lote(lote: m.Lote, precio_descontado, payload: s.VentaCreate) -> dict:
     dc = _datos_credito(payload)
     reglas.validar_estructura(payload.forma_pago, payload.precio_total, dc)
-    return reglas.evaluar(payload.precio_total, payload.forma_pago, dc, sep.lote, sep.precio_descontado)
+    return reglas.evaluar(payload.precio_total, payload.forma_pago, dc, lote, precio_descontado)
 
 
-async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, payload: s.VentaCreate) -> m.Venta:
-    """Crea la venta, sus compradores y el contrato (con cronograma). No evalúa reglas."""
-    if db.query(m.Venta).filter(m.Venta.id_separacion == sep.id).first():
+def _evaluar(sep: m.Separacion, payload: s.VentaCreate) -> dict:
+    return _evaluar_lote(sep.lote, sep.precio_descontado, payload)
+
+
+def _lote_para_venta_directa(db: Session, usuario: m.Usuario, id_lote: int | None) -> m.Lote:
+    if not id_lote:
+        raise HTTPException(status_code=422, detail="Indica el lote de la venta")
+    lote = db.query(m.Lote).filter(m.Lote.id == id_lote).with_for_update().first()
+    if not lote or not lote.activo:
+        raise HTTPException(status_code=404, detail="Lote no encontrado")
+    svc.validar_acceso_proyecto(db, usuario, lote.id_proyecto)
+    if lote.estado != m.EstadoLoteEnum.libre and not svc.PERMITIR_VENTA_DIRECTA_LOTES_OCUPADOS:
+        raise HTTPException(status_code=409, detail=f"El lote {lote.codigo} no está libre (estado: {lote.estado.value})")
+    if db.query(m.Separacion.id).filter(
+        m.Separacion.id_lote == lote.id, m.Separacion.estado.in_(sep_svc.ESTADOS_ACTIVOS)
+    ).first():
+        raise HTTPException(status_code=409, detail="Este lote tiene una separación en curso: inicia la venta desde esa separación")
+    if db.query(m.Venta.id).filter(
+        m.Venta.id_lote == lote.id,
+        m.Venta.id_empresa == usuario.id_empresa,
+        m.Venta.estado.notin_([m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada]),
+    ).first():
+        raise HTTPException(status_code=409, detail="Este lote ya tiene una venta registrada")
+    return lote
+
+
+def _codigo_lote_aut(db: Session, aut: m.AutorizacionVenta, sep) -> str:
+    id_lote = sep.id_lote if sep else aut.id_lote
+    lote = db.query(m.Lote).filter(m.Lote.id == id_lote).first() if id_lote else None
+    return lote.codigo if lote else ""
+
+
+async def _crear_venta(
+    db: Session, usuario: m.Usuario, sep: m.Separacion | None, lote: m.Lote, payload: s.VentaCreate
+) -> m.Venta:
+    """Crea la venta, sus compradores y el contrato (con cronograma). No evalúa reglas.
+    sep = None => venta directa (sin separación)."""
+    if sep and db.query(m.Venta).filter(m.Venta.id_separacion == sep.id).first():
         raise HTTPException(status_code=409, detail="Esta separación ya tiene una venta iniciada")
 
-    clientes_in = payload.clientes or [s.VentaClienteIn(id_cliente=sep.id_cliente)]
+    if payload.clientes:
+        clientes_in = payload.clientes
+    elif sep:
+        clientes_in = [s.VentaClienteIn(id_cliente=sep.id_cliente)]
+    else:
+        raise HTTPException(status_code=422, detail="Indica al menos un comprador")
     if len(clientes_in) > 4:
         raise HTTPException(status_code=422, detail="Una venta admite como máximo 4 compradores")
     ids = [i.id_cliente for i in clientes_in if i.id_cliente]
@@ -149,9 +190,9 @@ async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, paylo
 
     venta = m.Venta(
         id_empresa=usuario.id_empresa,
-        id_proyecto=sep.id_proyecto,
-        id_lote=sep.id_lote,
-        id_separacion=sep.id,
+        id_proyecto=lote.id_proyecto,
+        id_lote=lote.id,
+        id_separacion=sep.id if sep else None,
         forma_pago=payload.forma_pago,
         precio_total=payload.precio_total,
         id_usuario_registro=usuario.id,
@@ -176,9 +217,8 @@ async def _crear_venta(db: Session, usuario: m.Usuario, sep: m.Separacion, paylo
             raise HTTPException(status_code=422, detail="Cada comprador requiere id_cliente o cliente_nuevo")
         db.add(m.VentaCliente(id_venta=venta.id, id_cliente=cliente.id, rol=item.rol))
 
-    db.flush()  # sin commit todavía: venta y contrato se guardan juntos o no se guarda nada
+    db.flush()
 
-    # El contrato se crea ahora: aparece en Ventas y Contratos y el lote pasa a vendido
     venta_completa = svc.cargar_venta(db, venta.id, usuario)
     contrato = svc.generar_contrato_desde_venta(db, venta_completa, usuario)
     db.commit()
@@ -228,8 +268,111 @@ async def crear_venta_desde_separacion(
         detalle = "; ".join(mo["mensaje"] for mo in evaluacion["motivos"])
         raise HTTPException(status_code=409, detail=f"Estas condiciones requieren autorización de gerencia: {detalle}")
 
-    venta = await _crear_venta(db, usuario, sep, payload)
+    venta = await _crear_venta(db, usuario, sep, sep.lote, payload)
     return s.VentaOut.desde_venta(venta)
+
+
+# ------------------------------------------------------------ venta directa --
+
+@router.post("/directa/evaluar", response_model=s.EvaluacionVentaOut)
+def evaluar_venta_directa(
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    lote = _lote_para_venta_directa(db, usuario, payload.id_lote)
+    return s.EvaluacionVentaOut(**_evaluar_lote(lote, None, payload))
+
+
+@router.post("/directa", response_model=s.VentaOut, status_code=status.HTTP_201_CREATED)
+async def crear_venta_directa(
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    lote = _lote_para_venta_directa(db, usuario, payload.id_lote)
+    evaluacion = _evaluar_lote(lote, None, payload)
+    if evaluacion["motivos"]:
+        detalle = "; ".join(mo["mensaje"] for mo in evaluacion["motivos"])
+        raise HTTPException(status_code=409, detail=f"Estas condiciones requieren autorización de gerencia: {detalle}")
+
+    venta = await _crear_venta(db, usuario, None, lote, payload)
+    aud.registrar(db, usuario, "venta", venta.id, "crear", {"directa": True, "id_lote": lote.id, "precio_total": str(payload.precio_total)})
+    db.commit()
+    return s.VentaOut.desde_venta(venta)
+
+
+@router.post("/directa/solicitar-autorizacion", response_model=s.AutorizacionVentaOut, status_code=status.HTTP_201_CREATED)
+async def solicitar_autorizacion_directa(
+    payload: s.VentaCreate,
+    usuario: m.Usuario = Depends(require_permiso("crear_venta")),
+    db: Session = Depends(get_db),
+):
+    lote = _lote_para_venta_directa(db, usuario, payload.id_lote)
+    evaluacion = _evaluar_lote(lote, None, payload)
+    if not evaluacion["motivos"]:
+        raise HTTPException(status_code=422, detail="Estas condiciones no requieren autorización: crea la venta directamente")
+
+    pendiente = db.query(m.AutorizacionVenta).filter(
+        m.AutorizacionVenta.id_lote == lote.id,
+        m.AutorizacionVenta.id_separacion.is_(None),
+        m.AutorizacionVenta.estado == "pendiente",
+    ).first()
+    if pendiente:
+        raise HTTPException(status_code=409, detail="Ya hay una solicitud de autorización pendiente para este lote")
+
+    aut = m.AutorizacionVenta(
+        id_empresa=usuario.id_empresa,
+        id_proyecto=lote.id_proyecto,
+        id_separacion=None,
+        id_lote=lote.id,
+        solicitado_por=usuario.id,
+        estado="pendiente",
+        motivos=evaluacion["motivos"],
+        propuesta=payload.model_dump(mode="json"),
+    )
+    db.add(aut)
+    db.flush()
+
+    destinatarios = sep_svc.usuarios_por_roles(
+        db, usuario.id_empresa, lote.id_proyecto, ["gerencia", "admin"], excluir_id=usuario.id
+    )
+    notifs = sep_svc.crear_notificaciones(
+        db, usuario.id_empresa, destinatarios,
+        "autorizacion_pendiente",
+        "Autorización de venta por aprobar",
+        f"{usuario.nombre} solicita autorización para una venta directa del lote {lote.codigo}: "
+        + "; ".join(mo["mensaje"] for mo in evaluacion["motivos"]),
+        {"id_lote": lote.id, "id_proyecto": lote.id_proyecto, "id_autorizacion": aut.id},
+    )
+    db.commit()
+
+    await notificar_usuarios(sep_svc.notificaciones_a_dict(notifs))
+    return s.AutorizacionVentaOut.desde_autorizacion(_cargar_autorizacion(db, usuario, aut.id))
+
+
+@router.get("/autorizaciones-directas", response_model=list[s.AutorizacionVentaOut])
+def listar_autorizaciones_directas(
+    id_lote: int,
+    usuario: m.Usuario = Depends(require_permiso("ver_ventas")),
+    db: Session = Depends(get_db),
+):
+    lote = db.query(m.Lote).filter(m.Lote.id == id_lote).first()
+    if not lote:
+        raise HTTPException(status_code=404, detail="Lote no encontrado")
+    svc.validar_acceso_proyecto(db, usuario, lote.id_proyecto)
+    lista = (
+        db.query(m.AutorizacionVenta)
+        .options(joinedload(m.AutorizacionVenta.solicitante), joinedload(m.AutorizacionVenta.resolutor))
+        .filter(
+            m.AutorizacionVenta.id_lote == id_lote,
+            m.AutorizacionVenta.id_separacion.is_(None),
+            m.AutorizacionVenta.id_empresa == usuario.id_empresa,
+        )
+        .order_by(m.AutorizacionVenta.created_at.desc())
+        .all()
+    )
+    return [s.AutorizacionVentaOut.desde_autorizacion(a) for a in lista]
 
 
 # ---------------------------------------------------------- autorizaciones --
@@ -323,7 +466,7 @@ async def resolver_autorizacion(
         db, usuario.id_empresa, sep_svc.unicos([aut.solicitante], excluir_id=usuario.id),
         "autorizacion_resuelta",
         "Autorización aprobada" if payload.aprobar else "Autorización rechazada",
-        f"Lote {sep.lote.codigo if sep and sep.lote else ''}"
+        f"Lote {_codigo_lote_aut(db, aut, sep)}"
         + (f": {aut.respuesta}" if aut.respuesta else (". Ya puedes crear la venta." if payload.aprobar else ".")),
         {"id_separacion": aut.id_separacion, "id_proyecto": aut.id_proyecto, "id_autorizacion": aut.id},
     )
@@ -347,8 +490,15 @@ async def crear_venta_autorizada(
     if aut.solicitado_por != usuario.id and usuario.rol.clave not in ("admin", "gerencia"):
         raise HTTPException(status_code=403, detail="Solo quien solicitó la autorización puede crear la venta")
 
-    sep = _separacion_convertida(db, usuario, aut.id_separacion)
-    venta = await _crear_venta(db, usuario, sep, s.VentaCreate(**aut.propuesta))
+    if aut.id_separacion:
+        sep = _separacion_convertida(db, usuario, aut.id_separacion)
+        lote = sep.lote
+    else:
+        sep = None
+        lote = _lote_para_venta_directa(db, usuario, aut.id_lote)
+    venta = await _crear_venta(db, usuario, sep, lote, s.VentaCreate(**aut.propuesta))
+    if sep is None:
+        aud.registrar(db, usuario, "venta", venta.id, "crear", {"directa": True, "con_autorizacion": aut.id, "id_lote": lote.id})
 
     aut.estado = "usada"
     aut.id_venta = venta.id

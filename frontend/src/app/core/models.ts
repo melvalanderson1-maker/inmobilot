@@ -852,6 +852,7 @@ export interface EvaluacionVenta {
 export interface AutorizacionVenta {
   id: number;
   id_separacion: number;
+  id_lote?: number;
   estado: string; // pendiente | aprobada | rechazada | usada
   motivos: { codigo: string; mensaje: string }[];
   propuesta: any;

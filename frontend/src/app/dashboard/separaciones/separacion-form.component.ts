@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -97,7 +97,33 @@ export class SeparacionFormComponent implements OnInit {
     private router: Router
   ) {}
 
-    private borradorRestaurado = false;
+
+    private base = '';
+  private salidaLibre = false;
+
+  private instantanea(): string {
+    return JSON.stringify({
+      form: this.form,
+      cliente: this.clienteEncontrado()?.id ?? null,
+      dniFrente: this.dniFrenteUrl,
+      dniReverso: this.dniReversoUrl,
+      voucher: this.voucherUrl,
+    });
+  }
+
+  tieneCambiosSinGuardar(): boolean {
+    return !this.salidaLibre && this.base !== '' && this.instantanea() !== this.base;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  avisarAlCerrar(e: BeforeUnloadEvent): void {
+    if (this.tieneCambiosSinGuardar()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  }
+
+  private borradorRestaurado = false;
 
   private get claveBorrador(): string {
     return `separacion-nueva-${this.idProyecto}`;
@@ -117,6 +143,7 @@ export class SeparacionFormComponent implements OnInit {
   private restaurarBorrador(): void {
     if (this.borradorRestaurado) return;
     this.borradorRestaurado = true;
+    this.base = this.instantanea();
     const b = this.borrador.leer<{
       form: FormSeparacion;
       idCliente: number | null;
@@ -491,6 +518,7 @@ export class SeparacionFormComponent implements OnInit {
           this.guardando.set(false);
           this.guardarProforma(null);
           this.borrador.borrar(this.claveBorrador);
+          this.salidaLibre = true;
           this.toastService.exito('Separación registrada. Caja debe validar el voucher.');
           this.router.navigate(['/dashboard/separaciones', sep.id]);
         },
@@ -525,6 +553,7 @@ export class SeparacionFormComponent implements OnInit {
 
   cancelar(): void {
     this.borrador.borrar(this.claveBorrador);
+    this.salidaLibre = true;
     this.guardarProforma(null);
     this.router.navigate(['/dashboard/separaciones']);
   }

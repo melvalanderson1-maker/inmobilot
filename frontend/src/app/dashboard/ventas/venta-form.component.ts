@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -7,7 +7,9 @@ import { SeparacionService } from '../../core/services/separacion.service';
 import { ClienteService } from '../../core/services/cliente.service';
 import { VentaService } from '../../core/services/venta.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Separacion, FormaPago, Cliente, VentaClienteIn, VentaCreate, EvaluacionVenta } from '../../core/models';
+import { Separacion, FormaPago, Cliente, Lote, Proyecto, AutorizacionVenta, VentaClienteIn, VentaCreate, EvaluacionVenta } from '../../core/models';
+import { ApiService } from '../../core/services/api.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 import { BorradorService } from '../../core/services/borrador.service';
@@ -33,6 +35,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   private readonly toastService = inject(ToastService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  private readonly api = inject(ApiService);
+  private readonly auth = inject(AuthService);
 
   readonly MAX_EXTRAS = 3; // titular + 3 = 4 compradores
   readonly plazosRapidos = [12, 24, 36, 48, 60];
@@ -111,9 +116,186 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     };
   });
 
+
+  // ---------------- VENTA DIRECTA (sin separación) ----------------
+  directo = false;
+  proyectos = signal<Proyecto[]>([]);
+  idProyecto: number | null = null;
+  lotesDirecto = signal<Lote[]>([]);
+  idLoteDirecto: number | null = null;
+  titularDirecto = signal<Cliente | null>(null);
+  autorizaciones = signal<AutorizacionVenta[]>([]);
+  private readonly CLAVE_SEL = 'venta-directa-sel';
+
+  get puedeResolver(): boolean {
+    return ['admin', 'gerencia'].includes(this.auth.usuario()?.rol?.clave ?? '');
+  }
+
+  private iniciarDirecto(): void {
+    const idNuevo = Number(this.route.snapshot.queryParamMap.get('id_cliente')) || null;
+    this.api.get<Proyecto[]>('/proyectos').subscribe((ps) => {
+      this.proyectos.set(ps);
+      const sel = this.borrador.leer<{ idProyecto: number | null; idLote: number | null; idTitular: number | null }>(this.CLAVE_SEL);
+      this.idProyecto = sel?.idProyecto ?? ps[0]?.id ?? null;
+      this.idLoteDirecto = sel?.idLote ?? null;
+      if (!this.idProyecto) return;
+      this.cargarLotesDirecto(() => {
+        const idTit = sel?.idTitular ?? idNuevo;
+        if (!idTit) return;
+        this.clienteService.obtener(idTit).subscribe((c) => {
+          this.titularDirecto.set(c);
+          this.armarSeparacionVirtual();
+          if (sel?.idTitular && idNuevo && idNuevo !== sel.idTitular) {
+            this.clienteService.obtener(idNuevo).subscribe((x) => this.agregarComprador(x));
+          }
+        });
+      });
+    });
+  }
+
+  cargarLotesDirecto(despues?: () => void): void {
+    if (!this.idProyecto) return;
+    this.api.get<Lote[]>('/lotes', { id_proyecto: this.idProyecto }).subscribe((ls) => {
+      this.lotesDirecto.set(ls);
+      despues?.();
+    });
+  }
+
+  onProyectoDirecto(): void {
+    this.idLoteDirecto = null;
+    this.lotesDirecto.set([]);
+    this.cargarLotesDirecto();
+    this.guardarSeleccion();
+  }
+
+  etiquetaLoteDirecto(l: Lote): string {
+    return `${l.codigo} — ${l.ubicacion_lote || 'sin ubicación'} — ${l.estado}`;
+  }
+
+  elegirTitularDirecto(c: Cliente): void {
+    this.titularDirecto.set(c);
+    this.guardarSeleccion();
+  }
+
+  guardarSeleccion(): void {
+    this.borrador.guardarYa(this.CLAVE_SEL, {
+      idProyecto: this.idProyecto,
+      idLote: this.idLoteDirecto,
+      idTitular: this.titularDirecto()?.id ?? null,
+    });
+  }
+
+  /** Arma una "separación" en memoria (sin guardarla) para reutilizar todo el formulario */
+  armarSeparacionVirtual(): void {
+    const lote = this.lotesDirecto().find((l) => l.id === this.idLoteDirecto);
+    const cli = this.titularDirecto();
+    if (!lote || !cli) {
+      this.error.set('Elige el lote y el cliente titular');
+      return;
+    }
+    this.error.set(null);
+    const hoy = new Date().toISOString().slice(0, 10);
+    this.separacion.set({
+      id: 0,
+      id_proyecto: lote.id_proyecto,
+      id_lote: lote.id,
+      id_cliente: cli.id,
+      id_ejecutivo: 0,
+      fecha_inicio: hoy,
+      fecha_vencimiento: hoy,
+      importe: 0,
+      estado: 'convertida',
+      dni_frente_url: '',
+      voucher_url: '',
+      created_at: hoy,
+      comprobantes: [],
+      devoluciones: [],
+      cliente: {
+        id: cli.id,
+        numero_documento: cli.numero_documento,
+        nombres: cli.nombres,
+        apellidos: cli.apellidos,
+        telefono: cli.telefono,
+      },
+      lote: {
+        id: lote.id,
+        codigo: lote.codigo,
+        ubicacion_lote: lote.ubicacion_lote,
+        perimetro: lote.perimetro,
+        frontis: lote.frontis,
+        sunarp_url: lote.sunarp_url ?? undefined,
+        area_m2: lote.area_m2,
+        partida_registral: lote.partida_registral,
+        precio_total_base: lote.precio_total_base,
+        precio_total_contado: lote.precio_total_contado,
+        precio_total_financiado: lote.precio_total_financiado,
+        estado: lote.estado,
+      },
+    } as Separacion);
+    this.guardarSeleccion();
+    this.precioTotal = this.precioSugerido();
+    this.precioEditado = false;
+    this.base = this.instantanea();
+    this.restaurarBorrador();
+    this.conyugeTitular.set(cli.conyuge ?? null);
+    this.reevaluar();
+    this.cargarAutorizaciones();
+  }
+
+  reiniciarDirecto(): void {
+    this.salidaLibre = true;
+    this.separacion.set(null);
+    this.extras.set([]);
+    this.evaluacion.set(null);
+    this.autorizaciones.set([]);
+    this.titularDirecto.set(null);
+    this.guardarSeleccion();
+    this.salidaLibre = false;
+  }
+
+  cargarAutorizaciones(): void {
+    if (!this.directo || !this.idLoteDirecto) return;
+    this.ventaService.listarAutorizacionesLote(this.idLoteDirecto).subscribe((a) => this.autorizaciones.set(a));
+  }
+
+  resolverAut(a: AutorizacionVenta, aprobar: boolean): void {
+    this.ventaService.resolverAutorizacion(a.id, aprobar).subscribe({
+      next: () => this.cargarAutorizaciones(),
+      error: (err) => this.toastService.error(err?.error?.detail ?? 'No se pudo resolver'),
+    });
+  }
+
+  crearAutorizada(a: AutorizacionVenta): void {
+    this.guardando.set(true);
+    this.ventaService.crearDesdeAutorizacion(a.id).subscribe({
+      next: (venta) => {
+        this.guardando.set(false);
+        this.finalizarBorradores();
+        this.toastService.exito('Venta creada con las condiciones autorizadas');
+        this.router.navigate(['/dashboard/contratos/venta', venta.id]);
+      },
+      error: (err) => this.fallo(err, 'No se pudo crear la venta'),
+    });
+  }
+
+  private evaluarServidor(p: VentaCreate) {
+    return this.directo ? this.ventaService.evaluarDirecta(p) : this.ventaService.evaluar(this.idSeparacion, p);
+  }
+
+  private finalizarBorradores(): void {
+    this.borrador.borrar(this.claveBorrador());
+    if (this.directo) this.borrador.borrar(this.CLAVE_SEL);
+    this.salidaLibre = true;
+  }
+
+
+
   ngOnInit(): void {
-    this.idSeparacion = Number(this.route.snapshot.paramMap.get('id'));
-    this.cargar();
+    const p = this.route.snapshot.paramMap.get('id');
+    this.directo = !p;
+    this.idSeparacion = Number(p) || 0;
+    if (this.directo) this.iniciarDirecto();
+    else this.cargar();
   }
 
   ngOnDestroy(): void {
@@ -126,10 +308,37 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
+
+    private base = '';
+  private salidaLibre = false;
+
+  private instantanea(): string {
+    return JSON.stringify({
+      f: this.formaPago,
+      p: this.precioTotal,
+      pp: this.pagosPrevios,
+      dc: this.datosCredito,
+      cp: this.cuotasPers,
+      e: this.extras().map((x) => x.cliente.id),
+      l: this.idLoteDirecto,
+    });
+  }
+
+  tieneCambiosSinGuardar(): boolean {
+    return !this.salidaLibre && this.base !== '' && this.instantanea() !== this.base;
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  avisarAlCerrar(e: BeforeUnloadEvent): void {
+    if (this.tieneCambiosSinGuardar()) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  }
   // ---- Borrador: se guarda solo y se recupera al recargar o volver ----
 
   private claveBorrador(): string {
-    return `venta-${this.idSeparacion}`;
+    return this.directo ? `venta-directa-${this.idLoteDirecto}` : `venta-${this.idSeparacion}`;
   }
 
   guardarBorrador(): void {
@@ -166,6 +375,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         if (res.tipo_pago) this.formaPago = res.tipo_pago;
         this.precioTotal = this.precioSugerido();
         this.precioEditado = false;
+        this.base = this.instantanea();
         this.restaurarBorrador();
         this.cargando.set(false);
         this.reevaluar();
@@ -339,6 +549,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     const pagosValidos = this.pagosPrevios.filter((p) => p.monto && p.fecha);
 
     return {
+      id_lote: this.directo ? sep.id_lote : undefined,
       forma_pago: this.formaPago,
       precio_total: this.precioTotal ?? 0,
       clientes,
@@ -377,7 +588,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       this.evaluacion.set(null);
       return;
     }
-    this.ventaService.evaluar(this.idSeparacion, this.armarPayload(true)).subscribe({
+    this.evaluarServidor(this.armarPayload(true)).subscribe({
       next: (r) => {
         this.evaluacion.set(r);
         this.errorEvaluacion.set(null);
@@ -628,12 +839,13 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   irACrearCliente(texto: string): void {
+    this.salidaLibre = true;
     this.guardarBorrador();
     const esNumero = /^\d{6,}$/.test(texto);
     this.router.navigate(['/dashboard/clientes/nuevo'], {
       queryParams: {
         ...(esNumero ? { documento: texto } : {}),
-        returnTo: `/dashboard/separaciones/${this.idSeparacion}/iniciar-venta`,
+        returnTo: this.directo ? '/dashboard/ventas/nueva' : `/dashboard/separaciones/${this.idSeparacion}/iniciar-venta`,
       },
     });
   }
@@ -721,17 +933,21 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.guardando.set(true);
 
     // Se evalúa de nuevo en el servidor para no depender de una vista previa desactualizada
-    this.ventaService.evaluar(this.idSeparacion, this.armarPayload(false)).subscribe({
+    this.evaluarServidor(this.armarPayload(false)).subscribe({
       next: (ev) => (ev.requiere_autorizacion ? this.pedirAutorizacion() : this.crear()),
       error: (err) => this.fallo(err, 'No se pudo validar las condiciones'),
     });
   }
 
   private crear(): void {
-    this.ventaService.crearDesdeSeparacion(this.idSeparacion, this.armarPayload(false)).subscribe({
+    const payload = this.armarPayload(false);
+    const llamada = this.directo
+      ? this.ventaService.crearDirecta(payload)
+      : this.ventaService.crearDesdeSeparacion(this.idSeparacion, payload);
+    llamada.subscribe({
       next: (venta) => {
         this.guardando.set(false);
-        this.borrador.borrar(this.claveBorrador());
+        this.finalizarBorradores();
         this.toastService.exito('Venta iniciada correctamente');
         this.router.navigate(['/dashboard/contratos/venta', venta.id]);
       },
@@ -740,10 +956,22 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   private pedirAutorizacion(): void {
-    this.ventaService.solicitarAutorizacion(this.idSeparacion, this.armarPayload(false)).subscribe({
+    const payload = this.armarPayload(false);
+    if (this.directo) {
+      this.ventaService.solicitarAutorizacionDirecta(payload).subscribe({
+        next: () => {
+          this.guardando.set(false);
+          this.toastService.exito('Solicitud enviada a gerencia. Cuando la apruebe, créala desde esta pantalla.');
+          this.cargarAutorizaciones();
+        },
+        error: (err) => this.fallo(err, 'No se pudo solicitar la autorización'),
+      });
+      return;
+    }
+    this.ventaService.solicitarAutorizacion(this.idSeparacion, payload).subscribe({
       next: () => {
         this.guardando.set(false);
-        this.borrador.borrar(this.claveBorrador());
+        this.finalizarBorradores();
         this.toastService.exito('Solicitud enviada a gerencia. Te avisaremos cuando la resuelva.');
         this.router.navigate(['/dashboard/separaciones', this.idSeparacion]);
       },
@@ -761,6 +989,6 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   cancelar(): void {
-    this.router.navigate(['/dashboard/separaciones', this.idSeparacion]);
+    this.router.navigate(this.directo ? ['/dashboard/contratos'] : ['/dashboard/separaciones', this.idSeparacion]);
   }
 }

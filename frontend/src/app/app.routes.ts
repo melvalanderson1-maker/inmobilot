@@ -4,6 +4,9 @@ import { authGuard } from './core/guards/auth.guard';
 import { moduloGuard } from './core/guards/modulo.guard';
 import { homeRedirectGuard } from './core/guards/home-redirect.guard';
 
+
+import { cambiosSinGuardarGuard } from './core/guards/cambios-sin-guardar.guard';
+
 export const routes: Routes = [
   {
     path: '',
@@ -62,6 +65,14 @@ export const routes: Routes = [
       {
         path: 'separaciones/:id/iniciar-venta',
         canActivate: [moduloGuard('contratos')],
+        canDeactivate: [cambiosSinGuardarGuard],
+        loadComponent: () =>
+          import('./dashboard/ventas/venta-form.component').then((c) => c.VentaFormComponent),
+      },
+      {
+        path: 'ventas/nueva',
+        canActivate: [moduloGuard('contratos')],
+        canDeactivate: [cambiosSinGuardarGuard],
         loadComponent: () =>
           import('./dashboard/ventas/venta-form.component').then((c) => c.VentaFormComponent),
       },

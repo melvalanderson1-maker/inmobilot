@@ -38,6 +38,10 @@ MESES_ES = {
     7: "JULIO", 8: "AGOSTO", 9: "SEPTIEMBRE", 10: "OCTUBRE", 11: "NOVIEMBRE", 12: "DICIEMBRE",
 }
 
+# Carga de datos: permite ventas directas sobre lotes que NO están libres (separado / vendido / bloqueado).
+# Poner en False al terminar la carga.
+PERMITIR_VENTA_DIRECTA_LOTES_OCUPADOS = True
+
 
 # ------------------------------------------------------------- utilidades --
 

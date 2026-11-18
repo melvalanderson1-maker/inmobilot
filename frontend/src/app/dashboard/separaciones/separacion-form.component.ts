@@ -346,6 +346,14 @@ export class SeparacionFormComponent implements OnInit {
     if (!ref || d === null) return null;
     return (d / ref) * 100;
   }
+
+  /** Etiqueta del campo según lo digitado frente al precio de lista */
+  get etiquetaPrecioFinal(): string {
+    const d = this.descuentoSeparacion;
+    if (d === null || d === 0) return 'Precio final';
+    return d > 0 ? 'Precio descontado' : 'Precio aumentado';
+  }
+
   nombreManzana(lote: Lote): string {
     const manzana = this.manzanas().find((m) => m.id === lote.id_manzana);
     return manzana ? manzana.nombre : '—';
@@ -553,10 +561,6 @@ export class SeparacionFormComponent implements OnInit {
     if (!this.form.precio_valido_hasta) return 'Indica hasta qué fecha es válido el precio de la proforma';
     if (this.form.precio_valido_hasta < this.form.fecha_inicio) {
       return 'La validez del precio no puede ser anterior a la fecha inicial';
-    }
-    const referencia = this.precioReferencia();
-    if (this.form.precio_descontado && referencia && this.form.precio_descontado > referencia) {
-      return `El precio final no puede superar el ${this.etiquetaPrecioReferencia().toLowerCase()}`;
     }
     if (!this.form.medio_pago.trim()) return 'Indica el medio de pago (ej. Transferencia Yape)';
     if (!this.form.voucher_numero.trim()) return 'Indica el número de voucher';

@@ -180,22 +180,25 @@
             </div>
 
             <div class="campo campo-span-2">
-              <label>Precio descontado final</label>
+              <label>{{ etiquetaPrecioFinal }}</label>
               <div class="input-prefix">
                 <span>S/</span>
                 <input type="number" [(ngModel)]="form.precio_descontado" placeholder="0.00" />
               </div>
               @if (loteSeleccionado()) {
                 @if (precioReferencia(); as ref) {
-                  <small class="ayuda">
+                  <small class="ayuda"
+                    [class.ayuda-descuento]="descuentoSeparacion !== null && descuentoSeparacion > 0"
+                    [class.ayuda-aumento]="descuentoSeparacion !== null && descuentoSeparacion < 0">
                     {{ etiquetaPrecioReferencia() }}: S/ {{ ref | number: '1.2-2' }}.
                     @if (descuentoSeparacion !== null && descuentoSeparacion > 0) {
-                      Descuento aplicado: <strong>S/ {{ descuentoSeparacion | number: '1.2-2' }}</strong>
+                      Descuento de <strong>S/ {{ descuentoSeparacion | number: '1.2-2' }}</strong> sobre la lista
                       @if (descuentoSeparacionPct !== null) { ({{ descuentoSeparacionPct | number: '1.0-1' }}%) }
                     } @else if (descuentoSeparacion !== null && descuentoSeparacion < 0) {
-                      El precio supera al de lista en <strong>S/ {{ -descuentoSeparacion | number: '1.2-2' }}</strong>.
+                      Aumento de <strong>S/ {{ -descuentoSeparacion | number: '1.2-2' }}</strong> sobre la lista
+                      @if (descuentoSeparacionPct !== null) { ({{ -descuentoSeparacionPct | number: '1.0-1' }}%) }
                     } @else {
-                      Sin descuento.
+                      Sin descuento ni aumento.
                     }
                     @if (descuentoSeparacion !== 0) {
                       <button type="button" class="btn btn-outline btn-sm" (click)="aplicarPrecioReferencia()">Restablecer</button>

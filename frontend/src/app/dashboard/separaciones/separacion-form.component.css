@@ -617,3 +617,7 @@ textarea { resize: vertical; min-height: 84px; }
   transition: background 0.15s;
 }
 .sf-btn-danger:hover { background: #fef2f2; }
+
+
+.ayuda-descuento { color: #15803d; }
+.ayuda-aumento { color: #b45309; }

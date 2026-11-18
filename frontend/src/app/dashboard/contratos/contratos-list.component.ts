@@ -747,7 +747,16 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
 
   nuevaVenta(): void {
-    this.router.navigate(['/dashboard/ventas/nueva']);
+    console.log('CLICK EN NUEVO CONTRATO');
+
+    this.router.navigateByUrl('/dashboard/ventas/nueva')
+      .then((navego) => {
+        console.log('¿Navegación realizada?', navego);
+        console.log('URL actual:', this.router.url);
+      })
+      .catch((error) => {
+        console.error('ERROR AL NAVEGAR:', error);
+      });
   }
 
   onLoteSeleccionado(): void {

@@ -4,10 +4,11 @@
       <span class="vf-spinner" aria-hidden="true"></span>
       Cargando separación...
     </div>
-  } @else if (!separacion()) {
-    @if (!directo) {
-      <div class="vf-state">No se encontró la separación</div>
-      <div class="vd">
+      } @else if (!separacion()) {
+        @if (!directo) {
+          <div class="vf-state">No se encontró la separación</div>
+        } @else {
+          <div class="vd">
         <button type="button" class="vd-back" (click)="cancelar()">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
           Volver a contratos
@@ -81,6 +82,7 @@
           </footer>
         </section>
       </div>
+    }
   } @else {
 
     <!-- ===================== ENCABEZADO ===================== -->

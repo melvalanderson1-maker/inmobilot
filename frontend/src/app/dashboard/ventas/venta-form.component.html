@@ -7,64 +7,80 @@
   } @else if (!separacion()) {
     @if (!directo) {
       <div class="vf-state">No se encontró la separación</div>
-    } @else {
-      <header class="vf-header">
-        <button type="button" class="vf-back" (click)="cancelar()">Volver a contratos</button>
-        <div class="vf-headline"><div class="vf-title"><h1>Nueva venta directa</h1></div></div>
-      </header>
+      <div class="vd">
+        <button type="button" class="vd-back" (click)="cancelar()">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          Volver a contratos
+        </button>
 
-      @if (error()) {
-        <div class="vf-alert vf-alert-error" role="alert"><span>{{ error() }}</span></div>
-      }
+        <header class="vd-head">
+          <span class="vd-eyebrow">Venta directa</span>
+          <h1>Nueva venta</h1>
+          <p>Elige el lote y el titular. Después completas el precio y los pagos.</p>
+        </header>
 
-      <section class="vf-sec vf-sec-last">
-        <div class="vf-sec-body">
-          <header class="vf-sec-head">
-            <div>
-              <h2>Lote y cliente</h2>
-              <p>Elige el lote y el titular. Después completas el precio y los pagos igual que en una venta desde separación.</p>
-            </div>
-          </header>
+        <ol class="vd-steps" aria-label="Pasos">
+          <li class="is-current"><span>1</span>Lote y cliente</li>
+          <li><span>2</span>Precio</li>
+          <li><span>3</span>Pagos</li>
+        </ol>
 
-          <label class="vf-field">
-            <span>Proyecto</span>
-            <select [(ngModel)]="idProyecto" (ngModelChange)="onProyectoDirecto()">
-              @for (p of proyectos(); track p.id) {
-                <option [ngValue]="p.id">{{ p.nombre }}</option>
-              }
-            </select>
-          </label>
+        @if (error()) {
+          <div class="vd-alert" role="alert">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+            <span>{{ error() }}</span>
+          </div>
+        }
 
-          <label class="vf-field">
-            <span>Lote</span>
-            <select [(ngModel)]="idLoteDirecto" (ngModelChange)="guardarSeleccion()">
-              <option [ngValue]="null" disabled>Selecciona un lote</option>
-              @for (l of lotesDirecto(); track l.id) {
-                <option [ngValue]="l.id">{{ etiquetaLoteDirecto(l) }}</option>
-              }
-            </select>
-          </label>
+        <section class="vd-card">
+          <div class="vd-grid">
+            <label class="vd-field">
+              <span class="vd-label">Proyecto</span>
+              <select [(ngModel)]="idProyecto" (ngModelChange)="onProyectoDirecto()">
+                @for (p of proyectos(); track p.id) {
+                  <option [ngValue]="p.id">{{ p.nombre }}</option>
+                }
+              </select>
+            </label>
 
-          <div class="vf-field">
-            <span class="vf-label">Cliente titular</span>
+            <label class="vd-field">
+              <span class="vd-label">Lote</span>
+              <select [(ngModel)]="idLoteDirecto" (ngModelChange)="guardarSeleccion()">
+                <option [ngValue]="null" disabled>Selecciona un lote</option>
+                @for (l of lotesDirecto(); track l.id) {
+                  <option [ngValue]="l.id">{{ etiquetaLoteDirecto(l) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <div class="vd-field">
+            <span class="vd-label">Cliente titular</span>
             @if (titularDirecto(); as t) {
-              <div class="vf-person">
-                <span class="vf-avatar" aria-hidden="true">{{ t.nombres.charAt(0) }}</span>
-                <div class="vf-person-info">
+              <div class="vd-person">
+                <span class="vd-avatar" aria-hidden="true">{{ t.nombres.charAt(0) }}</span>
+                <div class="vd-person-info">
                   <strong>{{ t.nombres }} {{ t.apellidos }}</strong>
                   <span>{{ t.numero_documento }}</span>
                 </div>
-                <button type="button" class="vf-link" (click)="titularDirecto.set(null)">Cambiar</button>
+                <button type="button" class="vd-link" (click)="titularDirecto.set(null)">Cambiar</button>
               </div>
             } @else {
-              <app-cliente-buscador (seleccionado)="elegirTitularDirecto($event)" (crearNuevo)="irACrearCliente($event)" />
+              <div class="vd-buscador">
+                <app-cliente-buscador (seleccionado)="elegirTitularDirecto($event)" (crearNuevo)="irACrearCliente($event)" />
+              </div>
             }
           </div>
 
-          <button type="button" class="vf-btn vf-btn-primary" (click)="armarSeparacionVirtual()">Continuar</button>
-        </div>
-      </section>
-    }
+          <footer class="vd-actions">
+            <button type="button" class="vd-btn vd-btn-ghost" (click)="cancelar()">Cancelar</button>
+            <button type="button" class="vd-btn vd-btn-primary" (click)="armarSeparacionVirtual()" [disabled]="!idLoteDirecto || !titularDirecto()">
+              Continuar
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6" /></svg>
+            </button>
+          </footer>
+        </section>
+      </div>
   } @else {
 
     <!-- ===================== ENCABEZADO ===================== -->

@@ -147,6 +147,13 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return ['admin', 'gerencia'].includes(this.auth.usuario()?.rol?.clave ?? '');
   }
 
+  /** Mismo flag que separacion-detalle y el backend (PERMITIR_EDITAR_TODO). Poner en false al terminar la carga histórica. */
+  readonly permitirEditarTodo = true;
+
+  /** Con carga histórica activa, admin/gerencia crean la venta sin pedir autorización */
+  get omitirAutorizacion(): boolean {
+    return this.permitirEditarTodo && this.puedeResolver;
+  }
   private iniciarDirecto(): void {
     const idNuevo = Number(this.route.snapshot.queryParamMap.get('id_cliente')) || null;
     this.api.get<Proyecto[]>('/proyectos').subscribe((ps) => {
@@ -668,7 +675,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   get requiereAutorizacion(): boolean {
-    return !!this.evaluacion()?.requiere_autorizacion;
+    return !!this.evaluacion()?.requiere_autorizacion && !this.omitirAutorizacion;
   }
 
   // ---- Cronograma simulado (mismas columnas del PDF/Excel) ----
@@ -994,7 +1001,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
     // Se evalúa de nuevo en el servidor para no depender de una vista previa desactualizada
     this.evaluarServidor(this.armarPayload(false)).subscribe({
-      next: (ev) => (ev.requiere_autorizacion ? this.pedirAutorizacion() : this.crear()),
+      next: (ev) => (ev.requiere_autorizacion && !this.omitirAutorizacion ? this.pedirAutorizacion() : this.crear()),
       error: (err) => this.fallo(err, 'No se pudo validar las condiciones'),
     });
   }

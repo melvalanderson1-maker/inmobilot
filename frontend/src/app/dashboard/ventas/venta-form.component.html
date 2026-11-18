@@ -561,13 +561,17 @@
         @if (evaluacion(); as ev) {
           @if (ev.motivos.length > 0) {
             <section class="vf-aviso">
-              <h2>Requiere autorización de gerencia</h2>
+              <h2>{{ omitirAutorizacion ? 'Reglas omitidas (carga histórica)' : 'Requiere autorización de gerencia' }}</h2>
               <ul>
                 @for (mo of ev.motivos; track mo.codigo) {
                   <li>{{ mo.mensaje }}</li>
                 }
               </ul>
-              <p>Pulsa "Solicitar autorización". Gerencia recibirá el aviso y podrás crear la venta cuando la apruebe.</p>
+              @if (omitirAutorizacion) {
+                <p>Estas reglas no se aplican mientras la carga histórica esté activa. Quedará registrado en auditoría.</p>
+              } @else {
+                <p>Pulsa "Solicitar autorización". Gerencia recibirá el aviso y podrás crear la venta cuando la apruebe.</p>
+              }
             </section>
           }
         }

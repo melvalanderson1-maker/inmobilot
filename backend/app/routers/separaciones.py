@@ -490,13 +490,35 @@ async def convertir_separacion(
 ):
     """El cliente llegó a comprar. El lote sigue 'separado' hasta que se registre la venta."""
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado != E.vigente:
-        raise _conflicto("Solo una separación vigente puede convertirse en compra")
+    estado_anterior = sep.estado
+
+    if svc.PERMITIR_EDITAR_TODO:
+        # Carga de data histórica: se puede convertir desde cualquier estado previo a la venta
+        permitidos = (E.pendiente_caja, E.pendiente_facturacion, E.vigente, E.vencida)
+        if sep.estado not in permitidos:
+            raise _conflicto("Esta separación ya no se puede convertir en compra")
+    elif sep.estado == E.vencida:
+        # Operación normal: una vencida solo la convierte admin/gerencia y con el lote aún separado
+        if usuario.rol.clave not in ("admin", "gerencia"):
+            raise _conflicto("Solo admin o gerencia pueden convertir una separación vencida")
+        if sep.lote.estado != LOTE.separado:
+            raise _conflicto(
+                f"El lote {sep.lote.codigo} ya no está separado (estado: {sep.lote.estado.value}). "
+                "No se puede convertir esta separación vencida"
+            )
+    elif sep.estado != E.vigente:
+        raise _conflicto("Solo una separación vigente o vencida puede convertirse en compra")
+
     if not sep.contrato_firmado_url:
         raise _conflicto("Debes subir el contrato de separación firmado antes de convertir la separación en venta")
 
     sep.estado = E.convertida
     sep.fecha_conversion = fecha_conversion or svc.hoy_peru()
+    if svc.PERMITIR_EDITAR_TODO and estado_anterior != E.vigente:
+        aud.registrar(
+            db, usuario, "separacion", sep.id, "convertir_historica",
+            aud.diferencias({"estado": estado_anterior.value}, {"estado": E.convertida.value}),
+        )
     db.commit()
 
     await _emitir(db, sep, usuario, [])

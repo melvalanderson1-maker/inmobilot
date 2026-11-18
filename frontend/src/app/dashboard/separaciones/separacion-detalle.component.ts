@@ -307,7 +307,12 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
   puedeConvertir(): boolean {
     const sep = this.separacion();
-    return !!sep && sep.estado === 'vigente';
+    if (!sep) return false;
+    if (this.permitirEditarTodo) {
+      return ['pendiente_caja', 'pendiente_facturacion', 'vigente', 'vencida'].includes(sep.estado);
+    }
+    if (sep.estado === 'vigente') return true;
+    return sep.estado === 'vencida' && ['admin', 'gerencia'].includes(this.rolClave);
   }
 
   convertir(): void {

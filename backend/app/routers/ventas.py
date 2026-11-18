@@ -264,11 +264,18 @@ async def crear_venta_desde_separacion(
 ):
     sep = _separacion_convertida(db, usuario, id_separacion)
     evaluacion = _evaluar(sep, payload)
-    if evaluacion["motivos"]:
+    omitir_reglas = sep_svc.PERMITIR_EDITAR_TODO and usuario.rol.clave in ("admin", "gerencia")
+    if evaluacion["motivos"] and not omitir_reglas:
         detalle = "; ".join(mo["mensaje"] for mo in evaluacion["motivos"])
         raise HTTPException(status_code=409, detail=f"Estas condiciones requieren autorización de gerencia: {detalle}")
 
     venta = await _crear_venta(db, usuario, sep, sep.lote, payload)
+    if evaluacion["motivos"] and omitir_reglas:
+        aud.registrar(
+            db, usuario, "venta", venta.id, "crear_historica",
+            {"reglas_omitidas": [mo["mensaje"] for mo in evaluacion["motivos"]]},
+        )
+        db.commit()
     return s.VentaOut.desde_venta(venta)
 
 

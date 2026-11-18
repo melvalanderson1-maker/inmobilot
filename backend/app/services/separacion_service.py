@@ -152,8 +152,10 @@ def resumen_socket(sep: m.Separacion) -> dict:
 # ------------------------------------------------- precio de separación ---
 
 def validar_precio_descontado(lote: m.Lote, precio_descontado, tipo_pago) -> None:
-    """Sin tope: el precio final puede ser menor (descuento) o mayor (aumento) al de lista.
-    Se conserva la función para no romper a quienes la llaman."""
+    """
+    Permite establecer el precio final libremente:
+    menor, igual o mayor al precio de lista.
+    """
     return None
 # ----------------------------------------------------------------- lote ---
 

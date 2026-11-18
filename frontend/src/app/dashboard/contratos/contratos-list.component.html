@@ -6,7 +6,7 @@
       <h1>Ventas y contratos</h1>
       <p class="subtitle">Expedientes de venta: documentos, cronogramas y pagos</p>
     </div>
-    <button type="button" class="btn-primary" (click)="abrirNuevoContrato()">
+    <button type="button" class="btn-primary" (click)="nuevaVenta()">
       <span class="icono-mas" aria-hidden="true">+</span> Nuevo contrato
     </button>
   </header>
@@ -75,7 +75,7 @@
     <div class="estado-vacio">
       <div class="vacio-icono" aria-hidden="true">📄</div>
       <p>Aún no hay contratos en este proyecto.</p>
-      <button type="button" class="btn-primary" (click)="abrirNuevoContrato()">Crear el primero</button>
+      <button type="button" class="btn-primary" (click)="nuevaVenta()">Crear el primero</button>
     </div>
   } @else {
     <div class="tabla-card">

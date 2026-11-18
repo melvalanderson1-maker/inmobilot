@@ -1886,3 +1886,46 @@
   color: #9b1c1c;
   font-size: 14px;
 }
+
+
+/* ===== Borrador pendiente (pantalla inicial) ===== */
+.vd-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid #ecd29b;
+  border-left: 4px solid #8f5200;
+  border-radius: 14px;
+  background: #fff4dc;
+}
+.vd-draft-txt { display: flex; flex-direction: column; gap: 2px; color: #8f5200; }
+.vd-draft-txt span { font-size: 14px; }
+.vd-draft-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ===== Modal de salida ===== */
+.vf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 32, 43, 0.55);
+}
+.vf-modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 26px 24px 22px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 30px 60px -20px rgba(20, 32, 43, 0.5);
+}
+.vf-modal h2 { margin: 0 0 8px; font-size: 1.25rem; font-weight: 600; }
+.vf-modal p { margin: 0 0 20px; color: #46576a; font-size: 0.95rem; }
+.vf-modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.vf-modal-actions .vf-btn { width: 100%; }
+.vf-btn-danger { border-color: #f0c3bf; background: #fff; color: #a8271f; }
+.vf-btn-danger:hover:not(:disabled) { background: #fdecea; }

@@ -104,6 +104,7 @@ export const routes: Routes = [
       {
         path: 'separaciones/nueva',
         canActivate: [moduloGuard('separaciones')],
+        canDeactivate: [cambiosSinGuardarGuard],
         loadComponent: () =>
           import('./dashboard/separaciones/separacion-form.component').then((c) => c.SeparacionFormComponent),
       },

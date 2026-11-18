@@ -127,6 +127,22 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   autorizaciones = signal<AutorizacionVenta[]>([]);
   private readonly CLAVE_SEL = 'venta-directa-sel';
 
+  /** Borrador de venta directa encontrado al entrar: el usuario decide si lo retoma o lo descarta */
+  borradorPendiente = signal<{
+    idLote: number | null;
+    idTitular: number | null;
+    lote: string | null;
+    titular: string | null;
+  } | null>(null);
+
+  /** Modal "tienes cambios sin guardar" */
+  confirmarSalida = signal(false);
+
+  /** Respuesta pendiente del guard de ruta (solo existe cuando el modal lo abrió el guard) */
+  private resolverGuard: ((puedeSalir: boolean) => void) | null = null;
+
+  /** true mientras se descarta: evita que el autoguardado reviva el borrador */
+  private descartando = false;
   get puedeResolver(): boolean {
     return ['admin', 'gerencia'].includes(this.auth.usuario()?.rol?.clave ?? '');
   }
@@ -139,18 +155,59 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       this.idProyecto = sel?.idProyecto ?? ps[0]?.id ?? null;
       this.idLoteDirecto = sel?.idLote ?? null;
       if (!this.idProyecto) return;
-      this.cargarLotesDirecto(() => {
-        const idTit = sel?.idTitular ?? idNuevo;
-        if (!idTit) return;
-        this.clienteService.obtener(idTit).subscribe((c) => {
-          this.titularDirecto.set(c);
-          this.armarSeparacionVirtual();
-          if (sel?.idTitular && idNuevo && idNuevo !== sel.idTitular) {
-            this.clienteService.obtener(idNuevo).subscribe((x) => this.agregarComprador(x));
-          }
+
+      // Hay un borrador y NO venimos de crear un cliente: preguntar antes de entrar
+      if ((sel?.idLote || sel?.idTitular) && !idNuevo) {
+        this.borradorPendiente.set({ idLote: sel.idLote, idTitular: sel.idTitular, lote: null, titular: null });
+        this.cargarLotesDirecto(() => {
+          const l = this.lotesDirecto().find((x) => x.id === sel.idLote);
+          this.borradorPendiente.update((b) => (b ? { ...b, lote: l?.codigo ?? null } : b));
         });
+        if (sel.idTitular) {
+          this.clienteService.obtener(sel.idTitular).subscribe((c) =>
+            this.borradorPendiente.update((b) => (b ? { ...b, titular: `${c.nombres} ${c.apellidos}` } : b))
+          );
+        }
+        return;
+      }
+
+      this.retomar(sel, idNuevo);
+    });
+  }
+
+  /** Entra al formulario con la selección guardada (o con el cliente recién creado) */
+  private retomar(
+    sel: { idProyecto: number | null; idLote: number | null; idTitular: number | null } | null,
+    idNuevo: number | null
+  ): void {
+    this.cargarLotesDirecto(() => {
+      const idTit = sel?.idTitular ?? idNuevo;
+      if (!idTit) return;
+      this.clienteService.obtener(idTit).subscribe((c) => {
+        this.titularDirecto.set(c);
+        this.armarSeparacionVirtual();
+        if (sel?.idTitular && idNuevo && idNuevo !== sel.idTitular) {
+          this.clienteService.obtener(idNuevo).subscribe((x) => this.agregarComprador(x));
+        }
       });
     });
+  }
+
+  /** Botón "Continuar donde quedé" */
+  retomarBorrador(): void {
+    this.borradorPendiente.set(null);
+    const sel = this.borrador.leer<{ idProyecto: number | null; idLote: number | null; idTitular: number | null }>(this.CLAVE_SEL);
+    this.retomar(sel, null);
+  }
+
+  /** Botón "Empezar una nueva": borra el borrador y deja la pantalla limpia */
+  descartarBorradorInicial(): void {
+    const bp = this.borradorPendiente();
+    if (bp?.idLote) this.borrador.borrar(`venta-directa-${bp.idLote}`);
+    this.borrador.borrar(this.CLAVE_SEL);
+    this.idLoteDirecto = null;
+    this.titularDirecto.set(null);
+    this.borradorPendiente.set(null);
   }
 
   cargarLotesDirecto(despues?: () => void): void {
@@ -178,6 +235,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   guardarSeleccion(): void {
+    if (this.descartando) return;
     this.borrador.guardarYa(this.CLAVE_SEL, {
       idProyecto: this.idProyecto,
       idLote: this.idLoteDirecto,
@@ -341,9 +399,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return this.directo ? `venta-directa-${this.idLoteDirecto}` : `venta-${this.idSeparacion}`;
   }
 
-  guardarBorrador(): void {
-    if (this.cargando() || !this.separacion()) return;
-    this.borrador.guardar(this.claveBorrador(), {
+  guardarBorrador(ahora = false): void {
+    if (this.descartando || this.cargando() || !this.separacion()) return;
+    const datos = {
       formaPago: this.formaPago,
       precioTotal: this.precioTotal,
       precioEditado: this.precioEditado,
@@ -351,7 +409,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       datosCredito: this.datosCredito,
       cuotasPers: this.cuotasPers,
       extras: this.extras(),
-    });
+    };
+    if (ahora) this.borrador.guardarYa(this.claveBorrador(), datos);
+    else this.borrador.guardar(this.claveBorrador(), datos);
   }
 
   private restaurarBorrador(): void {
@@ -989,6 +1049,54 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   cancelar(): void {
+    // Con cambios: preguntar qué hacer con el borrador
+    if (this.separacion() && this.tieneCambiosSinGuardar()) {
+      this.confirmarSalida.set(true);
+      return;
+    }
+    // Sin cambios: salir limpio, sin dejar borrador fantasma
+    this.descartarTodo();
+    this.irSalida();
+  }
+
+  /** Lo llama el guard de ruta: abre el modal y espera la decisión */
+  confirmarSalidaGuard(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.resolverGuard = resolve;
+      this.confirmarSalida.set(true);
+    });
+  }
+
+  resolverSalida(accion: 'seguir' | 'guardar' | 'descartar'): void {
+    this.confirmarSalida.set(false);
+    const respuestaGuard = this.resolverGuard;
+    this.resolverGuard = null;
+
+    if (accion === 'seguir') {
+      respuestaGuard?.(false); // el guard cancela la navegación y te quedas aquí
+      return;
+    }
+
+    if (accion === 'guardar') {
+      if (this.directo) this.guardarSeleccion();
+      this.guardarBorrador(true);
+    } else {
+      this.descartarTodo();
+    }
+
+    this.salidaLibre = true; // para que el guard no vuelva a preguntar
+    if (respuestaGuard) respuestaGuard(true); // continúa hacia donde ibas (menú, atrás, etc.)
+    else this.irSalida(); // venías del botón Volver/Cancelar
+  }
+
+  private descartarTodo(): void {
+    this.descartando = true;
+    if (this.separacion()) this.borrador.borrar(this.claveBorrador());
+    if (this.directo) this.borrador.borrar(this.CLAVE_SEL);
+  }
+
+  private irSalida(): void {
+    this.salidaLibre = true;
     this.router.navigate(this.directo ? ['/dashboard/contratos'] : ['/dashboard/separaciones', this.idSeparacion]);
   }
 }

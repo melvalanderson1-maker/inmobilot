@@ -373,3 +373,20 @@
     </aside>
   </div>
 </div>
+
+@if (confirmarSalida()) {
+  <div class="sf-modal-overlay" (click)="resolverSalida('seguir')">
+    <div class="sf-modal" role="dialog" aria-modal="true" aria-labelledby="sf-modal-t" (click)="$event.stopPropagation()">
+      <span class="sf-modal-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3L12 4zM12 10v4M12 17h.01" /></svg>
+      </span>
+      <h2 id="sf-modal-t">Tienes cambios sin terminar</h2>
+      <p>Puedes guardar esta separación como borrador para retomarla luego, o descartarla y empezar de cero.</p>
+      <div class="sf-modal-actions">
+        <button type="button" class="btn btn-primary" (click)="resolverSalida('guardar')">Guardar borrador y salir</button>
+        <button type="button" class="btn btn-outline" (click)="resolverSalida('seguir')">Seguir editando</button>
+        <button type="button" class="sf-btn-danger" (click)="resolverSalida('descartar')">Descartar y salir</button>
+      </div>
+    </div>
+  </div>
+}

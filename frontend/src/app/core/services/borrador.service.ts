@@ -20,13 +20,26 @@ export class BorradorService {
   guardar(nombre: string, datos: unknown, esperaMs = 400): void {
     const k = this.clave(nombre);
     clearTimeout(this.timers.get(k));
-    this.timers.set(k, setTimeout(() => this.guardarYa(nombre, datos), esperaMs));
+    this.timers.set(
+      k,
+      setTimeout(() => {
+        this.timers.delete(k);
+        this.escribir(k, datos);
+      }, esperaMs),
+    );
   }
 
   guardarYa(nombre: string, datos: unknown): void {
+    const k = this.clave(nombre);
+    clearTimeout(this.timers.get(k));
+    this.timers.delete(k);
+    this.escribir(k, datos);
+  }
+
+  private escribir(k: string, datos: unknown): void {
     try {
       const env: Envoltorio<unknown> = { guardadoEn: Date.now(), datos };
-      localStorage.setItem(this.clave(nombre), JSON.stringify(env));
+      localStorage.setItem(k, JSON.stringify(env));
     } catch {
       /* sin almacenamiento o lleno: se ignora */
     }

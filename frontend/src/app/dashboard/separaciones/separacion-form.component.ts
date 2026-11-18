@@ -98,8 +98,17 @@ export class SeparacionFormComponent implements OnInit {
   ) {}
 
 
-    private base = '';
+  private base = '';
   private salidaLibre = false;
+
+  /** Modal "tienes cambios sin guardar" */
+  confirmarSalida = signal(false);
+
+  /** Respuesta pendiente del guard de ruta (solo existe si el modal lo abrió el guard) */
+  private resolverGuard: ((puedeSalir: boolean) => void) | null = null;
+
+  /** true mientras se descarta: evita que el autoguardado reviva el borrador */
+  private descartando = false;
 
   private instantanea(): string {
     return JSON.stringify({
@@ -129,15 +138,17 @@ export class SeparacionFormComponent implements OnInit {
     return `separacion-nueva-${this.idProyecto}`;
   }
 
-  guardarBorrador(): void {
-    if (!this.idProyecto || !this.borradorRestaurado) return;
-    this.borrador.guardar(this.claveBorrador, {
+  guardarBorrador(ahora = false): void {
+    if (this.descartando || !this.idProyecto || !this.borradorRestaurado) return;
+    const datos = {
       form: this.form,
       idCliente: this.clienteEncontrado()?.id ?? null,
       dniFrenteUrl: this.dniFrenteUrl,
       dniReversoUrl: this.dniReversoUrl,
       voucherUrl: this.voucherUrl,
-    });
+    };
+    if (ahora) this.borrador.guardarYa(this.claveBorrador, datos);
+    else this.borrador.guardar(this.claveBorrador, datos);
   }
 
   private restaurarBorrador(): void {
@@ -391,6 +402,8 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   irACrearClienteNuevo(texto: string): void {
+    this.salidaLibre = true;
+    this.guardarBorrador(true);
     const esNumero = /^\d{6,}$/.test(texto);
     this.router.navigate(['/dashboard/clientes/nuevo'], {
       queryParams: {
@@ -402,6 +415,8 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   irACrearCliente(): void {
+    this.salidaLibre = true;
+    this.guardarBorrador(true);
     this.router.navigate(['/dashboard/clientes/nuevo'], {
       queryParams: {
         documento: this.documentoBusqueda.trim(),
@@ -552,9 +567,54 @@ export class SeparacionFormComponent implements OnInit {
   }
 
   cancelar(): void {
-    this.borrador.borrar(this.claveBorrador);
-    this.salidaLibre = true;
+    // Con cambios: preguntar qué hacer con el borrador
+    if (this.tieneCambiosSinGuardar()) {
+      this.confirmarSalida.set(true);
+      return;
+    }
+    // Sin cambios: salir limpio
+    this.descartarTodo();
+    this.irSalida();
+  }
+
+  /** Lo llama el guard de ruta: abre el modal y espera la decisión */
+  confirmarSalidaGuard(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.resolverGuard = resolve;
+      this.confirmarSalida.set(true);
+    });
+  }
+
+  resolverSalida(accion: 'seguir' | 'guardar' | 'descartar'): void {
+    this.confirmarSalida.set(false);
+    const respuestaGuard = this.resolverGuard;
+    this.resolverGuard = null;
+
+    if (accion === 'seguir') {
+      respuestaGuard?.(false); // el guard cancela la navegación y te quedas aquí
+      return;
+    }
+
+    if (accion === 'guardar') {
+      this.guardarBorrador(true);
+    } else {
+      this.descartarTodo();
+    }
     this.guardarProforma(null);
+
+    this.salidaLibre = true; // para que el guard no vuelva a preguntar
+    if (respuestaGuard) respuestaGuard(true); // continúa hacia donde ibas
+    else this.irSalida(); // venías del botón Cancelar
+  }
+
+  private descartarTodo(): void {
+    this.descartando = true;
+    this.borrador.borrar(this.claveBorrador);
+    this.guardarProforma(null);
+  }
+
+  private irSalida(): void {
+    this.salidaLibre = true;
     this.router.navigate(['/dashboard/separaciones']);
   }
 }

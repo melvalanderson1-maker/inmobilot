@@ -102,7 +102,8 @@ async def crear_separacion(
     if lote.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
         raise _conflicto(f"El lote {lote.codigo} no está libre (estado actual: {lote.estado.value})")
 
-    svc.validar_precio_descontado(lote, payload.precio_descontado, payload.tipo_pago)
+    # Validación de precio deshabilitada: se permite precio mayor o menor al de lista
+    # svc.validar_precio_descontado(lote, payload.precio_descontado, payload.tipo_pago)
 
     cliente = (
         db.query(m.Cliente)

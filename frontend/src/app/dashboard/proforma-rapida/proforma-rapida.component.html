@@ -100,7 +100,7 @@
 
         <div class="pr-fila">
           <div class="pr-campo">
-            <label for="pr-precio">Precio final (S/)</label>
+            <label for="pr-precio">{{ etiquetaPrecioFinal }} (S/)</label>
             <input id="pr-precio" type="number" inputmode="decimal" [(ngModel)]="form.precio_descontado" placeholder="0.00" />
           </div>
           <div class="pr-campo">
@@ -112,7 +112,8 @@
           @if (precioReferencia(); as ref) {
             <small class="pr-ayuda">
               {{ etiquetaPrecioReferencia() }}: S/ {{ ref | number:'1.2-2' }}.
-              @if (descuento !== null && descuento > 0) { Descuento: <strong>S/ {{ descuento | number:'1.2-2' }}</strong>. }
+              @if (descuento !== null && descuento > 0) { Descuento de <strong>S/ {{ descuento | number:'1.2-2' }}</strong> sobre la lista. }
+              @else if (descuento !== null && descuento < 0) { Aumento de <strong>S/ {{ -descuento | number:'1.2-2' }}</strong> sobre la lista. }
               @if (descuento !== 0) { <button type="button" class="pr-link" (click)="aplicarPrecioReferencia()">Restablecer</button> }
             </small>
           } @else {

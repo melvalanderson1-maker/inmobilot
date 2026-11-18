@@ -299,7 +299,7 @@
                 <dd>{{ separacion()!.precio_valido_hasta || '—' }}</dd>
               </div>
               <div class="dato-item">
-                <dt>Precio descontado</dt>
+                <dt>{{ etiquetaPrecioFinal() }}</dt>
                 <dd>
                   @if (separacion()!.precio_descontado) {
                     S/ {{ separacion()!.precio_descontado | number:'1.2-2' }}
@@ -569,7 +569,7 @@
           <input type="date" [(ngModel)]="editarForm.precio_valido_hasta" />
         </div>
         <div class="campo">
-          <label>Precio descontado final (S/)</label>
+          <label>Precio final (S/)</label>
           <input type="number" [(ngModel)]="editarForm.precio_descontado" placeholder="0.00" />
         </div>
         <div class="campo">

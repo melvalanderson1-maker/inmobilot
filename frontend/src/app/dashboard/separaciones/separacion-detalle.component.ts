@@ -692,4 +692,23 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     };
     return mapa[clave];
   }
+
+
+
+    /** "Precio descontado" / "Precio aumentado" / "Precio final" según la lista del tipo de pago */
+  etiquetaPrecioFinal(): string {
+    const sep = this.separacion();
+    const lote = sep?.lote;
+    const precio = Number(sep?.precio_descontado);
+    if (!sep || !lote || !precio) return 'Precio descontado';
+    const v =
+      sep.tipo_pago === 'contado' ? lote.precio_total_contado
+      : sep.tipo_pago === 'credito' ? lote.precio_total_financiado
+      : lote.precio_total_base;
+    const ref = Number(v);
+    if (!v || !Number.isFinite(ref) || ref <= 0) return 'Precio final';
+    if (precio > ref) return 'Precio aumentado';
+    if (precio < ref) return 'Precio descontado';
+    return 'Precio final';
+  }
 }

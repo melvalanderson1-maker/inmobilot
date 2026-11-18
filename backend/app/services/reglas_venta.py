@@ -362,12 +362,16 @@ def evaluar(precio_total, forma_pago, dc: dict | None, lote, precio_pactado=None
     }
 
     es_contado = _es_contado(forma_pago)
+    lista = lote.precio_total_contado if es_contado else (lote.precio_total_financiado or lote.precio_total_base)
     if precio_pactado:
-        # El precio final acordado en la separación es el que manda
-        minimo, origen = precio_pactado, "pactado en la separación"
+        # Un descuento pactado en la separación se respeta como piso.
+        # Un precio pactado MAYOR a la lista no sube el piso: el mínimo sigue siendo la lista.
+        if lista and Decimal(str(precio_pactado)) > Decimal(str(lista)):
+            minimo, origen = lista, "del lote"
+        else:
+            minimo, origen = precio_pactado, "pactado en la separación"
     else:
-        minimo = lote.precio_total_contado if es_contado else (lote.precio_total_financiado or lote.precio_total_base)
-        origen = "del lote"
+        minimo, origen = lista, "del lote"
     if minimo and precio_total < Decimal(str(minimo)):
         motivos.append({
             "codigo": "precio_bajo_minimo",

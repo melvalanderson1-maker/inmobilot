@@ -90,6 +90,32 @@ def _fmt_monto(v) -> str:
     return f"{Decimal(v):,.2f}" if v is not None else "-"
 
 
+
+def _precio_lista(sep, lote):
+    """Precio de lista que corresponde al tipo de pago de la separación."""
+    tipo = getattr(sep.tipo_pago, "value", sep.tipo_pago)
+    if tipo == "contado":
+        return lote.precio_total_contado
+    if tipo == "credito":
+        return lote.precio_total_financiado
+    return lote.precio_total_base
+
+
+def _etiqueta_precio_final(sep, lote) -> str:
+    """Precio descontado / Precio aumentado / Precio final, según lo pactado frente a la lista."""
+    ref = _precio_lista(sep, lote)
+    if sep.precio_descontado is None or not ref:
+        return "Precio final"
+    pactado = Decimal(str(sep.precio_descontado))
+    ref = Decimal(str(ref))
+    if pactado > ref:
+        return "Precio aumentado"
+    if pactado < ref:
+        return "Precio descontado"
+    return "Precio final"
+
+
+
 def construir_datos(sep, proyecto_nombre: str) -> dict:
     cli, lote = sep.cliente, sep.lote
     juridica = cli.tipo_persona == "juridica"
@@ -113,6 +139,7 @@ def construir_datos(sep, proyecto_nombre: str) -> dict:
         "PARTIDA": lote.partida_registral or "-",
         "PROYECTO": f"PROYECTO INMOBILIARIO “{proyecto_nombre.upper()}”",
         "PRECIO_REGULAR": _fmt_monto(lote.precio_total_base),
+        "ETIQUETA_PRECIO": _etiqueta_precio_final(sep, lote),
         "PRECIO_DESCONTADO": _fmt_monto(
             sep.precio_descontado if sep.precio_descontado is not None else lote.precio_total_contado
         ),

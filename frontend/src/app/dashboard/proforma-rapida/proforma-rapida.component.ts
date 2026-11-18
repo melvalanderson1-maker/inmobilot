@@ -153,6 +153,13 @@ export class ProformaRapidaComponent implements OnInit {
     return ref - p;
   }
 
+
+  /** Etiqueta del campo según lo digitado frente al precio de lista */
+  get etiquetaPrecioFinal(): string {
+    const d = this.descuento;
+    if (d === null || d === 0) return 'Precio final';
+    return d > 0 ? 'Precio descontado' : 'Precio aumentado';
+  }
   // -------------------------------------------------------------- cliente --
 
   onClienteElegido(cliente: Cliente): void {
@@ -184,10 +191,6 @@ export class ProformaRapidaComponent implements OnInit {
     if (!this.form.id_lote) return 'Selecciona el lote';
     if (!this.form.precio_valido_hasta) return 'Indica hasta qué fecha es válido el precio';
     if (this.form.precio_valido_hasta < this.hoy()) return 'La validez del precio no puede ser anterior a hoy';
-    const ref = this.precioReferencia();
-    if (this.form.precio_descontado && ref && this.form.precio_descontado > ref) {
-      return `El precio final no puede superar el ${this.etiquetaPrecioReferencia().toLowerCase()}`;
-    }
     return null;
   }
 

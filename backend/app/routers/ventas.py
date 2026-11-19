@@ -299,12 +299,16 @@ async def crear_venta_directa(
 ):
     lote = _lote_para_venta_directa(db, usuario, payload.id_lote)
     evaluacion = _evaluar_lote(lote, None, payload)
-    if evaluacion["motivos"]:
+    omitir_reglas = usuario.rol.clave in ("admin", "gerencia")
+    if evaluacion["motivos"] and not omitir_reglas:
         detalle = "; ".join(mo["mensaje"] for mo in evaluacion["motivos"])
         raise HTTPException(status_code=409, detail=f"Estas condiciones requieren autorización de gerencia: {detalle}")
 
     venta = await _crear_venta(db, usuario, None, lote, payload)
-    aud.registrar(db, usuario, "venta", venta.id, "crear", {"directa": True, "id_lote": lote.id, "precio_total": str(payload.precio_total)})
+    datos_aud = {"directa": True, "id_lote": lote.id, "precio_total": str(payload.precio_total)}
+    if evaluacion["motivos"] and omitir_reglas:
+        datos_aud["reglas_omitidas"] = [mo["mensaje"] for mo in evaluacion["motivos"]]
+    aud.registrar(db, usuario, "venta", venta.id, "crear", datos_aud)
     db.commit()
     return s.VentaOut.desde_venta(venta)
 

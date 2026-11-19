@@ -269,12 +269,7 @@ async def actualizar_separacion(
         if fecha_pv and fecha_pv < fecha_ini:
             raise HTTPException(status_code=422, detail="La validez del precio no puede ser anterior a la fecha inicial")
 
-    if "precio_descontado" in datos or "tipo_pago" in datos or nuevo_lote is not None:
-        svc.validar_precio_descontado(
-            nuevo_lote or sep.lote,
-            datos["precio_descontado"] if "precio_descontado" in datos else sep.precio_descontado,
-            datos["tipo_pago"] if "tipo_pago" in datos else sep.tipo_pago,
-        )
+
 
     cambios = aud.diferencias({c: getattr(sep, c) for c in datos}, datos)
     if cambios:
@@ -536,7 +531,7 @@ async def generar_proforma(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado in svc.ESTADOS_CERRADOS:
+    if sep.estado in svc.ESTADOS_CERRADOS and not svc.PERMITIR_EDITAR_TODO:
         raise _conflicto("La separación ya está cerrada, no se puede generar la proforma")
 
     sep.proforma_url = svc.generar_documento(db, sep, con_clausulas=False)
@@ -553,7 +548,7 @@ async def generar_contrato(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado in svc.ESTADOS_CERRADOS:
+    if sep.estado in svc.ESTADOS_CERRADOS and not svc.PERMITIR_EDITAR_TODO:
         raise _conflicto("La separación ya está cerrada, no se puede generar el contrato")
     if sep.estado in (E.pendiente_caja, E.rechazada):
         raise _conflicto("El contrato se genera una vez que Caja valide el voucher")

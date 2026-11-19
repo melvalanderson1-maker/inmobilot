@@ -9,6 +9,7 @@ import { SocketService } from '../../core/services/socket.service';
 import { AuthService } from '../../core/services/auth.service';
 import { VentaService } from '../../core/services/venta.service';
 import { CobranzaService } from '../../core/services/cobranza.service';
+import { PagoService } from '../../core/services/pago.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -197,6 +198,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     private auth: AuthService,
     private ventaService: VentaService,
     private cobranzaService: CobranzaService,
+    private pagoService: PagoService,
     private toastService: ToastService,
     private route: ActivatedRoute,
     private router: Router
@@ -704,6 +706,10 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       this.cerrarModalVarias();
       return;
     }
+    if (this.modalEditarPagoAbierto()) {
+      this.cerrarEditarPago();
+      return;
+    }
     if (this.modalPagoAbierto()) {
       this.cerrarModalPago();
       return;
@@ -946,6 +952,122 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  // ---- Editar pago ----
+  modalEditarPagoAbierto = signal(false);
+  guardandoEdicionPago = signal(false);
+  subiendoComprobanteEdicion = signal(false);
+  errorEditarPago = signal<string | null>(null);
+  pagoEditando: Pago | null = null;
+  contratoEditPagoId: number | null = null;
+  editarPagoForm = {
+    monto: null as number | null,
+    fecha_pago: '',
+    metodo_pago: 'efectivo',
+    numero_operacion: '',
+    observacion: '',
+    comprobante_url: '',
+  };
+
+  /** Editable mientras no esté aplicado a las cuotas */
+  puedeEditarPago(p: Pago): boolean {
+    const rol = this.auth.usuario()?.rol?.clave ?? '';
+    return (
+      ['admin', 'gerencia', 'supervisor', 'cobranza', 'contabilidad', 'caja'].includes(rol) &&
+      ['pendiente_caja', 'pendiente_facturacion', 'rechazado'].includes(p.estado)
+    );
+  }
+
+  get montoPagoEditable(): boolean {
+    const t = this.pagoEditando?.tipo;
+    return t !== 'amortizacion' && t !== 'cancelacion';
+  }
+
+  abrirEditarPago(idContrato: number, p: Pago): void {
+    this.contratoEditPagoId = idContrato;
+    this.pagoEditando = p;
+    this.editarPagoForm = {
+      monto: Number(p.monto),
+      fecha_pago: String(p.fecha_pago).slice(0, 10),
+      metodo_pago: p.metodo_pago ?? 'efectivo',
+      numero_operacion: p.numero_operacion ?? '',
+      observacion: (p as any).observacion ?? '',
+      comprobante_url: p.comprobante_url ?? '',
+    };
+    this.errorEditarPago.set(null);
+    this.modalEditarPagoAbierto.set(true);
+  }
+
+  cerrarEditarPago(): void {
+    this.modalEditarPagoAbierto.set(false);
+    this.pagoEditando = null;
+  }
+
+  onArchivoEdicionPago(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+      this.errorEditarPago.set('Solo se permiten archivos JPG, PNG o PDF');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      this.errorEditarPago.set('El archivo no debe superar los 8MB');
+      return;
+    }
+    this.errorEditarPago.set(null);
+    this.subiendoComprobanteEdicion.set(true);
+    const formData = new FormData();
+    formData.append('archivo', file);
+    this.contratoService.subirComprobante(formData).subscribe({
+      next: (res) => {
+        this.editarPagoForm.comprobante_url = res.url;
+        this.subiendoComprobanteEdicion.set(false);
+      },
+      error: (err) => {
+        this.subiendoComprobanteEdicion.set(false);
+        this.errorEditarPago.set(err?.error?.detail ?? 'No se pudo subir el comprobante');
+      },
+    });
+  }
+
+  guardarEdicionPago(): void {
+    const p = this.pagoEditando;
+    const f = this.editarPagoForm;
+    if (!p) return;
+    if (this.montoPagoEditable && (!f.monto || f.monto <= 0)) {
+      this.errorEditarPago.set('Indica un monto válido');
+      return;
+    }
+    if (!f.fecha_pago || !f.comprobante_url) {
+      this.errorEditarPago.set('La fecha y el comprobante son obligatorios');
+      return;
+    }
+    this.guardandoEdicionPago.set(true);
+    this.errorEditarPago.set(null);
+    this.pagoService
+      .actualizar(p.id, {
+        ...(this.montoPagoEditable ? { monto: f.monto! } : {}),
+        fecha_pago: f.fecha_pago,
+        metodo_pago: f.metodo_pago,
+        numero_operacion: f.numero_operacion.trim() || null,
+        observacion: f.observacion.trim() || null,
+        comprobante_url: f.comprobante_url,
+      })
+      .subscribe({
+        next: () => {
+          this.guardandoEdicionPago.set(false);
+          this.modalEditarPagoAbierto.set(false);
+          this.toastService.exito('Pago actualizado');
+          if (this.contratoEditPagoId) this.cargarCronograma(this.contratoEditPagoId);
+        },
+        error: (err) => {
+          this.guardandoEdicionPago.set(false);
+          this.errorEditarPago.set(err?.error?.detail ?? 'No se pudo actualizar el pago');
+        },
+      });
+  }
 
   private suscripcionSocket?: Subscription;
   private timerAmort: any;

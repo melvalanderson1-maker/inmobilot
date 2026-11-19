@@ -432,6 +432,7 @@
                       <th>N° op.</th>
                       <th>Comp.</th>
                       <th>Estado</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -453,6 +454,11 @@
                           <span class="chip" [ngClass]="'chip-pago-' + pago.estado" [attr.title]="pago.motivo_rechazo ?? ''">
                             {{ etiquetaPago(pago.estado) }}
                           </span>
+                        </td>
+                        <td data-label="">
+                          @if (puedeEditarPago(pago)) {
+                            <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, pago)">Editar</button>
+                          }
                         </td>
                       </tr>
                     }
@@ -1024,6 +1030,81 @@
           <button type="button" class="btn-secundario" (click)="cerrarModalAmort()">Cancelar</button>
           <button type="button" class="btn-primary" (click)="guardarAmortizacion()" [disabled]="guardandoPago() || !cotizacionVigente">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar amortización' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ============ MODAL: EDITAR PAGO ============ -->
+  @if (modalEditarPagoAbierto()) {
+    <div class="modal-overlay" (click)="cerrarEditarPago()">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Editar pago" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Editar pago</h2>
+          <button type="button" class="btn-cerrar" (click)="cerrarEditarPago()" aria-label="Cerrar">✕</button>
+        </div>
+
+        <div class="modal-body">
+          @if (errorEditarPago()) {
+            <div class="mensaje-error" role="alert">{{ errorEditarPago() }}</div>
+          }
+
+          @if (pagoEditando && pagoEditando.estado !== 'pendiente_caja') {
+            <div class="aviso-info">
+              Este pago está <strong>{{ etiquetaPago(pagoEditando.estado) }}</strong>. Si cambias monto, fecha, método, N° de operación o comprobante, volverá a <strong>Caja</strong> para validarse de nuevo.
+            </div>
+          }
+
+          <div class="campo">
+            <label>Monto (S/)</label>
+            <input [(ngModel)]="editarPagoForm.monto" type="number" inputmode="decimal" [disabled]="!montoPagoEditable" />
+            @if (!montoPagoEditable) {
+              <small class="texto-tenue">El monto de una amortización o cancelación lo calcula el sistema.</small>
+            }
+          </div>
+
+          <div class="campo-doble">
+            <div class="campo">
+              <label>Fecha de pago</label>
+              <input [(ngModel)]="editarPagoForm.fecha_pago" type="date" />
+            </div>
+            <div class="campo">
+              <label>Método de pago</label>
+              <select [(ngModel)]="editarPagoForm.metodo_pago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="deposito">Depósito</option>
+                <option value="tarjeta">Tarjeta</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="campo">
+            <label>N° de operación (opcional)</label>
+            <input [(ngModel)]="editarPagoForm.numero_operacion" type="text" maxlength="60" />
+          </div>
+
+          <div class="campo">
+            <label>Comprobante de pago (JPG, PNG o PDF) *</label>
+            @if (editarPagoForm.comprobante_url) {
+              <a [href]="urlCompleta(editarPagoForm.comprobante_url)" target="_blank" rel="noopener">Ver comprobante actual ↗</a>
+            }
+            <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoEdicionPago($event)" [disabled]="subiendoComprobanteEdicion()" />
+            @if (subiendoComprobanteEdicion()) { <span class="archivo-seleccionado">Subiendo...</span> }
+          </div>
+
+          <div class="campo">
+            <label>Observación (opcional)</label>
+            <textarea [(ngModel)]="editarPagoForm.observacion" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secundario" (click)="cerrarEditarPago()">Cancelar</button>
+          <button type="button" class="btn-primary" (click)="guardarEdicionPago()" [disabled]="guardandoEdicionPago() || subiendoComprobanteEdicion()">
+            {{ guardandoEdicionPago() ? 'Guardando...' : 'Guardar cambios' }}
           </button>
         </div>
       </div>

@@ -22,6 +22,20 @@ export class PagoService {
     return this.api.post<Pago>(`/pagos/${id}/comprobante`, payload);
   }
 
+  actualizar(
+    id: number,
+    payload: {
+      monto?: number;
+      fecha_pago?: string;
+      metodo_pago?: string;
+      numero_operacion?: string | null;
+      comprobante_url?: string;
+      observacion?: string | null;
+    }
+  ) {
+    return this.api.patch<Pago>(`/pagos/${id}`, payload);
+  }
+
   subirArchivo(formData: FormData) {
     return this.api.post<{ url: string }>('/uploads/comprobante', formData);
   }

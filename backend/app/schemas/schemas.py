@@ -614,6 +614,14 @@ class PagoRechazo(BaseModel):
     motivo: str
 
 
+class PagoUpdate(BaseModel):
+    monto: Optional[Decimal] = Field(default=None, gt=0)
+    fecha_pago: Optional[date] = None
+    metodo_pago: Optional[str] = Field(default=None, max_length=40)
+    numero_operacion: Optional[str] = Field(default=None, max_length=60)
+    comprobante_url: Optional[str] = None
+    observacion: Optional[str] = None
+
 class PagoComprobanteIn(BaseModel):
     tipo: str  # boleta | factura | recibo
     numero: str

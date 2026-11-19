@@ -12,6 +12,7 @@ from app.schemas import schemas as s
 from app.services import separacion_service as sep_svc
 from app.services import venta_service as venta_svc
 from app.services import amortizacion_service as amort_svc
+from app.services import auditoria as aud
 from app.sockets import notificar_pago, notificar_pago_registrado
 
 router = APIRouter(prefix="/pagos", tags=["pagos"])
@@ -151,6 +152,73 @@ def listar_pagos(
     if estado:
         query = query.filter(m.Pago.estado == estado)
     return [_a_fila(p) for p in query.order_by(m.Pago.created_at.desc()).limit(300).all()]
+
+
+# ----------------------------------------------------------------- editar --
+
+ROLES_EDITAR_PAGO = ("admin", "gerencia", "supervisor", "cobranza", "contabilidad", "caja")
+ESTADOS_EDITABLES_PAGO = ("pendiente_caja", "pendiente_facturacion", "rechazado")
+# Si cambia alguno de estos, Caja debe volver a validar
+CAMPOS_QUE_REVALIDAN = {"monto", "fecha_pago", "metodo_pago", "numero_operacion", "comprobante_url"}
+
+
+@router.patch("/{id_pago}", response_model=s.PagoOut)
+async def editar_pago(
+    id_pago: int,
+    payload: s.PagoUpdate,
+    usuario: m.Usuario = Depends(require_permiso("ver_pagos")),
+    db: Session = Depends(get_db),
+):
+    if usuario.rol.clave not in ROLES_EDITAR_PAGO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para editar pagos")
+
+    pago = _cargar_pago(db, id_pago, usuario)
+    if pago.estado not in ESTADOS_EDITABLES_PAGO:
+        raise _conflicto("Este pago ya fue aplicado a las cuotas y no se puede editar")
+
+    datos = payload.model_dump(exclude_unset=True)
+    # Obligatorios: no se pueden dejar vacíos
+    for campo in ("monto", "fecha_pago", "comprobante_url"):
+        if campo in datos and datos[campo] is None:
+            datos.pop(campo)
+    if "numero_operacion" in datos and datos["numero_operacion"] is not None:
+        datos["numero_operacion"] = datos["numero_operacion"].strip() or None
+
+    if "monto" in datos and pago.tipo in ("amortizacion", "cancelacion"):
+        raise HTTPException(
+            status_code=422,
+            detail="El monto de una amortización o cancelación lo calcula el sistema y no se puede editar",
+        )
+
+    cambios = aud.diferencias({c: getattr(pago, c) for c in datos}, datos)
+    if not cambios:
+        return pago
+
+    aud.registrar(db, usuario, "pago", pago.id, "editar", {"id_contrato": pago.id_contrato, **cambios})
+    for campo, valor in datos.items():
+        setattr(pago, campo, valor)
+
+    contrato = pago.contrato
+    notifs = []
+    if pago.estado != "pendiente_caja" and CAMPOS_QUE_REVALIDAN & cambios.keys():
+        pago.estado = "pendiente_caja"
+        pago.motivo_rechazo = None
+        pago.validado_por = None
+        pago.fecha_validacion = None
+        destinatarios = sep_svc.usuarios_por_roles(
+            db, contrato.id_empresa, contrato.id_proyecto, ["caja", "admin"], excluir_id=usuario.id
+        )
+        notifs = sep_svc.crear_notificaciones(
+            db, contrato.id_empresa, destinatarios,
+            "pago_pendiente_caja",
+            f"{_concepto(pago)} corregido: validar de nuevo",
+            f"{usuario.nombre} corrigió {_concepto(pago)} de S/ {pago.monto:,.2f} del contrato {contrato.numero_contrato}.",
+            {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "pendiente_caja"},
+        )
+
+    db.commit()
+    await _emitir(pago, contrato, notifs)
+    return pago
 
 
 # ------------------------------------------------------------------- caja --

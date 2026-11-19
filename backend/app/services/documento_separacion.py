@@ -1,6 +1,7 @@
 """Genera el contrato / proforma de separación a partir de la plantilla Word."""
 import io
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -59,13 +60,46 @@ def importe_en_letras(importe: Decimal) -> str:
     return f"{letras} CON {cent:02d}/100 {sufijo}" if cent else f"{letras} {sufijo}"
 
 
+_PATRON_ETIQUETA = re.compile(r"\{\{([A-Za-z0-9_]+)\}\}")
+
+
 def _reemplazar_en_parrafo(p, datos: dict) -> None:
-    for run in p.runs:
-        if "{{" in run.text:
-            texto = run.text
-            for k, v in datos.items():
-                texto = texto.replace("{{" + k + "}}", v)
-            run.text = texto
+    """Reemplaza {{ETIQUETA}} aunque Word la haya partido en varios runs.
+    El valor queda en el primer run de la etiqueta (conserva su formato) y se recorta de los demás."""
+    runs = p.runs
+    if not runs:
+        return
+    textos = [r.text for r in runs]
+    completo = "".join(textos)
+    if "{{" not in completo:
+        return
+
+    # posición (inicio, fin) de cada run dentro del texto completo
+    limites, cursor = [], 0
+    for t in textos:
+        limites.append((cursor, cursor + len(t)))
+        cursor += len(t)
+
+    # de atrás hacia adelante, para que los índices anteriores no se muevan
+    for m in reversed(list(_PATRON_ETIQUETA.finditer(completo))):
+        clave = m.group(1)
+        if clave not in datos:
+            continue  # etiqueta desconocida: se deja visible para detectarla
+        valor = str(datos[clave])
+        ini, fin = m.span()
+        tocados = [i for i, (a, b) in enumerate(limites) if a < fin and b > ini]
+        if not tocados:
+            continue
+        for n, i in enumerate(tocados):
+            a, _ = limites[i]
+            t = textos[i]
+            desde = max(ini, a) - a
+            hasta = min(fin, a + len(t)) - a
+            textos[i] = t[:desde] + (valor if n == 0 else "") + t[hasta:]
+
+    for r, t in zip(runs, textos):
+        if r.text != t:
+            r.text = t
 
 
 def _recorrer_parrafos(doc):

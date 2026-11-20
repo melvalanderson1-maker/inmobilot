@@ -1,6 +1,6 @@
+import asyncio
 import os
 import uuid
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.core.config import settings
@@ -25,19 +25,33 @@ os.makedirs(DIR_MARCA, exist_ok=True)
 os.makedirs(DIR_DOCUMENTOS_LOTE, exist_ok=True)
 
 
+def _escribir_archivo(ruta: str, contenido: bytes) -> None:
+    with open(ruta, "wb") as f:
+        f.write(contenido)
+
+
 async def _guardar_archivo(archivo: UploadFile, extensiones_permitidas: set[str], carpeta: str, subcarpeta: str) -> str:
     extension = os.path.splitext(archivo.filename or "")[1].lower()
     if extension not in extensiones_permitidas:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato no permitido")
 
-    contenido = await archivo.read()
-    if len(contenido) > TAMANO_MAXIMO_MB * 1024 * 1024:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"El archivo supera los {TAMANO_MAXIMO_MB}MB")
+    # Se lee por trozos y se corta apenas supera el límite (no carga todo para luego rechazar)
+    limite = TAMANO_MAXIMO_MB * 1024 * 1024
+    partes: list[bytes] = []
+    total = 0
+    while True:
+        trozo = await archivo.read(1024 * 1024)
+        if not trozo:
+            break
+        total += len(trozo)
+        if total > limite:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"El archivo supera los {TAMANO_MAXIMO_MB}MB")
+        partes.append(trozo)
 
     nombre_unico = f"{uuid.uuid4().hex}{extension}"
     ruta_completa = os.path.join(carpeta, nombre_unico)
-    with open(ruta_completa, "wb") as f:
-        f.write(contenido)
+    # La escritura va en un hilo para no congelar el servidor
+    await asyncio.to_thread(_escribir_archivo, ruta_completa, b"".join(partes))
 
     ruta_relativa = f"/static/{subcarpeta}/{nombre_unico}"
     if settings.PUBLIC_URL_BASE:

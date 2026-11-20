@@ -990,6 +990,8 @@ class VentaClienteIn(BaseModel):
 class PagoPrevioIn(BaseModel):
     monto: Decimal
     fecha: date
+    numero_operacion: Optional[str] = Field(default=None, max_length=50)
+    voucher_url: Optional[str] = Field(default=None, max_length=300)
 
 
 class CuotaPersonalizadaIn(BaseModel):

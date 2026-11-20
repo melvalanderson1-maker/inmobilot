@@ -217,6 +217,21 @@
           }
         </section>
 
+
+        @if (pagosRechazados(ct.id).length > 0) {
+          <section class="mensaje-error" role="alert">
+            <strong>Pagos rechazados por corregir</strong>
+            @for (p of pagosRechazados(ct.id); track p.id) {
+              <div>
+                {{ conceptoPago(p) }} · S/ {{ p.monto }}: {{ p.motivo_rechazo || 'Sin motivo indicado' }}
+                @if (puedeEditarPago(p)) {
+                  <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, p)">Corregir y reenviar</button>
+                }
+              </div>
+            }
+          </section>
+        }
+
         <!-- Acciones de cobranza -->
         @if (puedeGestionarCobranza) {
           <div class="acciones-cobranza">
@@ -238,6 +253,56 @@
         <!-- Cronograma / pagos -->
         @if (ct.forma_pago === 'contado') {
           <p class="texto-tenue">Contrato al contado — no genera cronograma de cuotas.</p>
+
+          <h4 class="titulo-historial">Historial de pagos</h4>
+          @if ((pagosPorContrato()[ct.id] ?? []).length === 0) {
+            <p class="texto-tenue">Todavía no se ha registrado ningún pago.</p>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla-historial">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th>Fecha</th>
+                    <th class="th-derecha">Monto</th>
+                    <th>Método</th>
+                    <th>N° op.</th>
+                    <th>Comp.</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (pago of pagosPorContrato()[ct.id]; track pago.id) {
+                    <tr>
+                      <td data-label="Concepto">{{ conceptoPago(pago) }}</td>
+                      <td data-label="Fecha">{{ pago.fecha_pago }}</td>
+                      <td data-label="Monto" class="num celda-cuota">S/ {{ pago.monto }}</td>
+                      <td data-label="Método" class="capitalizado">{{ pago.metodo_pago ?? '—' }}</td>
+                      <td data-label="N° op.">{{ pago.numero_operacion ?? '—' }}</td>
+                      <td data-label="Comp.">
+                        @if (pago.comprobante_url) {
+                          <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">📎</button>
+                        } @else {
+                          <span class="sin-comprobante">—</span>
+                        }
+                      </td>
+                      <td data-label="Estado">
+                        <span class="chip" [ngClass]="'chip-pago-' + pago.estado" [attr.title]="pago.motivo_rechazo ?? ''">
+                          {{ etiquetaPago(pago.estado) }}
+                        </span>
+                      </td>
+                      <td data-label="">
+                        @if (puedeEditarPago(pago)) {
+                          <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, pago)">{{ pago.estado === 'rechazado' ? 'Corregir' : 'Editar' }}</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         } @else if (cargandoCronograma() === ct.id) {
           <div class="estado-carga estado-carga-sm" role="status">
             <span class="spinner" aria-hidden="true"></span>

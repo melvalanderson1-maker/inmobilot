@@ -373,6 +373,28 @@
                       <span>Fecha</span>
                       <input type="date" [(ngModel)]="pago.fecha" />
                     </label>
+                    <label class="vf-field" style="grid-column: 1 / -1">
+                      <span>N° de operación (opcional)</span>
+                      <input type="text" [(ngModel)]="pago.numero_operacion" autocomplete="off" />
+                    </label>
+                    <div class="vf-field" style="grid-column: 1 / -1">
+                      <span class="vf-label">Voucher del pago</span>
+                      @if (pago.voucher_url) {
+                        <div class="vf-file">
+                          <span class="vf-file-ok" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                          </span>
+                          <a [href]="pago.voucher_url" target="_blank" rel="noopener">Ver voucher subido</a>
+                          <button type="button" class="vf-link" (click)="quitarVoucherPago($index)">Cambiar</button>
+                        </div>
+                      } @else {
+                        <label class="vf-drop" [class.is-loading]="subiendoVoucherPago() === $index">
+                          <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onVoucherPago($event, $index)" [disabled]="subiendoVoucherPago() !== null" hidden />
+                          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V5M7.5 9.5L12 5l4.5 4.5M5 19h14" /></svg>
+                          <span>{{ subiendoVoucherPago() === $index ? 'Subiendo...' : 'Subir voucher (JPG, PNG o PDF, máx. 8 MB)' }}</span>
+                        </label>
+                      }
+                    </div>
                     @if (pagosPrevios.length > 1) {
                       <button type="button" class="vf-icon-btn vf-pago-del" (click)="quitarFilaPago($index)" aria-label="Quitar pago">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>

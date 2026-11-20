@@ -85,6 +85,7 @@
                 }
                 @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
                   <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
+                  <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
                 }
               </td>
             </tr>
@@ -100,8 +101,9 @@
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>Rechazar pago</h2>
       <p class="sub">{{ pagoRechazo()!.concepto }} · S/ {{ pagoRechazo()!.monto | number:'1.2-2' }} · contrato {{ pagoRechazo()!.numero_contrato }}</p>
+      <p class="sub">Rechazo desde <strong>{{ pagoRechazo()!.estado === 'pendiente_facturacion' ? 'Facturación' : 'Caja' }}</strong>. Ventas recibirá el aviso con tu motivo para corregirlo y reenviarlo.</p>
       <div class="campo">
-        <label>Motivo</label>
+        <label>Motivo (obligatorio)</label>
         <textarea rows="3" [(ngModel)]="motivoRechazo" placeholder="Ej: el voucher no coincide con el monto"></textarea>
       </div>
       <div class="pie">

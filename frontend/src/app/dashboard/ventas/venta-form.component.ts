@@ -13,8 +13,15 @@ import { AuthService } from '../../core/services/auth.service';
 import { ClienteBuscadorComponent } from '../../shared/cliente-buscador/cliente-buscador.component';
 
 import { BorradorService } from '../../core/services/borrador.service';
+import { comprimirImagen } from '../../core/utils/comprimir-imagen';
 
 type RolExtra = 'conyuge' | 'copropietario';
+interface PagoPrevio {
+  monto: number | null;
+  fecha: string;
+  numero_operacion: string;
+  voucher_url: string;
+}
 interface CompradorExtra {
   cliente: Cliente;
   rol: RolExtra;
@@ -54,7 +61,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   /** true cuando el usuario cambió el precio a mano (ya no se reemplaza solo al cambiar la forma de pago) */
   precioEditado = false;
 
-  pagosPrevios: { monto: number | null; fecha: string }[] = [{ monto: null, fecha: '' }];
+  pagosPrevios: PagoPrevio[] = [{ monto: null, fecha: '', numero_operacion: '', voucher_url: '' }];
+  subiendoVoucherPago = signal<number | null>(null);
 
   datosCredito = {
     inicial_monto: null as number | null,
@@ -540,19 +548,58 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   agregarPagoSeparacion(): void {
     const sep = this.separacion();
     if (!sep || this.pagoSeparacionAgregado) return;
-    const fila = { monto: this.importeSeparado, fecha: sep.fecha_inicio };
+    const fila: PagoPrevio = {
+      monto: this.importeSeparado,
+      fecha: sep.fecha_inicio,
+      numero_operacion: (sep as any).voucher_numero ?? '',
+      voucher_url: sep.voucher_url || '',
+    };
     const vacia = this.pagosPrevios.findIndex((p) => !p.monto && !p.fecha);
     if (vacia >= 0) this.pagosPrevios[vacia] = fila;
     else this.pagosPrevios.push(fila);
   }
 
   agregarFilaPago(): void {
-    this.pagosPrevios.push({ monto: null, fecha: '' });
+    this.pagosPrevios.push({ monto: null, fecha: '', numero_operacion: '', voucher_url: '' });
   }
 
   quitarFilaPago(index: number): void {
     this.pagosPrevios.splice(index, 1);
-    if (this.pagosPrevios.length === 0) this.pagosPrevios.push({ monto: null, fecha: '' });
+    if (this.pagosPrevios.length === 0) this.pagosPrevios.push({ monto: null, fecha: '', numero_operacion: '', voucher_url: '' });
+  }
+
+
+    async onVoucherPago(event: Event, index: number): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+    this.subiendoVoucherPago.set(index);
+    const formData = new FormData();
+    formData.append('archivo', await comprimirImagen(archivo));
+    this.ventaService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.pagosPrevios[index].voucher_url = res.url;
+        this.subiendoVoucherPago.set(null);
+        this.guardarBorrador();
+      },
+      error: (err) => {
+        this.subiendoVoucherPago.set(null);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el voucher');
+      },
+    });
+  }
+
+  quitarVoucherPago(index: number): void {
+    this.pagosPrevios[index].voucher_url = '';
   }
 
   // ---- Reglas ----
@@ -935,7 +982,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   // ---- Voucher de la inicial (se inserta en el Contrato Preparatorio) ----
 
-  onVoucherInicial(event: Event): void {
+  async onVoucherInicial(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
     input.value = '';
@@ -948,9 +995,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       this.toastService.error('El archivo debe pesar menos de 8MB');
       return;
     }
-    const formData = new FormData();
-    formData.append('archivo', archivo);
     this.subiendoVoucher.set(true);
+    const formData = new FormData();
+    formData.append('archivo', await comprimirImagen(archivo));
     this.ventaService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.datosCredito.voucher_url = res.url;
@@ -972,6 +1019,10 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   mensajeFaltante(): string | null {
     if (!this.precioTotal || this.precioTotal <= 0) return 'Indica el precio total de la venta';
+    if (this.formaPago === 'contado') {
+      const filas = this.pagosPrevios.filter((p) => p.monto && p.fecha);
+      if (filas.some((p) => !p.voucher_url)) return 'Sube el voucher de cada pago registrado';
+    }
     if (this.formaPago === 'credito') {
       const dc = this.datosCredito;
       if (!dc.inicial_monto || !dc.fecha_deposito || !dc.numero_operacion.trim()) {

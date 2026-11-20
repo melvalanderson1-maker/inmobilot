@@ -1,6 +1,7 @@
 import logging
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
@@ -566,7 +567,7 @@ async def generar_documento(
     venta = svc.cargar_venta(db, id_venta, usuario)
     _exigir_inicial_validada(db, venta)
     firmante = payload.firmante if payload else "gerente"
-    pdf_bytes = svc.generar_documento_venta(db, venta, firmante=payload.firmante if payload else "gerente")
+    pdf_bytes = await run_in_threadpool(svc.generar_documento_venta, db, venta, firmante)
     venta.documento_generado_url = svc.guardar_documento_pdf(venta.id, pdf_bytes)
     venta.estado = m.EstadoVentaEnum.documento_generado
     db.commit()

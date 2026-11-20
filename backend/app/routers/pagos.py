@@ -169,10 +169,10 @@ async def editar_pago(
     usuario: m.Usuario = Depends(require_permiso("ver_pagos")),
     db: Session = Depends(get_db),
 ):
-    if usuario.rol.clave not in ROLES_EDITAR_PAGO:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para editar pagos")
-
     pago = _cargar_pago(db, id_pago, usuario)
+    es_responsable = pago.registrado_por == usuario.id or pago.contrato.id_usuario_registro == usuario.id
+    if usuario.rol.clave not in ROLES_EDITAR_PAGO and not es_responsable:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No tienes permiso para editar pagos")
     if pago.estado not in ESTADOS_EDITABLES_PAGO:
         raise _conflicto("Este pago ya fue aplicado a las cuotas y no se puede editar")
 
@@ -192,15 +192,24 @@ async def editar_pago(
 
     cambios = aud.diferencias({c: getattr(pago, c) for c in datos}, datos)
     if not cambios:
+        if pago.estado == "rechazado":
+            raise HTTPException(
+                status_code=422,
+                detail="Corrige lo observado (comprobante, monto, fecha u operación) antes de reenviar",
+            )
         return pago
 
-    aud.registrar(db, usuario, "pago", pago.id, "editar", {"id_contrato": pago.id_contrato, **cambios})
+    accion = "corregir_rechazo" if pago.estado == "rechazado" else "editar"
+    aud.registrar(
+        db, usuario, "pago", pago.id, accion,
+        {"id_contrato": pago.id_contrato, "motivo_rechazo_previo": pago.motivo_rechazo, **cambios},
+    )
     for campo, valor in datos.items():
         setattr(pago, campo, valor)
 
     contrato = pago.contrato
     notifs = []
-    if pago.estado != "pendiente_caja" and CAMPOS_QUE_REVALIDAN & cambios.keys():
+    if pago.estado != "pendiente_caja" and (pago.estado == "rechazado" or CAMPOS_QUE_REVALIDAN & cambios.keys()):
         pago.estado = "pendiente_caja"
         pago.motivo_rechazo = None
         pago.validado_por = None
@@ -238,6 +247,7 @@ async def validar_pago(
     pago.validado_por = usuario.id
     pago.fecha_validacion = sep_svc.ahora_utc()
     pago.motivo_rechazo = None
+    aud.registrar(db, usuario, "pago", pago.id, "validar_caja", {"id_contrato": contrato.id, "monto": str(pago.monto)})
 
     destinatarios = sep_svc.unicos(
         sep_svc.usuarios_por_roles(db, contrato.id_empresa, contrato.id_proyecto, ["facturacion", "admin"])
@@ -256,6 +266,43 @@ async def validar_pago(
     return pago
 
 
+async def _rechazar_comun(
+    db: Session, usuario: m.Usuario, pago: m.Pago, motivo_raw: str,
+    etapa: str, estado_requerido: str, mensaje_estado: str,
+):
+    """Rechazo desde Caja o Facturación: guarda motivo, audita y avisa a quien registró el pago y al ejecutivo del contrato."""
+    if pago.estado != estado_requerido:
+        raise _conflicto(mensaje_estado)
+    motivo = (motivo_raw or "").strip()
+    if not motivo:
+        raise HTTPException(status_code=422, detail="Debes indicar el motivo del rechazo")
+    contrato = pago.contrato
+
+    pago.estado = "rechazado"
+    pago.motivo_rechazo = motivo
+    if etapa == "caja":
+        pago.validado_por = usuario.id
+        pago.fecha_validacion = sep_svc.ahora_utc()
+
+    aud.registrar(
+        db, usuario, "pago", pago.id, f"rechazar_{etapa}",
+        {"id_contrato": contrato.id, "motivo": motivo, "monto": str(pago.monto)},
+    )
+
+    responsables = [u for u in (pago.registrador, contrato.registrador) if u]
+    area = "Caja" if etapa == "caja" else "Facturación"
+    notifs = sep_svc.crear_notificaciones(
+        db, contrato.id_empresa, sep_svc.unicos(responsables, excluir_id=usuario.id),
+        "pago_rechazado",
+        f"{_concepto(pago)} rechazado por {area}: corregir",
+        f"Contrato {contrato.numero_contrato} ({_concepto(pago)}, S/ {pago.monto:,.2f}). Motivo: {motivo}. Corrígelo desde Ventas y contratos.",
+        {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "rechazado"},
+    )
+    db.commit()
+    await _emitir(pago, contrato, notifs)
+    return pago
+
+
 @router.post("/{id_pago}/rechazar", response_model=s.PagoOut)
 async def rechazar_pago(
     id_pago: int,
@@ -264,28 +311,24 @@ async def rechazar_pago(
     db: Session = Depends(get_db),
 ):
     pago = _cargar_pago(db, id_pago, usuario)
-    if pago.estado != "pendiente_caja":
-        raise _conflicto("Este pago no está pendiente de validación de Caja")
-    motivo = payload.motivo.strip()
-    if not motivo:
-        raise HTTPException(status_code=422, detail="Debes indicar el motivo del rechazo")
-    contrato = pago.contrato
-
-    pago.estado = "rechazado"
-    pago.motivo_rechazo = motivo
-    pago.validado_por = usuario.id
-    pago.fecha_validacion = sep_svc.ahora_utc()
-
-    notifs = sep_svc.crear_notificaciones(
-        db, contrato.id_empresa, sep_svc.unicos([pago.registrador], excluir_id=usuario.id),
-        "pago_rechazado",
-        f"{_concepto(pago)} rechazada por Caja",
-        f"Contrato {contrato.numero_contrato} ({_concepto(pago)}, S/ {pago.monto:,.2f}): {motivo}",
-        {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "rechazado"},
+    return await _rechazar_comun(
+        db, usuario, pago, payload.motivo, "caja", "pendiente_caja",
+        "Este pago no está pendiente de validación de Caja",
     )
-    db.commit()
-    await _emitir(pago, contrato, notifs)
-    return pago
+
+
+@router.post("/{id_pago}/rechazar-facturacion", response_model=s.PagoOut)
+async def rechazar_pago_facturacion(
+    id_pago: int,
+    payload: s.PagoRechazo,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    pago = _cargar_pago(db, id_pago, usuario)
+    return await _rechazar_comun(
+        db, usuario, pago, payload.motivo, "facturacion", "pendiente_facturacion",
+        "Este pago no está pendiente de comprobante",
+    )
 
 
 # ------------------------------------------------------------ facturación --
@@ -315,7 +358,10 @@ async def subir_comprobante_pago(
     pago.facturado_por = usuario.id
     pago.fecha_facturacion = sep_svc.ahora_utc()
     pago.estado = "validado"
-
+    aud.registrar(
+        db, usuario, "pago", pago.id, "facturar",
+        {"id_contrato": contrato.id, "tipo": tipo, "numero": numero, "monto": str(pago.monto)},
+    )
     # Recién ahora el pago cuenta en las cuotas (una o varias, en orden). La inicial y el contado no tocan cuotas.
     if pago.tipo in ("cuota", "cuotas") and pago.cuota_desde:
         cuotas = (

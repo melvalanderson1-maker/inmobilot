@@ -12,6 +12,7 @@ import { CobranzaService } from '../../core/services/cobranza.service';
 import { PagoService } from '../../core/services/pago.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { comprimirImagen } from '../../core/utils/comprimir-imagen';
 import {
   Proyecto,
   Lote,
@@ -995,11 +996,16 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   /** Editable mientras no esté aplicado a las cuotas */
   puedeEditarPago(p: Pago): boolean {
+    if (p.estado === 'rechazado') return true; // el servidor valida quién puede corregirlo
     const rol = this.auth.usuario()?.rol?.clave ?? '';
     return (
       ['admin', 'gerencia', 'supervisor', 'cobranza', 'contabilidad', 'caja'].includes(rol) &&
-      ['pendiente_caja', 'pendiente_facturacion', 'rechazado'].includes(p.estado)
+      ['pendiente_caja', 'pendiente_facturacion'].includes(p.estado)
     );
+  }
+
+  pagosRechazados(idContrato: number): Pago[] {
+    return (this.pagosPorContrato()[idContrato] ?? []).filter((p) => p.estado === 'rechazado');
   }
 
   get montoPagoEditable(): boolean {
@@ -1027,7 +1033,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.pagoEditando = null;
   }
 
-  onArchivoEdicionPago(event: Event): void {
+  async onArchivoEdicionPago(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     input.value = '';
@@ -1043,7 +1049,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.errorEditarPago.set(null);
     this.subiendoComprobanteEdicion.set(true);
     const formData = new FormData();
-    formData.append('archivo', file);
+    formData.append('archivo', await comprimirImagen(file));
     this.contratoService.subirComprobante(formData).subscribe({
       next: (res) => {
         this.editarPagoForm.comprobante_url = res.url;
@@ -1083,7 +1089,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
         next: () => {
           this.guardandoEdicionPago.set(false);
           this.modalEditarPagoAbierto.set(false);
-          this.toastService.exito('Pago actualizado');
+          this.toastService.exito(p.estado === 'rechazado' ? 'Pago corregido y reenviado a Caja' : 'Pago actualizado');
           if (this.contratoEditPagoId) this.cargarCronograma(this.contratoEditPagoId);
         },
         error: (err) => {
@@ -1348,7 +1354,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     });
   }
 
-  onArchivoSeleccionado(event: Event): void {
+  async onArchivoSeleccionado(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (!file) {
@@ -1369,7 +1375,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     }
 
     this.errorPago.set(null);
-    this.archivoComprobante = file;
+    this.archivoComprobante = await comprimirImagen(file);
   }
 
   guardarPago(): void {

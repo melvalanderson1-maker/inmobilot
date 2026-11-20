@@ -9,6 +9,7 @@ import { PagoService } from '../../core/services/pago.service';
 import { SocketService } from '../../core/services/socket.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PagoCola, Proyecto } from '../../core/models';
+import { comprimirImagen } from '../../core/utils/comprimir-imagen';
 
 type TabPago = 'todos' | 'pendiente_caja' | 'pendiente_facturacion' | 'validado' | 'rechazado';
 
@@ -175,16 +176,22 @@ export class PagosListComponent implements OnInit, OnDestroy {
   confirmarRechazo(): void {
     const p = this.pagoRechazo();
     if (!p) return;
-    if (!this.motivoRechazo.trim()) {
+    const motivo = this.motivoRechazo.trim();
+    if (!motivo) {
       this.toastService.error('Indica el motivo del rechazo');
       return;
     }
     this.procesando.set(true);
-    this.pagoService.rechazar(p.id, this.motivoRechazo.trim()).subscribe({
+    // Según dónde esté el pago: Caja o Facturación
+    const llamada =
+      p.estado === 'pendiente_facturacion'
+        ? this.pagoService.rechazarFacturacion(p.id, motivo)
+        : this.pagoService.rechazar(p.id, motivo);
+    llamada.subscribe({
       next: () => {
         this.procesando.set(false);
         this.pagoRechazo.set(null);
-        this.toastService.exito('Pago rechazado');
+        this.toastService.exito('Pago rechazado. Se avisó al área de ventas para que lo corrija.');
         this.cargar(true);
       },
       error: (err) => {
@@ -201,13 +208,22 @@ export class PagosListComponent implements OnInit, OnDestroy {
     this.pagoComprobante.set(p);
   }
 
-  onArchivoComprobante(event: Event): void {
+  async onArchivoComprobante(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const archivo = input.files?.[0];
+    input.value = '';
     if (!archivo) return;
-    const formData = new FormData();
-    formData.append('archivo', archivo);
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
     this.subiendoArchivo.set(true);
+    const formData = new FormData();
+    formData.append('archivo', await comprimirImagen(archivo));
     this.pagoService.subirArchivo(formData).subscribe({
       next: (res) => {
         this.comprobanteForm.archivo_url = res.url;
@@ -218,7 +234,6 @@ export class PagosListComponent implements OnInit, OnDestroy {
         this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
       },
     });
-    input.value = '';
   }
 
   confirmarComprobante(): void {

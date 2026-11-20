@@ -18,6 +18,10 @@ export class PagoService {
     return this.api.post<Pago>(`/pagos/${id}/rechazar`, { motivo });
   }
 
+  rechazarFacturacion(id: number, motivo: string) {
+    return this.api.post<Pago>(`/pagos/${id}/rechazar-facturacion`, { motivo });
+  }
+
   subirComprobante(id: number, payload: PagoComprobanteIn) {
     return this.api.post<Pago>(`/pagos/${id}/comprobante`, payload);
   }

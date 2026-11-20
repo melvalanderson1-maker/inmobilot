@@ -522,3 +522,7 @@ tr.inactivo td {
 .btn-card-accion {
   flex: 1;
 }
+
+.firma-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn-firma { cursor: pointer; }
+.firma-ayuda { display: block; margin-top: 6px; color: #6b7280; font-size: 12px; }

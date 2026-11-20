@@ -211,6 +211,7 @@ export interface Rol {
 export interface Usuario {
   id: number;
   nombre: string;
+  tiene_firma?: boolean;
   correo: string;
   telefono?: string;
   id_rol: number;

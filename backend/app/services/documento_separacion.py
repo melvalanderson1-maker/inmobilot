@@ -9,11 +9,18 @@ import uuid
 from decimal import Decimal
 
 import docx
+from docx.oxml.ns import qn
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # backend/app
 RUTA_PLANTILLA = os.path.join(_BASE_DIR, "templates", "plantilla_separacion.docx")
 DIR_DOCUMENTOS = os.path.join(_BASE_DIR, "static", "separaciones")
 os.makedirs(DIR_DOCUMENTOS, exist_ok=True)
+# Firmas de los usuarios: carpeta PRIVADA (fuera de /static, no se sirve por URL)
+DIR_FIRMAS = os.path.join(_BASE_DIR, "storage", "firmas")
+os.makedirs(DIR_FIRMAS, exist_ok=True)
+
+_NS_WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+_NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
 
 _UNIDADES = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ", "ONCE",
              "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE",
@@ -74,13 +81,11 @@ def _reemplazar_en_parrafo(p, datos: dict) -> None:
     if "{{" not in completo:
         return
 
-    # posición (inicio, fin) de cada run dentro del texto completo
     limites, cursor = [], 0
     for t in textos:
         limites.append((cursor, cursor + len(t)))
         cursor += len(t)
 
-    # de atrás hacia adelante, para que los índices anteriores no se muevan
     for m in reversed(list(_PATRON_ETIQUETA.finditer(completo))):
         clave = m.group(1)
         if clave not in datos:
@@ -185,6 +190,55 @@ def construir_datos(sep, proyecto_nombre: str) -> dict:
     }
 
 
+def ruta_firma(usuario) -> str | None:
+    """Ruta en disco de la firma del usuario, o None si no tiene (o el archivo ya no existe)."""
+    nombre = getattr(usuario, "firma_archivo", None) if usuario is not None else None
+    if not nombre:
+        return None
+    ruta = os.path.join(DIR_FIRMAS, os.path.basename(nombre))
+    return ruta if os.path.isfile(ruta) else None
+
+
+def _poner_firma_ejecutivo(doc, ejecutivo) -> None:
+    """Pone la firma del ejecutivo en la imagen 'FIRMA_EJECUTIVO' de la plantilla.
+    Mantiene la proporción de la firma, la centra en horizontal y la apoya sobre la línea de firma. Si el ejecutivo no tiene firma,
+    la imagen se quita: NUNCA queda la firma de otra persona."""
+    ancla = None
+    for dibujo in doc.element.body.iter(qn("w:drawing")):
+        props = dibujo.find(f".//{{{_NS_WP}}}docPr")
+        if props is not None and props.get("name") == "FIRMA_EJECUTIVO":
+            ancla = dibujo
+            break
+    if ancla is None:
+        return
+
+    blip = ancla.find(f".//{{{_NS_A}}}blip")
+    rid_viejo = blip.get(qn("r:embed"))
+    ruta = ruta_firma(ejecutivo)
+
+    if ruta is None:
+        ancla.getparent().remove(ancla)
+        doc.part.drop_rel(rid_viejo)
+        return
+
+    rid_nuevo, img = doc.part.get_or_add_image(ruta)
+    blip.set(qn("r:embed"), rid_nuevo)
+    doc.part.drop_rel(rid_viejo)
+
+    extent = ancla.find(f".//{{{_NS_WP}}}extent")
+    ext_pic = ancla.find(f".//{{{_NS_A}}}xfrm/{{{_NS_A}}}ext")
+    caja_w, caja_h = int(extent.get("cx")), int(extent.get("cy"))
+    escala = min(caja_w / img.px_width, caja_h / img.px_height)
+    nuevo_w, nuevo_h = int(img.px_width * escala), int(img.px_height * escala)
+    for el in (extent, ext_pic):
+        el.set("cx", str(nuevo_w))
+        el.set("cy", str(nuevo_h))
+    for tag, delta in (("positionH", (caja_w - nuevo_w) // 2), ("positionV", caja_h - nuevo_h)):
+        off = ancla.find(f".//{{{_NS_WP}}}{tag}/{{{_NS_WP}}}posOffset")
+        if off is not None:
+            off.text = str(int(off.text) + delta)
+
+
 def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
     doc = docx.Document(RUTA_PLANTILLA)
     datos = construir_datos(sep, proyecto_nombre)
@@ -197,6 +251,7 @@ def generar_docx(sep, proyecto_nombre: str, con_clausulas: bool) -> bytes:
         datos["FECHA_LIMITE"] = datos["PRECIO_VALIDO_HASTA"]
     for p in _recorrer_parrafos(doc):
         _reemplazar_en_parrafo(p, datos)
+    _poner_firma_ejecutivo(doc, sep.ejecutivo)
 
     if not con_clausulas:
         tabla = doc.tables[0]

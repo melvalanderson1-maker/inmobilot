@@ -198,6 +198,7 @@ class Usuario(Base):
     correo = Column(String(200), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     telefono = Column(String(20))
+    firma_archivo = Column(String(255), nullable=True)
     whatsapp_id = Column(String(50))
     id_rol = Column(Integer, ForeignKey("roles.id"), nullable=False)
     id_empresa = Column(Integer, ForeignKey("empresas.id", ondelete="CASCADE"))

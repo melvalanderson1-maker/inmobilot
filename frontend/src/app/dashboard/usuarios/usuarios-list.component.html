@@ -186,6 +186,27 @@
           </div>
 
           <div class="campo">
+            <label>Firma (sale en proformas y contratos de separación)</label>
+            @if (editando(); as ed) {
+              <div class="firma-box">
+                <span class="chip" [class.chip-activo]="ed.tiene_firma" [class.chip-inactivo]="!ed.tiene_firma">
+                  {{ ed.tiene_firma ? 'Firma cargada' : 'Sin firma' }}
+                </span>
+                <label class="btn-secundario btn-firma">
+                  {{ subiendoFirma() ? 'Subiendo...' : (ed.tiene_firma ? 'Reemplazar firma' : 'Subir firma') }}
+                  <input type="file" accept="image/png,image/jpeg" (change)="onFirmaSeleccionada($event)" [disabled]="subiendoFirma()" hidden />
+                </label>
+                @if (ed.tiene_firma) {
+                  <button type="button" class="btn-peligro-outline" (click)="eliminarFirma()" [disabled]="subiendoFirma()">Quitar</button>
+                }
+              </div>
+              <small class="firma-ayuda">PNG con fondo transparente (ideal) o JPG. Máximo 2 MB.</small>
+            } @else {
+              <small class="firma-ayuda">Guarda el usuario primero; luego edítalo para cargar su firma.</small>
+            }
+          </div>
+
+          <div class="campo">
             <label>Proyectos asignados</label>
             <div class="proyectos-grid">
               @for (p of proyectosDisponibles(); track p.id) {

@@ -738,6 +738,7 @@ class UsuarioOut(ORMBase):
     nombre: str
     correo: EmailStr
     telefono: Optional[str] = None
+    tiene_firma: bool = False
     id_rol: int
     rol: RolOut
     id_empresa: Optional[int] = None
@@ -752,6 +753,7 @@ class UsuarioOut(ORMBase):
             nombre=usuario.nombre,
             correo=usuario.correo,
             telefono=usuario.telefono,
+            tiene_firma=bool(usuario.firma_archivo),
             id_rol=usuario.id_rol,
             rol=RolOut.model_validate(usuario.rol),
             id_empresa=usuario.id_empresa,

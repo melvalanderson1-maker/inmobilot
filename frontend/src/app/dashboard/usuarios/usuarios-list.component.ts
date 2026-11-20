@@ -22,6 +22,7 @@ export class UsuariosListComponent implements OnInit {
   modalAbierto = signal(false);
   editando = signal<Usuario | null>(null);
   guardando = signal(false);
+  subiendoFirma = signal(false);
   error = signal<string | null>(null);
 
   nombre = '';
@@ -152,6 +153,57 @@ export class UsuariosListComponent implements OnInit {
         },
       });
     }
+  }
+
+  onFirmaSeleccionada(event: Event): void {
+    const usuario = this.editando();
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!usuario || !archivo) return;
+
+    if (!['image/png', 'image/jpeg'].includes(archivo.type)) {
+      this.error.set('La firma debe ser una imagen PNG o JPG');
+      return;
+    }
+    if (archivo.size > 2 * 1024 * 1024) {
+      this.error.set('La firma debe pesar menos de 2 MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    this.error.set(null);
+    this.subiendoFirma.set(true);
+    this.api.post<Usuario>(`/usuarios/${usuario.id}/firma`, formData).subscribe({
+      next: (res) => {
+        this.subiendoFirma.set(false);
+        this.editando.set(res);
+        this.cargarUsuarios();
+      },
+      error: (err) => {
+        this.subiendoFirma.set(false);
+        this.error.set(err?.error?.detail ?? 'No se pudo subir la firma');
+      },
+    });
+  }
+
+  eliminarFirma(): void {
+    const usuario = this.editando();
+    if (!usuario || !confirm(`¿Quitar la firma de ${usuario.nombre}?`)) return;
+    this.error.set(null);
+    this.subiendoFirma.set(true);
+    this.api.delete<Usuario>(`/usuarios/${usuario.id}/firma`).subscribe({
+      next: (res) => {
+        this.subiendoFirma.set(false);
+        this.editando.set(res);
+        this.cargarUsuarios();
+      },
+      error: (err) => {
+        this.subiendoFirma.set(false);
+        this.error.set(err?.error?.detail ?? 'No se pudo quitar la firma');
+      },
+    });
   }
 
   desactivar(usuario: Usuario): void {

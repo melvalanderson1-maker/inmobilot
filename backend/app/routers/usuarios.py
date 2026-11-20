@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import uuid
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -6,9 +9,22 @@ from app.core.security import hash_password
 from app.deps import require_modulo, require_roles, get_current_user
 from app.models import models as m
 from app.schemas import schemas as s
+from app.services.documento_separacion import DIR_FIRMAS
 from app.sockets import notificar_actualizacion_proyectos
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
+
+MAX_FIRMA_BYTES = 2 * 1024 * 1024
+_FIRMAS_VALIDAS = ((b"\x89PNG\r\n\x1a\n", "png"), (b"\xff\xd8\xff", "jpg"))  # por contenido real, no por extensión
+
+
+def _borrar_archivo_firma(nombre: str | None) -> None:
+    if not nombre:
+        return
+    try:
+        os.remove(os.path.join(DIR_FIRMAS, os.path.basename(nombre)))
+    except FileNotFoundError:
+        pass
 
 
 @router.get("", response_model=list[s.UsuarioOut])
@@ -135,3 +151,52 @@ def listar_roles(
     return db.query(m.Rol).filter(
         (m.Rol.id_empresa == usuario.id_empresa) | (m.Rol.id_empresa.is_(None))
     ).all()
+
+
+@router.post("/{id_usuario}/firma", response_model=s.UsuarioOut)
+async def subir_firma(
+    id_usuario: int,
+    archivo: UploadFile = File(...),
+    usuario: m.Usuario = Depends(require_roles("admin", "gerencia")),
+    db: Session = Depends(get_db),
+):
+    """Carga (o reemplaza) la firma que saldrá en las proformas y contratos de separación de este usuario."""
+    obj = db.query(m.Usuario).filter(m.Usuario.id == id_usuario, m.Usuario.id_empresa == usuario.id_empresa).first()
+    if not obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    contenido = await archivo.read(MAX_FIRMA_BYTES + 1)
+    if len(contenido) > MAX_FIRMA_BYTES:
+        raise HTTPException(status_code=422, detail="La firma debe pesar menos de 2 MB")
+    extension = next((ext for magic, ext in _FIRMAS_VALIDAS if contenido.startswith(magic)), None)
+    if not extension:
+        raise HTTPException(status_code=422, detail="La firma debe ser una imagen PNG o JPG")
+
+    nombre = f"firma_{obj.id}_{uuid.uuid4().hex[:8]}.{extension}"
+    with open(os.path.join(DIR_FIRMAS, nombre), "wb") as f:
+        f.write(contenido)
+
+    anterior = obj.firma_archivo
+    obj.firma_archivo = nombre
+    db.commit()
+    _borrar_archivo_firma(anterior)
+    db.refresh(obj)
+    return s.UsuarioOut.desde_usuario(obj)
+
+
+@router.delete("/{id_usuario}/firma", response_model=s.UsuarioOut)
+def eliminar_firma(
+    id_usuario: int,
+    usuario: m.Usuario = Depends(require_roles("admin", "gerencia")),
+    db: Session = Depends(get_db),
+):
+    obj = db.query(m.Usuario).filter(m.Usuario.id == id_usuario, m.Usuario.id_empresa == usuario.id_empresa).first()
+    if not obj:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+
+    anterior = obj.firma_archivo
+    obj.firma_archivo = None
+    db.commit()
+    _borrar_archivo_firma(anterior)
+    db.refresh(obj)
+    return s.UsuarioOut.desde_usuario(obj)

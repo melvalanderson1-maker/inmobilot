@@ -577,6 +577,7 @@ class CronogramaOut(ORMBase):
 class PagoCreate(BaseModel):
     id_cuota: Optional[int] = None
     cantidad_cuotas: Optional[int] = Field(default=None, ge=1, le=60)  # pagar las N primeras cuotas pendientes
+    abono_libre: bool = False  # el monto se reparte solo en cascada entre las cuotas pendientes (permite pagos parciales)
     monto: Decimal
     fecha_pago: date
     metodo_pago: Optional[str] = None

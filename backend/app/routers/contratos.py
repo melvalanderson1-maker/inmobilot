@@ -547,6 +547,65 @@ async def registrar_pago(
             cuota_hasta = cot["_cubiertas"][-1].numero_cuota
             d_, h_ = cot["cuotas_cubiertas"][0], cot["cuotas_cubiertas"][-1]
             concepto = f"{'Cuota ' + str(d_) if d_ == h_ else 'Cuotas ' + str(d_) + ' a ' + str(h_)} + {concepto}"
+    elif payload.abono_libre:
+        # ---- Abono libre: el monto se reparte en cascada entre las cuotas pendientes, en orden ----
+        if payload.id_cuota or payload.cantidad_cuotas:
+            raise HTTPException(status_code=422, detail="El abono se reparte solo: no indiques cuota ni cantidad de cuotas")
+        if en_proceso:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya hay un pago en Caja o Facturación. Espera a que se aplique antes de registrar otro abono",
+            )
+        pendientes = (
+            db.query(m.CronogramaPago)
+            .filter(
+                m.CronogramaPago.id_contrato == id_contrato,
+                m.CronogramaPago.requiere_pago.is_(True),
+                m.CronogramaPago.estado != m.EstadoCuotaEnum.pagada,
+            )
+            .order_by(m.CronogramaPago.numero_cuota)
+            .all()
+        )
+        if not pendientes:
+            raise HTTPException(status_code=409, detail="No hay cuotas pendientes en este contrato")
+
+        if contrato.tiene_interes:
+            # Con interés: solo cuotas vencidas + la próxima. Adelantar capital se hace con "Amortizar capital".
+            n_vencidas = sum(1 for q in pendientes if q.fecha_pago_programada <= payload.fecha_pago)
+            elegibles = pendientes[: n_vencidas + 1]
+        else:
+            elegibles = pendientes
+
+        total_falta = sum((q.monto_cuota - (q.monto_pagado or Decimal("0")) for q in elegibles), Decimal("0"))
+        if payload.monto > total_falta:
+            extra = (
+                " Para adelantar capital usa «Amortizar capital»; para liquidar todo usa «Cancelar crédito»."
+                if contrato.tiene_interes
+                else " Para liquidar todo usa «Cancelar crédito»."
+            )
+            raise HTTPException(
+                status_code=409,
+                detail=f"El abono (S/ {payload.monto:,.2f}) supera lo que se puede cubrir ahora (S/ {total_falta:,.2f}).{extra}",
+            )
+
+        restante = payload.monto
+        tocadas = []
+        for q in elegibles:
+            if restante <= 0:
+                break
+            falta_q = q.monto_cuota - (q.monto_pagado or Decimal("0"))
+            restante -= min(restante, falta_q)
+            tocadas.append(q)
+
+        cuota_desde, cuota_hasta = tocadas[0].numero_cuota, tocadas[-1].numero_cuota
+        d_ = _n_pago(db, id_contrato, cuota_desde)
+        h_ = _n_pago(db, id_contrato, cuota_hasta)
+        if len(tocadas) == 1:
+            id_cuota = tocadas[0].id
+            concepto = f"Abono a la cuota {d_}"
+        else:
+            tipo = "cuotas"
+            concepto = f"Abono a las cuotas {d_} a {h_}"
     elif payload.cantidad_cuotas:
         # ---- Varias cuotas: las N primeras pendientes, en orden ----
         if en_proceso:

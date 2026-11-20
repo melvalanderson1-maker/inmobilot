@@ -866,7 +866,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
   // ---- Pagar varias cuotas ----
   modalVariasAbierto = signal(false);
-  cuotasAPagar: number | null = null;
+  montoAbono: number | null = null;
 
   pendientesDe(idContrato: number): CronogramaCuota[] {
     return (this.cronogramaPorContrato()[idContrato] ?? [])
@@ -874,24 +874,42 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       .sort((a, b) => a.numero_cuota - b.numero_cuota);
   }
 
-  get seleccionVarias(): { cuotas: CronogramaCuota[]; total: number; desde: number; hasta: number } | null {
-    const id = this.contratoDrawer()?.id;
-    const n = Number(this.cuotasAPagar) || 0;
-    if (!id || n < 1) return null;
-    const cuotas = this.pendientesDe(id).slice(0, n);
-    if (cuotas.length === 0) return null;
-    const total = cuotas.reduce((a, c) => a + (Number(c.monto_cuota) - Number(c.monto_pagado ?? 0)), 0);
-    return {
-      cuotas,
-      total,
-      desde: cuotas[0].numero_pago ?? cuotas[0].numero_cuota,
-      hasta: cuotas[cuotas.length - 1].numero_pago ?? cuotas[cuotas.length - 1].numero_cuota,
-    };
+  /** Reparte el monto escrito entre las cuotas pendientes, igual que lo hace el servidor */
+  get repartoAbono(): {
+    filas: { numero: number; vence: string; falta: number; aplica: number; queda: number }[];
+    sobrante: number;
+    maxAbono: number;
+  } | null {
+    const ct = this.contratoDrawer();
+    if (!ct) return null;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const pend = this.pendientesDe(ct.id);
+    const nVenc = pend.filter((c) => String(c.fecha_pago_programada).slice(0, 10) <= this.fechaPago).length;
+    const elegibles = ct.tiene_interes ? pend.slice(0, nVenc + 1) : pend;
+    const faltaDe = (c: CronogramaCuota) => r2(Number(c.monto_cuota) - Number(c.monto_pagado ?? 0));
+    const maxAbono = r2(elegibles.reduce((a, c) => a + faltaDe(c), 0));
+
+    let restante = r2(Number(this.montoAbono) || 0);
+    const filas: { numero: number; vence: string; falta: number; aplica: number; queda: number }[] = [];
+    for (const c of elegibles) {
+      if (restante <= 0) break;
+      const falta = faltaDe(c);
+      const aplica = Math.min(restante, falta);
+      restante = r2(restante - aplica);
+      filas.push({
+        numero: c.numero_pago ?? c.numero_cuota,
+        vence: c.fecha_pago_programada,
+        falta,
+        aplica,
+        queda: r2(falta - aplica),
+      });
+    }
+    return { filas, sobrante: restante, maxAbono };
   }
 
   abrirPagarVarias(idContrato: number): void {
     this.contratoPagoId = idContrato;
-    this.cuotasAPagar = Math.min(2, this.pendientesDe(idContrato).length);
+    this.montoAbono = null;
     this.fechaPago = new Date().toISOString().slice(0, 10);
     this.metodoPago = 'transferencia';
     this.numeroOperacion = '';
@@ -906,9 +924,15 @@ export class ContratosListComponent implements OnInit, OnDestroy {
   }
 
   guardarPagoVarias(): void {
-    const sel = this.seleccionVarias;
-    if (!this.contratoPagoId || !sel) {
-      this.errorPago.set('Indica cuántas cuotas va a pagar');
+    const rep = this.repartoAbono;
+    if (!this.contratoPagoId || !rep || !this.montoAbono || this.montoAbono <= 0 || rep.filas.length === 0) {
+      this.errorPago.set('Indica el monto del abono');
+      return;
+    }
+    if (rep.sobrante > 0) {
+      this.errorPago.set(
+        `El abono supera lo que se puede cubrir ahora (S/ ${rep.maxAbono.toFixed(2)}). Para adelantar capital usa «Amortizar capital»`
+      );
       return;
     }
     if (!this.archivoComprobante) {
@@ -924,8 +948,8 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     this.contratoService.subirComprobante(formData).subscribe({
       next: (res) => {
         const payload: PagoCreate = {
-          cantidad_cuotas: sel.cuotas.length,
-          monto: Math.round(sel.total * 100) / 100,
+          abono_libre: true,
+          monto: Math.round(this.montoAbono! * 100) / 100,
           fecha_pago: this.fechaPago,
           metodo_pago: this.metodoPago,
           numero_operacion: this.numeroOperacion || undefined,

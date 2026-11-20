@@ -318,7 +318,7 @@
               <div class="acciones-pago">
                 @if (pendientesDe(ct.id).length > 1) {
                   <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)"
-                          title="Paga las cuotas tal como están en el cronograma (no cambia fechas ni montos)">Adelantar cuotas</button>
+                          title="Abona cualquier monto: se aplica a la cuota más antigua y el resto a la siguiente (no cambia fechas ni montos)">Registrar abono</button>
                   @if (ct.tiene_interes) {
                     @if (amortizacionEnProceso(ct.id)) {
                       <span class="chip chip-pago-pendiente_caja">Amortización en validación</span>
@@ -737,7 +737,7 @@
     <div class="modal-overlay" (click)="cerrarModalVarias()">
       <div class="modal" role="dialog" aria-modal="true" aria-label="Pagar varias cuotas" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h2>Pagar varias cuotas</h2>
+          <h2>Registrar abono</h2>
           <button type="button" class="btn-cerrar" (click)="cerrarModalVarias()" aria-label="Cerrar">✕</button>
         </div>
         <div class="modal-body">
@@ -746,20 +746,49 @@
           }
 
           <div class="campo">
-            <label>¿Cuántas cuotas va a pagar? (desde la primera pendiente)</label>
-            <input [(ngModel)]="cuotasAPagar" type="number" min="1" [max]="contratoDrawer() ? pendientesDe(contratoDrawer()!.id).length : 1" />
+            <label>Monto del abono (S/)</label>
+            <input [(ngModel)]="montoAbono" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" />
+            @if (repartoAbono; as rep) {
+              <small class="texto-tenue">Máximo que se puede abonar ahora: S/ {{ rep.maxAbono | number:'1.2-2' }}</small>
+            }
           </div>
 
-          @if (seleccionVarias; as sel) {
-            <div class="cuota-resumen">
-              <div><span class="etiqueta-mini">Cuotas</span><span class="cuota-resumen-valor">{{ sel.desde }} a {{ sel.hasta }}</span></div>
-              <div><span class="etiqueta-mini">Cantidad</span><span class="cuota-resumen-valor">{{ sel.cuotas.length }}</span></div>
-              <div><span class="etiqueta-mini">Total a pagar</span><span class="cuota-resumen-valor">S/ {{ sel.total.toFixed(2) }}</span></div>
-            </div>
+          @if (repartoAbono; as rep) {
+            @if (rep.filas.length > 0) {
+              <div class="tabla-scroll">
+                <table class="tabla-cronograma tabla-amort">
+                  <thead>
+                    <tr>
+                      <th>Cuota</th>
+                      <th>Vence</th>
+                      <th class="th-derecha">Falta</th>
+                      <th class="th-derecha">Se aplica</th>
+                      <th class="th-derecha">Queda</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of rep.filas; track f.numero) {
+                      <tr>
+                        <td data-label="Cuota" class="celda-num">{{ f.numero }}</td>
+                        <td data-label="Vence">{{ fmtFecha(f.vence) }}</td>
+                        <td data-label="Falta" class="num">S/ {{ f.falta | number:'1.2-2' }}</td>
+                        <td data-label="Se aplica" class="num celda-cuota">S/ {{ f.aplica | number:'1.2-2' }}</td>
+                        <td data-label="Queda" class="num">{{ f.queda > 0 ? 'S/ ' + (f.queda | number:'1.2-2') + ' (parcial)' : 'Pagada' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+            @if (rep.sobrante > 0) {
+              <div class="mensaje-error" role="alert">
+                El abono supera lo que se puede cubrir ahora. Para adelantar capital usa «Amortizar capital»; para liquidar todo, «Cancelar crédito».
+              </div>
+            }
           }
 
           <div class="aviso-info">
-            Es un solo depósito. Pasa a <strong>Caja</strong> y luego a <strong>Facturación</strong>, y al subir el comprobante se aplica a esas cuotas en orden. El monto es la suma de las cuotas programadas.
+            El abono se aplica a la cuota pendiente más antigua y lo que sobre pasa a la siguiente. Una cuota cubierta a medias queda <strong>parcial</strong> y se completa con el siguiente abono. Pasa a <strong>Caja</strong>, luego a <strong>Facturación</strong>, y se aplica al subir el comprobante. No cambia fechas, montos ni intereses del cronograma.
           </div>
 
           <div class="campo-doble">
@@ -797,7 +826,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn-secundario" (click)="cerrarModalVarias()">Cancelar</button>
-          <button type="button" class="btn-primary" (click)="guardarPagoVarias()" [disabled]="guardandoPago() || !seleccionVarias">
+          <button type="button" class="btn-primary" (click)="guardarPagoVarias()" [disabled]="guardandoPago() || !repartoAbono?.filas?.length || (repartoAbono?.sobrante ?? 0) > 0">
             {{ guardandoPago() ? 'Subiendo y guardando...' : 'Confirmar pago' }}
           </button>
         </div>

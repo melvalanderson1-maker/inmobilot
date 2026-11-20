@@ -139,10 +139,18 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
     else:
         cuota = round(S / anios, 2)
 
-    fechas_pago = [_sumar_meses_fin_de_mes(fecha_base, 12 * (k + 1)) for k in range(anios)]
-    fecha = _fin_de_mes(fecha_base.year, fecha_base.month)
-    if fecha <= fecha_base:
-        fecha = _sumar_meses_fin_de_mes(fecha_base, 1)
+    sin_interes = tea <= 0
+    n_mes = 1
+    if sin_interes:
+        # Sin interés: aniversarios exactos del día de inicio (06/08/2026 -> 06/08/2027 ...)
+        fechas_pago = [fecha_base + relativedelta(months=12 * (k + 1)) for k in range(anios)]
+        fecha = fecha_base + relativedelta(months=1)
+    else:
+        # Con interés: método del Excel de Gruselva (fin de mes)
+        fechas_pago = [_sumar_meses_fin_de_mes(fecha_base, 12 * (k + 1)) for k in range(anios)]
+        fecha = _fin_de_mes(fecha_base.year, fecha_base.month)
+        if fecha <= fecha_base:
+            fecha = _sumar_meses_fin_de_mes(fecha_base, 1)
 
     filas: list[dict] = []
     capital = S
@@ -183,7 +191,11 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
             primero = False
         filas.append(fila)
         previa = fecha
-        fecha = _sumar_meses_fin_de_mes(fecha, 1)
+        if sin_interes:
+            n_mes += 1
+            fecha = fecha_base + relativedelta(months=n_mes)
+        else:
+            fecha = _sumar_meses_fin_de_mes(fecha, 1)
     resultado = _Filas(filas)
     resultado.interes_exacto = _d(interes_exacto)
     return resultado

@@ -406,6 +406,7 @@ export interface CronogramaCuota {
 
 
 export interface PagoCreate {
+  abono_libre?: boolean;
   id_cuota?: number;
   cantidad_cuotas?: number;
   monto: number;

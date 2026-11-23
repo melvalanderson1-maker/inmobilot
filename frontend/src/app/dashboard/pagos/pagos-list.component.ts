@@ -114,11 +114,14 @@ export class PagosListComponent implements OnInit, OnDestroy {
     if (!silencioso) this.cargando.set(true);
     this.pagoService.listar(this.idProyecto).subscribe({
       next: (res) => {
-        console.log('pagos recibidos:', Array.isArray(res), res?.length, res);
         this.pagos.set(res);
         this.cargando.set(false);
       },
-      error: () => this.cargando.set(false),
+      error: (err) => {
+        this.cargando.set(false);
+        console.error('Error al cargar pagos', err);
+        this.toastService.error(err?.error?.detail ?? 'No se pudieron cargar los pagos');
+      },
     });
   }
 

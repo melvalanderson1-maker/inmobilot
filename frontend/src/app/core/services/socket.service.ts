@@ -28,9 +28,16 @@ export class SocketService implements OnDestroy {
     this.modo = 'privado';
     this.socket = io(this.cfg.apiUrl(), {
       path: '/socket.io',
-      auth: { token },
+      // Función: en cada (re)conexión envía el token vigente
+      auth: (cb) => cb({ token: this.auth.token() ?? '' }),
       transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
+
+    // Tras una reconexión pudieron perderse eventos: las pantallas deben recargar
+    this.socket.io.on('reconnect', () => this.eventos$.next({ evento: 'socket:conectado', data: null }));
 
     this.escucharEventos();
   }

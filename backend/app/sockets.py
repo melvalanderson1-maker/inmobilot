@@ -111,13 +111,18 @@ async def notificar_nuevo_contrato(contrato_dict: dict, id_proyecto: int, id_emp
 
 async def notificar_pago_registrado(id_contrato: int, id_proyecto: int, id_empresa: int):
     await emitir_evento("contrato:pago_registrado", {"id_contrato": id_contrato}, room=f"proyecto:{id_proyecto}")
+    await emitir_evento("contrato:pago_registrado", {"id_contrato": id_contrato}, room=f"empresa:{id_empresa}")
     await emitir_evento("notificacion:nueva", {"id_contrato": id_contrato}, room=f"empresa:{id_empresa}")
 
 
-async def notificar_separacion(evento: str, separacion_dict: dict, id_proyecto: int, notificaciones: list[dict]):
-    """Evento de separación a la sala del proyecto (solo datos mínimos, sin DNI ni montos)
+async def notificar_separacion(
+    evento: str, separacion_dict: dict, id_proyecto: int, notificaciones: list[dict], id_empresa: int | None = None
+):
+    """Evento de separación a la sala del proyecto y a la de la empresa (solo datos mínimos, sin DNI ni montos)
     + notificación privada a cada destinatario (sala usuario:{id})."""
     await emitir_evento(evento, separacion_dict, room=f"proyecto:{id_proyecto}")
+    if id_empresa:
+        await emitir_evento(evento, separacion_dict, room=f"empresa:{id_empresa}")
     for notif in notificaciones:
         await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
 
@@ -133,7 +138,11 @@ async def notificar_usuarios(notificaciones: list[dict]):
         await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
 
 
-async def notificar_pago(evento: str, pago_dict: dict, id_proyecto: int, notificaciones: list[dict]):
-    """Evento de pago a la sala del proyecto (datos mínimos) + aviso privado a los destinatarios."""
+async def notificar_pago(
+    evento: str, pago_dict: dict, id_proyecto: int, notificaciones: list[dict], id_empresa: int | None = None
+):
+    """Evento de pago a la sala del proyecto y a la de la empresa (datos mínimos) + aviso privado a los destinatarios."""
     await emitir_evento(evento, pago_dict, room=f"proyecto:{id_proyecto}")
+    if id_empresa:
+        await emitir_evento(evento, pago_dict, room=f"empresa:{id_empresa}")
     await notificar_usuarios(notificaciones)

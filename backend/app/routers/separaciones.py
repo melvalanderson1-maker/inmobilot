@@ -36,6 +36,7 @@ async def _emitir(db: Session, sep: m.Separacion, usuario: m.Usuario, notifs: li
         svc.resumen_socket(sep),
         sep.id_proyecto,
         svc.notificaciones_a_dict(notifs),
+        sep.id_empresa,
     )
     if cambio_lote:
         await notificar_cambio_estado_lote(

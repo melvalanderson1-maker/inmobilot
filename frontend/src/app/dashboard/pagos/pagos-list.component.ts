@@ -97,15 +97,27 @@ export class PagosListComponent implements OnInit, OnDestroy {
 
     this.socket.conectar();
     this.sub = this.socket.onEvento.subscribe((e) => {
-      if (['pago:actualizado', 'contrato:pago_registrado', 'separacion:actualizada'].includes(e.evento)) this.cargar(true);
+      if (['pago:actualizado', 'contrato:pago_registrado', 'separacion:actualizada', 'socket:conectado'].includes(e.evento)) {
+        this.refrescar();
+        return;
+      }
       const tipo = String((e.data as { tipo?: string })?.tipo ?? '');
       if (e.evento === 'notificacion:nueva' && (tipo.startsWith('pago_') || tipo.startsWith('separacion_'))) {
-        this.cargar(true);
+        this.refrescar();
       }
     });
   }
 
+  private temporizador: ReturnType<typeof setTimeout> | null = null;
+
+  /** Junta ráfagas de eventos (sala proyecto + empresa + notificación) en una sola recarga */
+  private refrescar(): void {
+    if (this.temporizador) clearTimeout(this.temporizador);
+    this.temporizador = setTimeout(() => this.cargar(true), 300);
+  }
+
   ngOnDestroy(): void {
+    if (this.temporizador) clearTimeout(this.temporizador);
     this.sub?.unsubscribe();
   }
 

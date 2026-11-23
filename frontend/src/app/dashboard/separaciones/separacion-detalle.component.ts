@@ -152,9 +152,10 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
 
     this.socket.conectar();
     this.sub = this.socket.onEvento.subscribe((evento) => {
+      if (evento.evento === 'socket:conectado') this.cargar(true);
       if (evento.evento === 'separacion:actualizada') {
         const data = evento.data as { id?: number };
-        if (data?.id === this.idSeparacion) this.cargar(true);
+        if (Number(data?.id) === this.idSeparacion) this.cargar(true);
       }
       // Respaldo: la notificación privada llega aunque no estés en la sala del proyecto
       if (evento.evento === 'notificacion:nueva') {

@@ -653,6 +653,8 @@ class PagoColaOut(BaseModel):
     detalle: Optional[str] = None  # ej. "Inicial de la venta #16"
     forma_pago: Optional[str] = None  # contado | credito
     created_at: datetime
+    origen: str = "pago"            # "pago" | "separacion"
+    id_separacion: Optional[int] = None
 
 
 # ----------------------------------------------------------------- LEADS --

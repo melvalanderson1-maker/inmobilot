@@ -146,7 +146,7 @@ def notificaciones_a_dict(notifs: list[m.Notificacion]) -> list[dict]:
 
 def resumen_socket(sep: m.Separacion) -> dict:
     """Datos mínimos para el evento en tiempo real (sin DNI, montos ni archivos)."""
-    return {"id": sep.id, "id_lote": sep.id_lote, "estado": sep.estado.value}
+    return {"id": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": sep.estado.value}
 
 
 # ------------------------------------------------- precio de separación ---

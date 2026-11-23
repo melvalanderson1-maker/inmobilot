@@ -228,6 +228,16 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  puedeRechazar(): boolean {
+    const sep = this.separacion();
+    if (!sep) return false;
+    if (sep.estado === 'pendiente_caja') return ['admin', 'caja'].includes(this.rolClave);
+    if (sep.estado === 'pendiente_facturacion') return ['admin', 'facturacion'].includes(this.rolClave);
+    return false;
+  }
+
+
   abrirRechazo(): void {
     this.motivoRechazo = '';
     this.mostrarRechazo.set(true);
@@ -239,7 +249,12 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       return;
     }
     this.procesando.set(true);
-    this.separacionService.rechazar(this.idSeparacion, this.motivoRechazo.trim()).subscribe({
+    const motivo = this.motivoRechazo.trim();
+    const llamada =
+      this.separacion()?.estado === 'pendiente_facturacion'
+        ? this.separacionService.rechazarFacturacion(this.idSeparacion, motivo)
+        : this.separacionService.rechazar(this.idSeparacion, motivo);
+    llamada.subscribe({
       next: () => {
         this.procesando.set(false);
         this.mostrarRechazo.set(false);

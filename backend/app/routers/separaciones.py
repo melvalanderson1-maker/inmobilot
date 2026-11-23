@@ -180,6 +180,12 @@ CAMPOS_BASICOS = {
 }
 CAMPOS_OBLIGATORIOS = ("fecha_inicio", "fecha_vencimiento", "importe", "dni_frente_url", "voucher_url")
 
+# Si el ejecutivo corrige alguno de estos en una separación rechazada, vuelve a Caja
+CAMPOS_QUE_REVALIDAN_SEP = {
+    "importe", "fecha_inicio", "voucher_url", "voucher_numero", "medio_pago",
+    "dni_frente_url", "dni_reverso_url", "id_cliente", "id_lote",
+}
+
 
 @router.patch("/{id_separacion}", response_model=s.SeparacionOut)
 async def actualizar_separacion(
@@ -189,6 +195,7 @@ async def actualizar_separacion(
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
+    estado_previo = sep.estado
     if sep.estado in svc.ESTADOS_CERRADOS and not svc.PERMITIR_EDITAR_TODO:
         raise _conflicto("La separación ya está cerrada y no se puede modificar")
 
@@ -292,6 +299,39 @@ async def actualizar_separacion(
             svc.cambiar_estado_lote(db, lote_ant, LOTE.libre, usuario, f"Separación #{sep.id}: pasó a otro lote")
             cambio_lotes = True
 
+    # Corrección de una separación rechazada: vuelve a Caja y se notifica
+    notifs = []
+    if estado_previo == E.rechazada and (CAMPOS_QUE_REVALIDAN_SEP & cambios.keys()):
+        lote_rev = nuevo_lote or sep.lote
+        otra_rev = (
+            db.query(m.Separacion.id)
+            .filter(
+                m.Separacion.id_lote == lote_rev.id,
+                m.Separacion.id != sep.id,
+                m.Separacion.estado.in_(svc.ESTADOS_ACTIVOS),
+            )
+            .first()
+        )
+        if otra_rev:
+            raise _conflicto(f"El lote {lote_rev.codigo} ya tiene otra separación en curso")
+        if lote_rev.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
+            raise _conflicto(f"El lote {lote_rev.codigo} ya no está libre (estado: {lote_rev.estado.value})")
+        sep.estado = E.pendiente_caja
+        sep.motivo_rechazo = None
+        sep.validado_por = None
+        sep.fecha_validacion = None
+        destinatarios = svc.usuarios_por_roles(
+            db, sep.id_empresa, sep.id_proyecto, ["caja", "admin"], excluir_id=usuario.id
+        )
+        notifs = svc.crear_notificaciones(
+            db, sep.id_empresa, destinatarios,
+            "separacion_pendiente_caja",
+            "Separación corregida: validar de nuevo",
+            f"{usuario.nombre} corrigió la separación del lote {lote_rev.codigo} por S/ {sep.importe:,.2f}",
+            {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "pendiente_caja"},
+        )
+
+
     nueva_venc = datos.get("fecha_vencimiento")
     # Prórroga: una separación vencida con el lote aún separado vuelve a vigente
     if (
@@ -303,7 +343,7 @@ async def actualizar_separacion(
         sep.estado = E.vigente
 
     db.commit()
-    await _emitir(db, sep, usuario, [], cambio_lote=cambio_lotes)
+    await _emitir(db, sep, usuario, notifs, cambio_lote=cambio_lotes)
     if cambio_lotes:
         await notificar_cambio_estado_lote(
             svc.lote_out_dict(db, id_lote_ant),
@@ -432,6 +472,111 @@ async def subir_comprobante(
 
 
 
+@router.post("/{id_separacion}/rechazar-facturacion", response_model=s.SeparacionOut)
+async def rechazar_facturacion(
+    id_separacion: int,
+    payload: s.SeparacionRechazo,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if sep.estado != E.pendiente_facturacion:
+        raise _conflicto("Esta separación no está pendiente de comprobante")
+    motivo = payload.motivo.strip()
+    if not motivo:
+        raise HTTPException(status_code=422, detail="Debes indicar el motivo del rechazo")
+
+    sep.estado = E.rechazada
+    sep.motivo_rechazo = motivo
+    db.query(m.Proforma).filter(m.Proforma.id_separacion == sep.id).update(
+        {m.Proforma.estado: "emitida", m.Proforma.id_separacion: None}, synchronize_session=False
+    )
+    # Caja ya lo había puesto 'separado': se libera; al reenviar y revalidar Caja vuelve a separarlo
+    cambio = False
+    if sep.lote.estado == LOTE.separado:
+        cambio = svc.cambiar_estado_lote(
+            db, sep.lote, LOTE.libre, usuario, f"Separación #{sep.id} rechazada por Facturación"
+        )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, svc.unicos([sep.ejecutivo], excluir_id=usuario.id),
+        "separacion_rechazada",
+        "Separación rechazada por Facturación",
+        f"Lote {sep.lote.codigo}: {motivo}. Corrígela y reenvíala a Caja.",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "rechazada"},
+    )
+    db.commit()
+    await _emitir(db, sep, usuario, notifs, cambio_lote=cambio)
+    return _detalle(db, id_separacion, usuario)
+
+
+CAMPOS_REENVIO = {
+    "fecha_inicio", "fecha_vencimiento", "importe", "motivo", "tipo_pago", "notas", "agenda_fecha",
+    "dni_frente_url", "dni_reverso_url", "voucher_url", "voucher_numero", "medio_pago",
+    "proforma_url", "precio_valido_hasta", "precio_descontado",
+}
+
+
+@router.post("/{id_separacion}/reenviar", response_model=s.SeparacionOut)
+async def reenviar_separacion(
+    id_separacion: int,
+    payload: s.SeparacionUpdate,
+    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
+    db: Session = Depends(get_db),
+):
+    """Corrige una separación rechazada (Caja o Facturación) y la devuelve a Caja."""
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if sep.estado != E.rechazada:
+        raise _conflicto("Solo se puede reenviar una separación rechazada")
+    if sep.id_ejecutivo != usuario.id and usuario.rol.clave not in ("admin", "gerencia", "supervisor"):
+        raise HTTPException(status_code=403, detail="Solo quien registró la separación puede corregirla")
+
+    datos = {
+        k: v for k, v in payload.model_dump(exclude_unset=True).items()
+        if k in CAMPOS_REENVIO and not (v is None and k in CAMPOS_OBLIGATORIOS)
+    }
+    cambios = aud.diferencias({c: getattr(sep, c) for c in datos}, datos)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="Corrige lo observado (voucher, importe, fechas, etc.) antes de reenviar")
+
+    lote = db.query(m.Lote).filter(m.Lote.id == sep.id_lote).with_for_update().first()
+    if lote.estado != LOTE.libre and not svc.PERMITIR_SEPARAR_LOTES_OCUPADOS:
+        raise _conflicto(f"El lote {lote.codigo} ya no está libre (estado: {lote.estado.value})")
+    otra = (
+        db.query(m.Separacion.id)
+        .filter(m.Separacion.id_lote == lote.id, m.Separacion.id != sep.id, m.Separacion.estado.in_(svc.ESTADOS_ACTIVOS))
+        .first()
+    )
+    if otra:
+        raise _conflicto("Este lote ya tiene otra separación en curso")
+
+    aud.registrar(db, usuario, "separacion", sep.id, "corregir_rechazo",
+                  {"motivo_rechazo_previo": sep.motivo_rechazo, **cambios})
+    for campo, valor in datos.items():
+        setattr(sep, campo, valor)
+    sep.estado = E.pendiente_caja
+    sep.motivo_rechazo = None
+    sep.validado_por = None
+    sep.fecha_validacion = None
+
+    destinatarios = svc.usuarios_por_roles(
+        db, sep.id_empresa, sep.id_proyecto, ["caja", "admin"], excluir_id=usuario.id
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "separacion_pendiente_caja",
+        "Separación corregida: validar de nuevo",
+        f"{usuario.nombre} corrigió la separación del lote {lote.codigo} por S/ {sep.importe:,.2f}",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "pendiente_caja"},
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise _conflicto("Este lote ya tiene una separación en curso")
+    await _emitir(db, sep, usuario, notifs)
+    return _detalle(db, id_separacion, usuario)
+
+
 class ComprobanteUpdate(BaseModel):
     tipo: Optional[str] = None
     numero: Optional[str] = None
@@ -544,7 +689,7 @@ async def generar_proforma(
 @router.post("/{id_separacion}/contrato", response_model=s.SeparacionOut)
 async def generar_contrato(
     id_separacion: int,
-    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)

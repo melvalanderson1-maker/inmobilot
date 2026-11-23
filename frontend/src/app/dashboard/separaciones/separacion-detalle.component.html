@@ -198,10 +198,14 @@
           </section>
         }
 
-        @if (separacion()!.motivo_rechazo) {
+        @if (separacion()!.estado === 'rechazada') {
           <section class="card card-alerta">
-            <h3>Motivo de rechazo</h3>
-            <p class="texto-alerta">{{ separacion()!.motivo_rechazo }}</p>
+            <h3>Separación rechazada</h3>
+            <p class="texto-alerta">{{ separacion()!.motivo_rechazo || 'Sin motivo registrado' }}</p>
+            <p class="dato-secundario">
+              Para subsanar: corrige el voucher en la pestaña Voucher (Reemplazar archivo) o los datos con
+              "Editar / agendamiento". Al guardar, la separación vuelve a Caja y se le notifica.
+            </p>
           </section>
         }
       </div>
@@ -337,11 +341,14 @@
 
             @if (puedeValidar()) {
               <button class="btn-primary btn-bloque" (click)="validar()" [disabled]="procesando()">Validar voucher</button>
-              <button class="btn-peligro btn-bloque" (click)="abrirRechazo()" [disabled]="procesando()">Rechazar</button>
             }
 
             @if (puedeSubirComprobante()) {
               <button class="btn-primary btn-bloque" (click)="abrirComprobante()" [disabled]="procesando()">Subir comprobante</button>
+            }
+
+            @if (puedeRechazar()) {
+              <button class="btn-peligro btn-bloque" (click)="abrirRechazo()" [disabled]="procesando()">Rechazar</button>
             }
 
             @if (puedeConvertir()) {
@@ -372,7 +379,7 @@
               <button class="btn-secundario btn-bloque" (click)="abrirDevolucion()" [disabled]="procesando()">Solicitar devolución</button>
             }
 
-            @if (!puedeValidar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar() && separacion()!.estado !== 'convertida') {
+            @if (!puedeValidar() && !puedeRechazar() && !puedeSubirComprobante() && !puedeConvertir() && !puedeSolicitarDevolucion() && !puedeResolverDevolucion() && !puedeLiberar() && separacion()!.estado !== 'convertida') {
               <p class="dato-secundario">No hay acciones disponibles para tu rol en este estado.</p>
             }
           </div>

@@ -43,7 +43,7 @@
     </div>
 
     <span class="filtros-contador">
-      {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
+      {{ separaciones().length }} {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
     </span>
 
     @if (ejecutivosKpi().length > 0) {
@@ -109,7 +109,12 @@
               <td class="td-importe">S/ {{ sep.importe | number:'1.2-2' }}</td>
               <td class="td-fecha">{{ sep.fecha_vencimiento }}</td>
               <td class="col-ejecutivo">{{ sep.ejecutivo_nombre || '—' }}</td>
-              <td><span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span></td>
+              <td>
+                <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
+                @if (sep.estado === 'rechazada' && sep.motivo_rechazo) {
+                  <small class="motivo-rechazo">{{ sep.motivo_rechazo }} · abre para corregir</small>
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -124,6 +129,9 @@
             <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
           </div>
           <p class="sep-card-cliente">{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : 'Sin cliente' }}</p>
+          @if (sep.estado === 'rechazada' && sep.motivo_rechazo) {
+            <p class="motivo-rechazo">{{ sep.motivo_rechazo }} · toca para corregir</p>
+          }
           <div class="sep-card-datos">
             <div class="dato">
               <span class="dato-label">Importe</span>

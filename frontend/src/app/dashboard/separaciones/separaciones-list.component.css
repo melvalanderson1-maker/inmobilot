@@ -593,3 +593,6 @@ select:focus-visible,
 }
 .ejec-chip strong { font-size: 15px; }
 .ejec-chip.activo { background: rgba(139,92,246,.12); border-color: #8b5cf6; }
+
+
+.motivo-rechazo { display: block; margin-top: 4px; font-size: 12px; color: #b42318; }

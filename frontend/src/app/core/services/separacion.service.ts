@@ -40,6 +40,10 @@ export class SeparacionService {
     return this.api.post<Separacion>(`/separaciones/${id}/rechazar`, { motivo });
   }
 
+  rechazarFacturacion(id: number, motivo: string) {
+    return this.api.post<Separacion>(`/separaciones/${id}/rechazar-facturacion`, { motivo });
+  }
+
   subirComprobante(id: number, payload: ComprobanteCreate) {
     return this.api.post<Separacion>(`/separaciones/${id}/comprobante`, payload);
   }

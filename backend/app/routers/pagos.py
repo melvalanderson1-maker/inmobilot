@@ -15,6 +15,9 @@ from app.services import amortizacion_service as amort_svc
 from app.services import auditoria as aud
 from app.sockets import notificar_pago, notificar_pago_registrado
 
+from datetime import datetime
+
+
 router = APIRouter(prefix="/pagos", tags=["pagos"])
 
 
@@ -130,6 +133,53 @@ async def _emitir(pago: m.Pago, contrato: m.Contrato, notifs: list):
 
 # ---------------------------------------------------------------- lectura --
 
+def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estado: Optional[str]) -> list[s.PagoColaOut]:
+    """Las separaciones también pasan por Caja y Facturación: se muestran en la misma cola."""
+    mapa = {"pendiente_caja": "pendiente_caja", "pendiente_facturacion": "pendiente_facturacion", "rechazada": "rechazado"}
+    q = (
+        db.query(m.Separacion)
+        .options(
+            joinedload(m.Separacion.cliente),
+            joinedload(m.Separacion.lote),
+            joinedload(m.Separacion.ejecutivo),
+            selectinload(m.Separacion.comprobantes),
+        )
+        .filter(m.Separacion.id_empresa == usuario.id_empresa, m.Separacion.id_proyecto == id_proyecto)
+    )
+    if usuario.rol.clave == "ejecutivo_ventas":
+        q = q.filter(m.Separacion.id_ejecutivo == usuario.id)
+    filas = []
+    for x in q.order_by(m.Separacion.created_at.desc()).limit(300).all():
+        est = x.estado.value if hasattr(x.estado, "value") else str(x.estado)
+        est_cola = mapa.get(est, "validado")
+        if estado and est_cola != estado:
+            continue
+        c = x.cliente
+        nombre, documento = "", ""
+        if c:
+            nombre = (c.razon_social if c.tipo_persona == "juridica" else f"{c.nombres} {c.apellidos}") or ""
+            documento = (c.ruc if c.tipo_persona == "juridica" else c.numero_documento) or ""
+        comp = x.comprobantes[-1] if x.comprobantes else None
+        filas.append(s.PagoColaOut(
+            id=x.id, id_contrato=0, id_proyecto=x.id_proyecto,
+            numero_contrato=f"Separación #{x.id}",
+            lote_codigo=x.lote.codigo if x.lote else None,
+            cliente_nombre=nombre, cliente_documento=documento,
+            numero_cuota=None,
+            monto=x.importe, fecha_pago=x.fecha_inicio, metodo_pago=x.medio_pago,
+            numero_operacion=x.voucher_numero, comprobante_url=x.voucher_url,
+            estado=est_cola, motivo_rechazo=x.motivo_rechazo if est_cola == "rechazado" else None,
+            factura_tipo=comp.tipo if comp else None,
+            factura_numero=comp.numero if comp else None,
+            factura_url=comp.archivo_url if comp else None,
+            registrado_por_nombre=x.ejecutivo.nombre if x.ejecutivo else None,
+            concepto="Separación de lote", detalle=x.notas, forma_pago=None,
+            created_at=x.created_at,
+            origen="separacion", id_separacion=x.id,
+        ))
+    return filas
+
+
 @router.get("", response_model=list[s.PagoColaOut])
 def listar_pagos(
     id_proyecto: int,
@@ -151,7 +201,10 @@ def listar_pagos(
     )
     if estado:
         query = query.filter(m.Pago.estado == estado)
-    return [_a_fila(p) for p in query.order_by(m.Pago.created_at.desc()).limit(300).all()]
+    filas = [_a_fila(p) for p in query.order_by(m.Pago.created_at.desc()).limit(300).all()]
+    filas += _filas_separaciones(db, usuario, id_proyecto, estado)
+    filas.sort(key=lambda f: f.created_at.replace(tzinfo=None) if f.created_at else datetime.min, reverse=True)
+    return filas
 
 
 # ----------------------------------------------------------------- editar --

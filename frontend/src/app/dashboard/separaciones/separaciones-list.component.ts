@@ -77,9 +77,12 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     this.suscripcionSocket = this.socket.onEvento.subscribe((evento) => {
       if (evento.evento === 'separacion:actualizada') {
         const data = evento.data as { id_proyecto?: number };
-        if (data?.id_proyecto === this.idProyectoSeleccionado) {
-          this.cargarSeparaciones();
-        }
+        if (Number(data?.id_proyecto) === Number(this.idProyectoSeleccionado)) this.cargarSeparaciones(true);
+      }
+      // Respaldo: la notificación privada llega aunque tu token no tenga el proyecto en la sala
+      if (evento.evento === 'notificacion:nueva') {
+        const n = evento.data as { tipo?: string };
+        if (String(n?.tipo ?? '').startsWith('separacion_')) this.cargarSeparaciones(true);
       }
     });
   }
@@ -104,11 +107,11 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     this.cargarSeparaciones();
   }
 
-  cargarSeparaciones(): void {
+  cargarSeparaciones(silencioso = false): void {
     if (!this.idProyectoSeleccionado) return;
-    this.cargando.set(true);
+    if (!silencioso) this.cargando.set(true);
     const estado = this.filtroEstado === 'todos' ? undefined : this.filtroEstado;
-    this.separacionService.listar(this.idProyectoSeleccionado, estado).subscribe({
+    this.separacionService.listar(Number(this.idProyectoSeleccionado), estado).subscribe({
       next: (res) => {
         this.separaciones.set(res);
         this.cargando.set(false);

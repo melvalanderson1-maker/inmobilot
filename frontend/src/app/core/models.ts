@@ -817,6 +817,8 @@ export interface PagoCola {
   concepto: string;
   detalle?: string | null;
   forma_pago?: string | null;
+  origen?: 'pago' | 'separacion';
+  id_separacion?: number | null;
 }
 
 export interface PagoComprobanteIn {

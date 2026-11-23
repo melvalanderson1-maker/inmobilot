@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -97,8 +97,9 @@ export class PagosListComponent implements OnInit, OnDestroy {
 
     this.socket.conectar();
     this.sub = this.socket.onEvento.subscribe((e) => {
-      if (e.evento === 'pago:actualizado' || e.evento === 'contrato:pago_registrado') this.cargar(true);
-      if (e.evento === 'notificacion:nueva' && String((e.data as { tipo?: string })?.tipo ?? '').startsWith('pago_')) {
+      if (['pago:actualizado', 'contrato:pago_registrado', 'separacion:actualizada'].includes(e.evento)) this.cargar(true);
+      const tipo = String((e.data as { tipo?: string })?.tipo ?? '');
+      if (e.evento === 'notificacion:nueva' && (tipo.startsWith('pago_') || tipo.startsWith('separacion_'))) {
         this.cargar(true);
       }
     });
@@ -143,6 +144,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
   }
 
   subConcepto(p: PagoCola): string | null {
+    if (p.origen === 'separacion') return 'Separación de lote: al validarse el lote queda separado';
     if (p.concepto.includes('Cancelación')) return 'Liquida todo el crédito y cierra el contrato';
     if (p.concepto.includes('Amortización')) return 'Abono a capital: reescribe el cronograma';
     if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
@@ -155,7 +157,11 @@ export class PagosListComponent implements OnInit, OnDestroy {
 
   validar(p: PagoCola): void {
     this.procesando.set(true);
-    this.pagoService.validar(p.id).subscribe({
+    const llamada: Observable<unknown> =
+      p.origen === 'separacion'
+        ? this.api.post<unknown>(`/separaciones/${p.id}/validar`, {})
+        : this.pagoService.validar(p.id);
+    llamada.subscribe({
       next: () => {
         this.procesando.set(false);
         this.toastService.exito(`${p.concepto} validado. Pasó a Facturación.`);
@@ -163,7 +169,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.procesando.set(false);
-        this.toastService.error(err?.error?.detail ?? 'No se pudo validar el pago');
+        this.toastService.error(err?.error?.detail ?? 'No se pudo validar');
       },
     });
   }
@@ -183,10 +189,15 @@ export class PagosListComponent implements OnInit, OnDestroy {
     }
     this.procesando.set(true);
     // Según dónde esté el pago: Caja o Facturación
-    const llamada =
-      p.estado === 'pendiente_facturacion'
-        ? this.pagoService.rechazarFacturacion(p.id, motivo)
-        : this.pagoService.rechazar(p.id, motivo);
+    const llamada: Observable<unknown> =
+      p.origen === 'separacion'
+        ? this.api.post<unknown>(
+            `/separaciones/${p.id}/${p.estado === 'pendiente_facturacion' ? 'rechazar-facturacion' : 'rechazar'}`,
+            { motivo }
+          )
+        : p.estado === 'pendiente_facturacion'
+          ? this.pagoService.rechazarFacturacion(p.id, motivo)
+          : this.pagoService.rechazar(p.id, motivo);
     llamada.subscribe({
       next: () => {
         this.procesando.set(false);
@@ -244,7 +255,11 @@ export class PagosListComponent implements OnInit, OnDestroy {
       return;
     }
     this.procesando.set(true);
-    this.pagoService.subirComprobante(p.id, this.comprobanteForm).subscribe({
+    const llamada: Observable<unknown> =
+      p.origen === 'separacion'
+        ? this.api.post<unknown>(`/separaciones/${p.id}/comprobante`, this.comprobanteForm)
+        : this.pagoService.subirComprobante(p.id, this.comprobanteForm);
+    llamada.subscribe({
       next: () => {
         this.procesando.set(false);
         this.pagoComprobante.set(null);

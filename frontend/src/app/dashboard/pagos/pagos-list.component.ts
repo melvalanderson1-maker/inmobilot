@@ -53,16 +53,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
   });
 
   filtrados = computed(() => {
-    const tab = this.tab();
-    const texto = this.busqueda().trim().toLowerCase();
-    return this.pagos().filter((p) => {
-      if (tab !== 'todos' && p.estado !== tab) return false;
-      if (texto) {
-        const base = `${p.numero_contrato} ${p.lote_codigo ?? ''} ${p.cliente_nombre} ${p.cliente_documento} ${p.numero_operacion ?? ''} ${p.concepto ?? ''}`.toLowerCase();
-        if (!base.includes(texto)) return false;
-      }
-      return true;
-    });
+    return this.pagos();
   });
 
   constructor(

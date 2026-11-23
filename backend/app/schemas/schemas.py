@@ -655,6 +655,7 @@ class PagoColaOut(BaseModel):
     created_at: datetime
     origen: str = "pago"            # "pago" | "separacion"
     id_separacion: Optional[int] = None
+    convertida: bool = False        # separación ya convertida en venta
 
 
 # ----------------------------------------------------------------- LEADS --

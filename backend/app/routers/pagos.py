@@ -152,6 +152,9 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
     for x in q.order_by(m.Separacion.created_at.desc()).limit(300).all():
         est = x.estado.value if hasattr(x.estado, "value") else str(x.estado)
         est_cola = mapa.get(est, "validado")
+        # Convertida sin comprobante: vuelve a la cola de Facturación para que lo suba
+        if est == "convertida" and not x.comprobantes:
+            est_cola = "pendiente_facturacion"
         if estado and est_cola != estado:
             continue
         c = x.cliente
@@ -176,6 +179,7 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             concepto="Separación de lote", detalle=x.notas, forma_pago=None,
             created_at=x.created_at,
             origen="separacion", id_separacion=x.id,
+            convertida=(est == "convertida"),
         ))
     return filas
 

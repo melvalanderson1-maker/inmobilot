@@ -85,7 +85,9 @@
                 }
                 @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
                   <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
-                  <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                  @if (!p.convertida) {
+                    <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                  }
                 }
               </td>
             </tr>

@@ -437,11 +437,14 @@ async def rechazar_voucher(
 async def subir_comprobante(
     id_separacion: int,
     payload: s.ComprobanteCreate,
-    usuario: m.Usuario = Depends(require_permiso("editar_separacion")),
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    if sep.estado != E.pendiente_facturacion:
+    # Facturación puede subir el comprobante mientras esté pendiente, o después
+    # si la separación ya fue convertida y quedó sin comprobante.
+    sin_comprobante = not sep.comprobantes
+    if sep.estado != E.pendiente_facturacion and not (sep.estado == E.convertida and sin_comprobante):
         raise _conflicto("Esta separación no está pendiente de comprobante")
 
     tipo = payload.tipo.strip().lower()
@@ -455,14 +458,18 @@ async def subir_comprobante(
         id_separacion=sep.id, tipo=tipo, numero=numero,
         archivo_url=payload.archivo_url, emitido_por=usuario.id,
     ))
-    sep.estado = E.vigente
+    ya_convertida = sep.estado == E.convertida
+    if not ya_convertida:
+        sep.estado = E.vigente
 
+    estado_notif = "convertida" if ya_convertida else "vigente"
     notifs = svc.crear_notificaciones(
         db, sep.id_empresa, svc.unicos([sep.ejecutivo], excluir_id=usuario.id),
         "separacion_vigente",
         "Comprobante emitido",
-        f"Lote {sep.lote.codigo}: {tipo} {numero}. La separación está vigente.",
-        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "vigente"},
+        f"Lote {sep.lote.codigo}: {tipo} {numero}."
+        + ("" if ya_convertida else " La separación está vigente."),
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": estado_notif},
     )
     db.commit()
 
@@ -652,6 +659,8 @@ async def convertir_separacion(
 
     if not sep.contrato_firmado_url:
         raise _conflicto("Debes subir el contrato de separación firmado antes de convertir la separación en venta")
+    if estado_anterior == E.pendiente_facturacion and not sep.comprobantes:
+        raise _conflicto("Facturación debe subir el comprobante antes de convertir la separación en venta")
 
     sep.estado = E.convertida
     sep.fecha_conversion = fecha_conversion or svc.hoy_peru()

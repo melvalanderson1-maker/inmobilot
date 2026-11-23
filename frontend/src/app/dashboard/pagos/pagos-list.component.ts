@@ -53,7 +53,16 @@ export class PagosListComponent implements OnInit, OnDestroy {
   });
 
   filtrados = computed(() => {
-    return this.pagos();
+    const tab = this.tab();
+    const texto = this.busqueda().trim().toLowerCase();
+    return this.pagos().filter((p) => {
+      if (tab !== 'todos' && p.estado !== tab) return false;
+      if (texto) {
+        const base = `${p.numero_contrato} ${p.lote_codigo ?? ''} ${p.cliente_nombre} ${p.cliente_documento} ${p.numero_operacion ?? ''} ${p.concepto ?? ''}`.toLowerCase();
+        if (!base.includes(texto)) return false;
+      }
+      return true;
+    });
   });
 
   constructor(
@@ -105,6 +114,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
     if (!silencioso) this.cargando.set(true);
     this.pagoService.listar(this.idProyecto).subscribe({
       next: (res) => {
+        console.log('pagos recibidos:', Array.isArray(res), res?.length, res);
         this.pagos.set(res);
         this.cargando.set(false);
       },

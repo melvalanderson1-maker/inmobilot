@@ -657,6 +657,9 @@ class PagoColaOut(BaseModel):
     id_separacion: Optional[int] = None
     convertida: bool = False        # separación ya convertida en venta
     validado_por_nombre: Optional[str] = None
+    sep_comprobante_tipo: Optional[str] = None
+    sep_comprobante_numero: Optional[str] = None
+    sep_comprobante_url: Optional[str] = None
 
 
 # ----------------------------------------------------------------- LEADS --

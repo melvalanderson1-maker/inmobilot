@@ -835,6 +835,9 @@ export interface PagoCola {
   validado_por_nombre?: string | null;
   id_separacion?: number | null;
   convertida?: boolean;
+  sep_comprobante_tipo?: string | null;
+  sep_comprobante_numero?: string | null;
+  sep_comprobante_url?: string | null;
 }
 
 export interface PagoComprobanteIn {

@@ -60,6 +60,22 @@
               <td>
                 <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
                 @if (subConcepto(p)) { <small>{{ subConcepto(p) }}</small> }
+                @if (p.origen === 'devolucion') {
+                  @if (p.detalle) {
+                    <small><strong>Motivo:</strong> {{ p.detalle }}</small>
+                  }
+                  @if (p.sep_comprobante_numero) {
+                    <small>
+                      <strong>Comprobante de la separación:</strong>
+                      {{ p.sep_comprobante_tipo | titlecase }} {{ p.sep_comprobante_numero }}
+                      @if (p.sep_comprobante_url) {
+                        · <a [href]="urlCompleta(p.sep_comprobante_url)!" target="_blank" rel="noopener" class="enlace">Ver archivo ↗</a>
+                      }
+                    </small>
+                  } @else {
+                    <small>Sin comprobante de separación registrado</small>
+                  }
+                }
               </td>
               <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
               <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
@@ -128,6 +144,20 @@
     <div class="modal" (click)="$event.stopPropagation()">
       <h2>Subir comprobante</h2>
       <p class="sub">{{ pagoComprobante()!.concepto }} · S/ {{ pagoComprobante()!.monto | number:'1.2-2' }} · contrato {{ pagoComprobante()!.numero_contrato }}</p>
+      @if (pagoComprobante()!.origen === 'devolucion') {
+        @if (pagoComprobante()!.detalle) {
+          <p class="sub"><strong>Motivo de la devolución:</strong> {{ pagoComprobante()!.detalle }}</p>
+        }
+        @if (pagoComprobante()!.sep_comprobante_numero) {
+          <p class="sub">
+            <strong>Comprobante de la separación:</strong>
+            {{ pagoComprobante()!.sep_comprobante_tipo | titlecase }} {{ pagoComprobante()!.sep_comprobante_numero }}
+            @if (pagoComprobante()!.sep_comprobante_url) {
+              · <a [href]="urlCompleta(pagoComprobante()!.sep_comprobante_url!)!" target="_blank" rel="noopener" class="enlace">Ver archivo ↗</a>
+            }
+          </p>
+        }
+      }
       <div class="campo">
         <label>Tipo</label>
         @if (pagoComprobante()!.origen === 'devolucion') {

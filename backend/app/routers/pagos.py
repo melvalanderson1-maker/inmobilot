@@ -202,6 +202,7 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             joinedload(m.Devolucion.separacion).joinedload(m.Separacion.cliente),
             joinedload(m.Devolucion.separacion).joinedload(m.Separacion.lote),
             joinedload(m.Devolucion.separacion).joinedload(m.Separacion.ejecutivo),
+            joinedload(m.Devolucion.separacion).selectinload(m.Separacion.comprobantes),
         )
         .filter(
             m.Separacion.id_empresa == usuario.id_empresa,
@@ -217,6 +218,7 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
         if estado and est_cola != estado:
             continue
         sep = d.separacion
+        comp_sep = sep.comprobantes[-1] if sep.comprobantes else None
         c = sep.cliente
         nombre, documento = "", ""
         if c:
@@ -237,6 +239,9 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             concepto="Devolución de separación", detalle=d.sustento, forma_pago=None,
             created_at=d.created_at or datetime.utcnow(),
             origen="devolucion", id_separacion=sep.id,
+            sep_comprobante_tipo=comp_sep.tipo if comp_sep else None,
+            sep_comprobante_numero=comp_sep.numero if comp_sep else None,
+            sep_comprobante_url=comp_sep.archivo_url if comp_sep else None,
         ))
     return filas
 

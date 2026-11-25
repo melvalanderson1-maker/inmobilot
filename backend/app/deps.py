@@ -108,6 +108,7 @@ PERMISOS_ACCION: dict[str, set[str]] = {
     "editar_separacion": _EJECUTIVOS,
     "validar_voucher": {"admin", "caja"},
     "emitir_comprobante": {"admin", "facturacion"},
+    "generar_contrato": {"admin", "facturacion", "ejecutivo_ventas"},
     "solicitar_devolucion": _EJECUTIVOS,
     "aprobar_devolucion": {"admin", "gerencia"},
     "convertir_separacion": _EJECUTIVOS,

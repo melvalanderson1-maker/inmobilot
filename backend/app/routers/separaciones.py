@@ -730,10 +730,12 @@ async def generar_proforma(
 @router.post("/{id_separacion}/contrato", response_model=s.SeparacionOut)
 async def generar_contrato(
     id_separacion: int,
-    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    usuario: m.Usuario = Depends(require_permiso("generar_contrato")),
     db: Session = Depends(get_db),
 ):
     sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if usuario.rol.clave == "ejecutivo_ventas" and sep.id_ejecutivo != usuario.id:
+        raise HTTPException(status_code=403, detail="Solo puedes generar el contrato de tus propias separaciones")
     if sep.estado in svc.ESTADOS_CERRADOS and not svc.PERMITIR_EDITAR_TODO:
         raise _conflicto("La separación ya está cerrada, no se puede generar el contrato")
     if sep.estado in (E.pendiente_caja, E.rechazada):

@@ -152,6 +152,10 @@ export class PagosListComponent implements OnInit, OnDestroy {
     return this.api.apiUrl + relativa;
   }
 
+  claveFila(p: PagoCola): string {
+    return `${p.origen ?? 'pago'}-${p.id}`;
+  }
+
   etiqueta(estado: string): string {
     const mapa: Record<string, string> = {
       pendiente_caja: 'Pendiente de Caja',

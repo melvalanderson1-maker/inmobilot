@@ -52,7 +52,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (p of filtrados(); track (p.origen ?? 'pago') + '-' + p.id) {
+          @for (p of filtrados(); track claveFila(p)) {
             <tr>
               <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
               <td><strong>{{ p.numero_contrato }}</strong><small>Lote {{ p.lote_codigo ?? '—' }}</small></td>

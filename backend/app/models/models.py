@@ -795,7 +795,7 @@ class Devolucion(Base):
     sustento = Column(String(500), nullable=False)
     solicitado_por = Column(Integer, ForeignKey("usuarios.id"))
     fecha_solicitud = Column(Date, server_default=func.current_date())
-    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente | aprobada | rechazada
+    estado = Column(String(30), nullable=False, default="pendiente")  # pendiente | pendiente_caja | pendiente_facturacion | completada | rechazada
     resuelto_por = Column(Integer, ForeignKey("usuarios.id"))
     fecha_resolucion = Column(DateTime)
     respuesta = Column(String(300))

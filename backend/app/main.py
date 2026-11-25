@@ -9,6 +9,7 @@ from app.sockets import socket_app
 
 
 from app.routers import auth, public, proyectos, lotes, leads, contratos, notificaciones, usuarios, uploads, config_publico, setup, clientes, separaciones, proformas, ventas, empresa_config, cobranza, pagos, auditoria
+from app.routers import push
 
 DOCS_HABILITADOS = settings.ENV != "production"
 
@@ -46,6 +47,8 @@ app.include_router(cobranza.router)
 app.include_router(pagos.router)
 app.include_router(empresa_config.router)
 app.include_router(auditoria.router)
+
+app.include_router(push.router)
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 

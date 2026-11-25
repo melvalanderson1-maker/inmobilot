@@ -82,4 +82,9 @@ export class VentaService {
   subirDocumentoLegal(idVenta: number, tipo: 'escritura' | 'titulo', url: string) {
     return this.api.post<Venta>(`/ventas/${idVenta}/documento-legal`, { tipo, url });
   }
+
+
+  desistir(id: number, motivo: string) {
+    return this.api.post<Venta>(`/ventas/${id}/desistir`, { motivo });
+  }
 }

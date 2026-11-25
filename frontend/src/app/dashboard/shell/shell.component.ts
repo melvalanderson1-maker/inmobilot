@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { PushService } from '../../core/services/push.service'
+
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
 import { SocketService } from '../../core/services/socket.service';
@@ -35,6 +37,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     private api: ApiService,
     private socket: SocketService,
     public sonido: SonidoService,
+    public push: PushService,
     private router: Router
   ) {}
 
@@ -62,6 +65,7 @@ export class ShellComponent implements OnInit, OnDestroy {
         this.cargarNotificaciones();
       }
     });
+    void this.push.sincronizar();
   }
 
   ngOnDestroy(): void {
@@ -128,7 +132,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   abrirNotificacion(n: Notificacion): void {
     this.marcarLeido(n);
     const d = (n.data ?? {}) as Record<string, any>;
-    if (d['id_pago']) {
+    if (d['id_pago'] || d['id_devolucion']) {
       this.panelNotifAbierto.set(false);
       this.router.navigate(['/dashboard/pagos']);
     } else if (d['id_separacion']) {
@@ -198,7 +202,8 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   confirmarLogout(): void {
     this.mostrarModalLogout.set(false);
-    this.auth.logout();
+    // Quita el push de este navegador para que no reciba avisos de la cuenta que se cierra
+    this.push.desactivar(false).finally(() => this.auth.logout());
   }
 
   // ===== ICONOS =====

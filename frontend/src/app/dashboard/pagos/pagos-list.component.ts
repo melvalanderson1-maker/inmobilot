@@ -11,7 +11,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { PagoCola, Proyecto } from '../../core/models';
 import { comprimirImagen } from '../../core/utils/comprimir-imagen';
 
-type TabPago = 'todos' | 'pendiente_caja' | 'pendiente_facturacion' | 'validado' | 'rechazado';
+type TabPago = 'todos' | 'pendiente_caja' | 'pendiente_facturacion' | 'validado' | 'rechazado' | 'anulado';
 
 @Component({
   selector: 'app-pagos-list',
@@ -36,6 +36,11 @@ export class PagosListComponent implements OnInit, OnDestroy {
   comprobanteForm = { tipo: 'boleta', numero: '', archivo_url: '' };
   subiendoArchivo = signal(false);
 
+  
+  pagoDevolucion = signal<PagoCola | null>(null);
+  devolucionForm = { numero_operacion: '', metodo_pago: 'Transferencia bancaria', voucher_url: '' };
+  subiendoVoucherDev = signal(false);
+
   private sub?: Subscription;
 
   tabs: { valor: TabPago; etiqueta: string }[] = [
@@ -43,6 +48,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
     { valor: 'pendiente_facturacion', etiqueta: 'Pendientes de Facturación' },
     { valor: 'validado', etiqueta: 'Aplicados' },
     { valor: 'rechazado', etiqueta: 'Rechazados' },
+    { valor: 'anulado', etiqueta: 'Anulados' },
     { valor: 'todos', etiqueta: 'Todos' },
   ];
 
@@ -102,7 +108,10 @@ export class PagosListComponent implements OnInit, OnDestroy {
         return;
       }
       const tipo = String((e.data as { tipo?: string })?.tipo ?? '');
-      if (e.evento === 'notificacion:nueva' && (tipo.startsWith('pago_') || tipo.startsWith('separacion_'))) {
+      if (
+        e.evento === 'notificacion:nueva' &&
+        (tipo.startsWith('pago_') || tipo.startsWith('separacion_') || tipo.startsWith('devolucion_'))
+      ) {
         this.refrescar();
       }
     });
@@ -149,6 +158,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
       pendiente_facturacion: 'Pendiente de Facturación',
       validado: 'Aplicado',
       rechazado: 'Rechazado',
+      anulado: 'Anulado',
     };
     return mapa[estado] ?? estado;
   }
@@ -160,6 +170,7 @@ export class PagosListComponent implements OnInit, OnDestroy {
   }
 
   subConcepto(p: PagoCola): string | null {
+    if (p.origen === 'devolucion') return 'Se devuelve al cliente: Caja ejecuta y Facturación emite la nota de crédito';
     if (p.origen === 'separacion') return 'Separación de lote: al validarse el lote queda separado';
     if (p.concepto.includes('Cancelación')) return 'Liquida todo el crédito y cierra el contrato';
     if (p.concepto.includes('Amortización')) return 'Abono a capital: reescribe el cronograma';
@@ -228,6 +239,66 @@ export class PagosListComponent implements OnInit, OnDestroy {
     });
   }
 
+
+
+    // ---- Devolución de separación (Caja) ----
+
+  abrirDevolucion(p: PagoCola): void {
+    this.devolucionForm = { numero_operacion: '', metodo_pago: 'Transferencia bancaria', voucher_url: '' };
+    this.pagoDevolucion.set(p);
+  }
+
+  async onArchivoDevolucion(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+    this.subiendoVoucherDev.set(true);
+    const formData = new FormData();
+    formData.append('archivo', await comprimirImagen(archivo));
+    this.pagoService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.devolucionForm.voucher_url = res.url;
+        this.subiendoVoucherDev.set(false);
+      },
+      error: (err) => {
+        this.subiendoVoucherDev.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el voucher');
+      },
+    });
+  }
+
+  confirmarDevolucion(): void {
+    const p = this.pagoDevolucion();
+    if (!p) return;
+    if (!this.devolucionForm.numero_operacion.trim() || !this.devolucionForm.voucher_url) {
+      this.toastService.error('Indica el N° de operación y sube el voucher de la devolución');
+      return;
+    }
+    this.procesando.set(true);
+    this.api.post<unknown>(`/separaciones/devoluciones/${p.id}/ejecutar`, this.devolucionForm).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.pagoDevolucion.set(null);
+        this.toastService.exito('Devolución registrada. Pasó a Facturación para la nota de crédito.');
+        this.cargar(true);
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar la devolución');
+      },
+    });
+  }
+
+
   // ---- Facturación ----
 
   abrirComprobante(p: PagoCola): void {
@@ -272,13 +343,28 @@ export class PagosListComponent implements OnInit, OnDestroy {
     }
     this.procesando.set(true);
     const llamada: Observable<unknown> =
-      p.origen === 'separacion'
-        ? this.api.post<unknown>(`/separaciones/${p.id}/comprobante`, this.comprobanteForm)
-        : this.pagoService.subirComprobante(p.id, this.comprobanteForm);
+      p.origen === 'devolucion'
+        ? this.api.post<unknown>(`/separaciones/devoluciones/${p.id}/nota-credito`, {
+            numero: this.comprobanteForm.numero.trim(),
+            archivo_url: this.comprobanteForm.archivo_url,
+          })
+        : p.origen === 'separacion'
+          ? this.api.post<unknown>(`/separaciones/${p.id}/comprobante`, this.comprobanteForm)
+          : this.pagoService.subirComprobante(p.id, this.comprobanteForm);
     llamada.subscribe({
       next: () => {
         this.procesando.set(false);
         this.pagoComprobante.set(null);
+                if (p.origen === 'devolucion') {
+          this.toastService.exito('Nota de crédito registrada. Devolución completada.');
+          this.cargar(true);
+          return;
+        }
+        if (p.origen === 'separacion') {
+          this.toastService.exito('Comprobante registrado. La separación está vigente.');
+          this.cargar(true);
+          return;
+        }
         this.toastService.exito(
           p.concepto.includes('Cancelación')
             ? 'Comprobante registrado. El crédito quedó cancelado.'

@@ -34,7 +34,12 @@
       </div>
 
       @if (anulada()) {
-        <div class="vd-banner" role="alert">Esta venta está {{ etiquetaEstado(venta()!.estado).toLowerCase() }}. Ya no admite cambios en el trámite.</div>
+        <div class="vd-banner" role="alert">
+          Esta venta está {{ etiquetaEstado(venta()!.estado).toLowerCase() }}. Ya no admite cambios en el trámite.
+          @if (venta()!.motivo_desistimiento) {
+            <br />Motivo del desistimiento: {{ venta()!.motivo_desistimiento }}
+          }
+        </div>
       } @else {
         <ol class="vd-timeline" aria-label="Avance del trámite">
           @for (p of pasos(); track p.etiqueta; let i = $index) {
@@ -409,6 +414,10 @@
             <dl class="vd-lines">
               <div><dt>Total pagado</dt><dd>S/ {{ totalPagado() | number:'1.2-2' }}</dd></div>
               <div class="is-strong"><dt>Saldo por cobrar</dt><dd>S/ {{ saldo() | number:'1.2-2' }}</dd></div>
+
+              @if (venta()!.fecha_limite_saldo) {
+                <div><dt>Fecha límite del saldo</dt><dd>{{ fmtFecha(venta()!.fecha_limite_saldo) }}</dd></div>
+              }
             </dl>
           } @else {
             @if (venta()!.datos_credito; as dc) {
@@ -470,6 +479,14 @@
             <a class="vd-btn vd-btn-ghost vd-btn-sm vd-btn-block" [href]="venta()!.lote!.sunarp_url!" target="_blank" rel="noopener">Ver partida registral ↗</a>
           }
         </section>
+
+        @if (puedeDesistir()) {
+          <section class="vd-card">
+            <h2 class="vd-side-title">Desistimiento</h2>
+            <p class="vd-muted">Si el cliente ya no continúa: se cancela la venta, se anula el contrato y el lote vuelve a libre. Solo es posible si Caja aún no validó ningún pago.</p>
+            <button type="button" class="vd-btn vd-btn-ghost vd-btn-sm vd-btn-block" (click)="abrirDesistir()" [disabled]="procesando()">Desistir de la venta</button>
+          </section>
+        }
 
         <!-- ORIGEN -->
         @if (venta()!.id_separacion) {
@@ -538,6 +555,30 @@
       <div class="vd-modal-foot">
         <button type="button" class="vd-btn vd-btn-ghost" (click)="mostrarUbicacion.set(false)">Cancelar</button>
         <button type="button" class="vd-btn vd-btn-primary" (click)="guardarUbicacion()" [disabled]="procesando()">Guardar</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+
+@if (mostrarDesistir()) {
+  <div class="vd-overlay" (click)="mostrarDesistir.set(false)">
+    <div class="vd-modal" role="dialog" aria-modal="true" aria-labelledby="vd-desistir-title" (click)="$event.stopPropagation()">
+      <div class="vd-modal-head">
+        <h2 id="vd-desistir-title">Desistir de la venta</h2>
+        <button type="button" class="vd-close" (click)="mostrarDesistir.set(false)" aria-label="Cerrar">×</button>
+      </div>
+      <div class="vd-modal-body">
+        <p class="vd-muted">Se cancelará la venta, se anulará el contrato y la separación, y el lote volverá a libre. Queda registrado en auditoría y se notifica a ventas, Caja y Cobranza.</p>
+        <label class="vd-field">
+          <span>Motivo (obligatorio)</span>
+          <textarea rows="3" [(ngModel)]="motivoDesistir" placeholder="Ej: el cliente ya no puede continuar con la compra"></textarea>
+        </label>
+      </div>
+      <div class="vd-modal-foot">
+        <button type="button" class="vd-btn vd-btn-ghost" (click)="mostrarDesistir.set(false)">Cancelar</button>
+        <button type="button" class="vd-btn vd-btn-primary" (click)="confirmarDesistir()" [disabled]="procesando()">Confirmar desistimiento</button>
       </div>
     </div>
   </div>

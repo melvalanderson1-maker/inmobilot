@@ -15,7 +15,7 @@ from app.services import amortizacion_service as amort_svc
 from app.services import auditoria as aud
 from app.sockets import notificar_pago, notificar_pago_registrado
 
-from datetime import datetime
+from datetime import date, datetime
 
 
 router = APIRouter(prefix="/pagos", tags=["pagos"])
@@ -108,6 +108,7 @@ def _a_fila(p: m.Pago) -> s.PagoColaOut:
         estado=p.estado, motivo_rechazo=p.motivo_rechazo,
         factura_tipo=p.factura_tipo, factura_numero=p.factura_numero, factura_url=p.factura_url,
         registrado_por_nombre=p.registrador.nombre if p.registrador else None,
+        validado_por_nombre=p.validador.nombre if p.validador else None,
         concepto=_concepto(p),
         detalle=p.observacion,
         forma_pago=c.forma_pago.value if c.forma_pago else None,
@@ -136,13 +137,17 @@ async def _emitir(pago: m.Pago, contrato: m.Contrato, notifs: list):
 
 def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estado: Optional[str]) -> list[s.PagoColaOut]:
     """Las separaciones también pasan por Caja y Facturación: se muestran en la misma cola."""
-    mapa = {"pendiente_caja": "pendiente_caja", "pendiente_facturacion": "pendiente_facturacion", "rechazada": "rechazado"}
+    mapa = {
+        "pendiente_caja": "pendiente_caja", "pendiente_facturacion": "pendiente_facturacion",
+        "rechazada": "rechazado", "devuelta": "anulado", "anulada": "anulado",
+    }
     q = (
         db.query(m.Separacion)
         .options(
             joinedload(m.Separacion.cliente),
             joinedload(m.Separacion.lote),
             joinedload(m.Separacion.ejecutivo),
+            joinedload(m.Separacion.validador),
             selectinload(m.Separacion.comprobantes),
         )
         .filter(m.Separacion.id_empresa == usuario.id_empresa, m.Separacion.id_proyecto == id_proyecto)
@@ -177,10 +182,61 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             factura_numero=comp.numero if comp else None,
             factura_url=comp.archivo_url if comp else None,
             registrado_por_nombre=x.ejecutivo.nombre if x.ejecutivo else None,
+            validado_por_nombre=x.validador.nombre if x.validador else None,
             concepto="Separación de lote", detalle=x.notas, forma_pago=None,
             created_at=x.created_at,
             origen="separacion", id_separacion=x.id,
             convertida=(est == "convertida"),
+        ))
+    return filas
+
+
+
+def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estado: Optional[str]) -> list[s.PagoColaOut]:
+    """Las devoluciones de separación pasan por Caja (voucher) y Facturación (nota de crédito)."""
+    mapa = {"pendiente_caja": "pendiente_caja", "pendiente_facturacion": "pendiente_facturacion", "completada": "validado"}
+    q = (
+        db.query(m.Devolucion)
+        .join(m.Separacion, m.Separacion.id == m.Devolucion.id_separacion)
+        .options(
+            joinedload(m.Devolucion.separacion).joinedload(m.Separacion.cliente),
+            joinedload(m.Devolucion.separacion).joinedload(m.Separacion.lote),
+            joinedload(m.Devolucion.separacion).joinedload(m.Separacion.ejecutivo),
+        )
+        .filter(
+            m.Separacion.id_empresa == usuario.id_empresa,
+            m.Separacion.id_proyecto == id_proyecto,
+            m.Devolucion.estado.in_(list(mapa)),
+        )
+    )
+    if usuario.rol.clave == "ejecutivo_ventas":
+        q = q.filter(m.Separacion.id_ejecutivo == usuario.id)
+    filas = []
+    for d in q.order_by(m.Devolucion.created_at.desc()).limit(300).all():
+        est_cola = mapa[d.estado]
+        if estado and est_cola != estado:
+            continue
+        sep = d.separacion
+        c = sep.cliente
+        nombre, documento = "", ""
+        if c:
+            nombre = (c.razon_social if c.tipo_persona == "juridica" else f"{c.nombres} {c.apellidos}") or ""
+            documento = (c.ruc if c.tipo_persona == "juridica" else c.numero_documento) or ""
+        filas.append(s.PagoColaOut(
+            id=d.id, id_contrato=0, id_proyecto=sep.id_proyecto,
+            numero_contrato=f"Separación #{sep.id}",
+            lote_codigo=sep.lote.codigo if sep.lote else None,
+            cliente_nombre=nombre, cliente_documento=documento,
+            monto=d.monto, fecha_pago=d.fecha_solicitud or date.today(),
+            metodo_pago=d.metodo_pago, numero_operacion=d.numero_operacion,
+            comprobante_url=d.voucher_url,
+            estado=est_cola, motivo_rechazo=None,
+            factura_tipo="nota_credito" if d.nota_credito_numero else None,
+            factura_numero=d.nota_credito_numero, factura_url=d.nota_credito_url,
+            registrado_por_nombre=sep.ejecutivo.nombre if sep.ejecutivo else None,
+            concepto="Devolución de separación", detalle=d.sustento, forma_pago=None,
+            created_at=d.created_at or datetime.utcnow(),
+            origen="devolucion", id_separacion=sep.id,
         ))
     return filas
 
@@ -201,6 +257,7 @@ def listar_pagos(
             joinedload(m.Pago.contrato).selectinload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
             joinedload(m.Pago.cuota),
             joinedload(m.Pago.registrador),
+            joinedload(m.Pago.validador),
         )
         .filter(m.Contrato.id_empresa == usuario.id_empresa, m.Contrato.id_proyecto == id_proyecto)
     )
@@ -208,6 +265,8 @@ def listar_pagos(
         query = query.filter(m.Pago.estado == estado)
     filas = [_a_fila(p) for p in query.order_by(m.Pago.created_at.desc()).limit(300).all()]
     filas += _filas_separaciones(db, usuario, id_proyecto, estado)
+    filas += _filas_devoluciones(db, usuario, id_proyecto, estado)
+    
     filas.sort(key=lambda f: f.created_at.replace(tzinfo=None) if f.created_at else datetime.min, reverse=True)
     return filas
 
@@ -460,6 +519,23 @@ async def subir_comprobante_pago(
         # Abono a capital: aquí se reescribe el cronograma pendiente.
         # Si algo no cuadra lanza error y NO se guarda nada.
         amort_svc.aplicar_amortizacion(db, m, contrato, pago)
+
+
+    
+    # Contado con saldo: al pagarse la última cuota, el contrato queda cancelado
+    if contrato.forma_pago == m.FormaPagoEnum.contado and contrato.estado == m.EstadoContratoEnum.vigente:
+        db.flush()
+        faltan = (
+            db.query(m.CronogramaPago.id)
+            .filter(
+                m.CronogramaPago.id_contrato == contrato.id,
+                m.CronogramaPago.requiere_pago.is_(True),
+                m.CronogramaPago.estado != m.EstadoCuotaEnum.pagada,
+            )
+            .first()
+        )
+        if faltan is None:
+            contrato.estado = m.EstadoContratoEnum.cancelado
 
     destinatarios = sep_svc.unicos(
         sep_svc.usuarios_por_roles(db, contrato.id_empresa, contrato.id_proyecto, ["cobranza", "admin"])

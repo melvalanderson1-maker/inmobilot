@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # muestra URLs completas, no fragmentos reconstruidos.
     PUBLIC_URL_BASE: str = ""
 
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_SUBJECT: str = "mailto:melvalanderson1@gmail.com"
+
     class Config:
         env_file = ".env"
 

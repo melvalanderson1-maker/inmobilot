@@ -217,6 +217,22 @@
           }
         </button>
 
+
+                @if (push.soportado) {
+          <button
+            class="campana"
+            (click)="push.alternar()"
+            [disabled]="push.trabajando() || push.bloqueado()"
+            [title]="push.bloqueado() ? 'Notificaciones bloqueadas en el navegador (permítelas en el candado de la barra de direcciones)' : (push.activo() ? 'Notificaciones del navegador activadas (clic para desactivar)' : 'Activar notificaciones del navegador')"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              @if (!push.activo()) { <line x1="3" y1="3" x2="21" y2="21"></line> }
+            </svg>
+          </button>
+        }
+
         <button class="campana" (click)="toggleNotificaciones()" aria-label="Notificaciones">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>

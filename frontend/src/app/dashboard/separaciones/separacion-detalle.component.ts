@@ -350,7 +350,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     const sep = this.separacion();
     if (!sep || !['vigente', 'vencida', 'convertida'].includes(sep.estado)) return false;
     const devuelto = (sep.devoluciones ?? [])
-      .filter((d) => d.estado === 'aprobada')
+      .filter((d) => this.esDevolucionAprobada(d.estado))
       .reduce((a, d) => a + Number(d.monto), 0);
     const pendiente = (sep.devoluciones ?? []).some((d) => d.estado === 'pendiente');
     return !pendiente && devuelto < Number(sep.importe);
@@ -424,7 +424,7 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
     const sep = this.separacion();
     if (!sep || !['admin', 'gerencia', 'supervisor'].includes(this.rolClave)) return false;
     const devuelto = (sep.devoluciones ?? [])
-      .filter((d) => d.estado === 'aprobada')
+      .filter((d) => this.esDevolucionAprobada(d.estado))
       .reduce((a, d) => a + Number(d.monto), 0);
     return sep.estado === 'vencida' || (sep.estado === 'vigente' && devuelto >= Number(sep.importe));
   }
@@ -690,6 +690,24 @@ export class SeparacionDetalleComponent implements OnInit, OnDestroy {
       convertida: 'Convertida a venta',
       devolucion_pendiente: 'Devolución pendiente de aprobación',
       devuelta: 'Devuelta',
+      rechazada: 'Rechazada',
+      anulada: 'Anulada',
+    };
+    return mapa[estado] ?? estado;
+  }
+
+
+    esDevolucionAprobada(estado: string): boolean {
+    return ['aprobada', 'pendiente_caja', 'pendiente_facturacion', 'completada'].includes(estado);
+  }
+
+  etiquetaDevolucion(estado: string): string {
+    const mapa: Record<string, string> = {
+      pendiente: 'Pendiente de gerencia',
+      pendiente_caja: 'Pendiente de Caja',
+      pendiente_facturacion: 'Pendiente de nota de crédito',
+      completada: 'Completada',
+      aprobada: 'Aprobada',
       rechazada: 'Rechazada',
     };
     return mapa[estado] ?? estado;

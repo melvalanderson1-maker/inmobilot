@@ -453,7 +453,8 @@ export type EstadoSeparacion =
   | 'convertida'
   | 'devolucion_pendiente'
   | 'devuelta'
-  | 'rechazada';
+  | 'rechazada'
+  | 'anulada';
 
 export interface Cliente {
   id: number;
@@ -529,6 +530,13 @@ export interface Devolucion {
   fecha_resolucion?: string;
   respuesta?: string;
   continua_venta?: boolean;
+  metodo_pago?: string;
+  numero_operacion?: string;
+  voucher_url?: string;
+  fecha_ejecucion?: string;
+  nota_credito_numero?: string;
+  nota_credito_url?: string;
+  fecha_nota_credito?: string;
 }
 
 export interface SeparacionCreate {
@@ -658,6 +666,7 @@ export interface VentaCreate {
   clientes: VentaClienteIn[];
   pagos_previos?: PagoPrevio[];
   datos_credito?: DatosCredito;
+  fecha_limite_saldo?: string;
 }
 
 export interface VentaClienteInfo {
@@ -723,6 +732,9 @@ export interface Venta {
   ubicaciones: DocumentoUbicacion[];
   pagos_previos?: { monto: number; fecha: string }[];
   datos_credito?: any;
+  fecha_limite_saldo?: string | null;
+  motivo_desistimiento?: string | null;
+  fecha_desistimiento?: string | null;
 }
 
 // -------------------------------------------------- CONFIGURACIÓN LEGAL --
@@ -753,6 +765,8 @@ export interface EmpresaConfig {
 export interface PagoPrevio {
   monto: number;
   fecha: string;
+  numero_operacion?: string;
+  voucher_url?: string;
 }
 
 export interface DatosCredito {
@@ -817,7 +831,8 @@ export interface PagoCola {
   concepto: string;
   detalle?: string | null;
   forma_pago?: string | null;
-  origen?: 'pago' | 'separacion';
+  origen?: 'pago' | 'separacion' | 'devolucion';
+  validado_por_nombre?: string | null;
   id_separacion?: number | null;
   convertida?: boolean;
 }

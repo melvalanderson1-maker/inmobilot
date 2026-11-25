@@ -555,8 +555,21 @@ def generar_contrato_desde_venta(db: Session, venta: m.Venta, usuario: m.Usuario
         inicial_abonado = sum(
             (Decimal(str(p["monto"])) for p in (venta.pagos_previos or [])), Decimal("0")
         )
-        saldo = Decimal("0")
-        estado_contrato = m.EstadoContratoEnum.cancelado
+        saldo = max(venta.precio_total - inicial_abonado, Decimal("0"))
+        if saldo > 0:
+            # Pagó en adelantos: el saldo queda como una cuota única con fecha límite
+            frecuencia = "unico"
+            numero_cuotas = 1
+            filas = [{
+                "numero": 1,
+                "fecha": venta.fecha_limite_saldo or fecha_abono,
+                "capital": saldo, "amortizacion": saldo,
+                "interes": Decimal("0"), "acumulado": Decimal("0"),
+                "monto": saldo, "requiere_pago": True,
+            }]
+            estado_contrato = m.EstadoContratoEnum.vigente
+        else:
+            estado_contrato = m.EstadoContratoEnum.cancelado
     else:
         dc = venta.datos_credito or {}
         inicial_abonado = Decimal(str(dc.get("inicial_monto", 0)))

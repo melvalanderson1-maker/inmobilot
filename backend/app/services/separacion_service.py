@@ -24,7 +24,7 @@ ESTADOS_ACTIVOS = (
     E.vigente,
     E.devolucion_pendiente,
 )
-ESTADOS_CERRADOS = (E.convertida, E.devuelta, E.rechazada)
+ESTADOS_CERRADOS = (E.convertida, E.devuelta, E.rechazada, E.anulada)
 
 # Carga de datos históricos: permite registrar separaciones sobre lotes que NO están libres
 # (separado / vendido / bloqueado). El lote conserva su estado. Poner en False al terminar la carga.

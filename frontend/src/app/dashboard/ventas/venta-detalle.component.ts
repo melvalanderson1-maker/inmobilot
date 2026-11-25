@@ -8,6 +8,8 @@ import { VentaService } from '../../core/services/venta.service';
 import { SocketService } from '../../core/services/socket.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ContratoService } from '../../core/services/contrato.service';
+
+import { AuthService } from '../../core/services/auth.service';
 import { Venta, DocumentoUbicacion, DocumentoUbicacionCreate, CronogramaCuota, Pago } from '../../core/models';
 
 type EstadoPaso = 'hecho' | 'actual' | 'pendiente';
@@ -43,6 +45,8 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   private readonly contratoService = inject(ContratoService);
   private readonly socket = inject(SocketService);
   private readonly toastService = inject(ToastService);
+
+  private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -53,6 +57,9 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
   pagos = signal<Pago[]>([]);
   cargando = signal(false);
   procesando = signal(false);
+
+  mostrarDesistir = signal(false);
+  motivoDesistir = '';
   idVenta!: number;
 
   mostrarUbicacion = signal(false);
@@ -104,6 +111,15 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
     return e === 'cancelada' || e === 'anulada';
   });
 
+
+    /** Solo admin y gerencia; no en ventas ya cerradas */
+  puedeDesistir = computed(() => {
+    const v = this.venta();
+    if (!v) return false;
+    const rol = this.auth.usuario()?.rol?.clave ?? '';
+    return ['admin', 'gerencia'].includes(rol) && !['cancelada', 'anulada', 'escriturada', 'finalizada'].includes(v.estado);
+  });
+
     /** Un renglón por documento; "actual" = el último registro de ese documento */
   documentos = computed<DocTramite[]>(() => {
     const v = this.venta();
@@ -120,7 +136,16 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
 
   pagosPrevios = computed(() => (this.venta()?.pagos_previos ?? []).map((p) => ({ monto: Number(p.monto), fecha: p.fecha })));
 
-  totalPagado = computed(() => this.pagosPrevios().reduce((acc, p) => acc + p.monto, 0));
+  /** Contado: cuenta solo lo ya validado por Caja y Facturación; antes de tener pagos, lo registrado en la venta */
+  totalPagado = computed(() => {
+    const v = this.venta();
+    if (v?.forma_pago === 'contado' && this.pagos().length > 0) {
+      return this.pagos()
+        .filter((p) => p.estado === 'validado')
+        .reduce((acc, p) => acc + Number(p.monto), 0);
+    }
+    return this.pagosPrevios().reduce((acc, p) => acc + p.monto, 0);
+  });
 
   saldo = computed(() => {
     const v = this.venta();
@@ -271,9 +296,13 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.venta.set(res);
         this.cargando.set(false);
-        if (res.id_contrato && res.forma_pago === 'credito') {
-          this.contratoService.cronograma(res.id_contrato).subscribe((c) => this.cronograma.set(c));
+        if (res.id_contrato) {
           this.contratoService.listarPagos(res.id_contrato).subscribe((p) => this.pagos.set(p));
+          if (res.forma_pago === 'credito') {
+            this.contratoService.cronograma(res.id_contrato).subscribe((c) => this.cronograma.set(c));
+          } else {
+            this.cronograma.set([]);
+          }
         } else {
           this.cronograma.set([]);
           this.pagos.set([]);
@@ -396,6 +425,34 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.procesando.set(false);
         this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el contrato');
+      },
+    });
+  }
+
+
+
+    abrirDesistir(): void {
+    this.motivoDesistir = '';
+    this.mostrarDesistir.set(true);
+  }
+
+  confirmarDesistir(): void {
+    const motivo = this.motivoDesistir.trim();
+    if (!motivo) {
+      this.toastService.error('Indica el motivo del desistimiento');
+      return;
+    }
+    this.procesando.set(true);
+    this.ventaService.desistir(this.idVenta, motivo).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.mostrarDesistir.set(false);
+        this.toastService.exito('Venta desistida. El lote volvió a libre.');
+        this.cargar();
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo registrar el desistimiento');
       },
     });
   }

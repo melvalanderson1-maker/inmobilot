@@ -36,8 +36,7 @@ export class SocketService implements OnDestroy {
       reconnectionDelayMax: 5000,
     });
 
-    // Tras una reconexión pudieron perderse eventos: las pantallas deben recargar
-    this.socket.io.on('reconnect', () => this.eventos$.next({ evento: 'socket:conectado', data: null }));
+
 
     this.escucharEventos();
   }
@@ -81,6 +80,7 @@ export class SocketService implements OnDestroy {
     for (const evento of eventosEscuchados) {
       this.socket.on(evento, (data: unknown) => this.eventos$.next({ evento, data }));
     }
+    this.socket.on('connect', () => this.eventos$.next({ evento: 'socket:conectado', data: null }));
   }
 
   /**

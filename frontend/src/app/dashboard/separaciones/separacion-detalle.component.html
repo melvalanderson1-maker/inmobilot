@@ -184,7 +184,7 @@
               <div class="fila-devolucion">
                 <div class="devolucion-cabecera">
                   <strong>S/ {{ d.monto | number:'1.2-2' }}</strong>
-                  <span class="chip" [ngClass]="'chip-' + d.estado">{{ d.estado }}</span>
+                  <span class="chip" [ngClass]="'chip-' + d.estado">{{ etiquetaDevolucion(d.estado) }}</span>
                   @if (d.continua_venta) {
                     <span class="chip">Continúa con la venta</span>
                   }
@@ -192,6 +192,12 @@
                 <p class="dato-secundario">{{ d.sustento }}</p>
                 @if (d.respuesta) {
                   <p class="dato-secundario">Respuesta: {{ d.respuesta }}</p>
+                }
+                @if (d.voucher_url) {
+                  <p class="dato-secundario">Devuelto por Caja (op. {{ d.numero_operacion }}) · <a [href]="d.voucher_url" target="_blank" rel="noopener">Ver voucher</a></p>
+                }
+                @if (d.nota_credito_numero) {
+                  <p class="dato-secundario">Nota de crédito {{ d.nota_credito_numero }} · <a [href]="d.nota_credito_url" target="_blank" rel="noopener">Ver archivo</a></p>
                 }
               </div>
             }

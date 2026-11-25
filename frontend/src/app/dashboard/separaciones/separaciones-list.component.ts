@@ -54,6 +54,7 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     { valor: 'devolucion_pendiente', etiqueta: 'Devolución pendiente' },
     { valor: 'devuelta', etiqueta: 'Devuelta' },
     { valor: 'rechazada', etiqueta: 'Rechazada' },
+    { valor: 'anulada', etiqueta: 'Anulada' },
   ];
 
   constructor(

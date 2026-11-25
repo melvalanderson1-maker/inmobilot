@@ -1,5 +1,7 @@
 import logging
 from datetime import date
+from datetime import datetime
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session, joinedload
@@ -18,6 +20,7 @@ from app.sockets import (
     notificar_nuevo_contrato,
     notificar_usuarios,
     notificar_pago,
+    notificar_separacion,
 )
 
 logger = logging.getLogger(__name__)
@@ -189,6 +192,21 @@ async def _crear_venta(
     if len(ids) != len(set(ids)):
         raise HTTPException(status_code=422, detail="Un mismo cliente no puede figurar dos veces como comprador")
 
+
+    # Contado: al menos un pago con voucher; si no cubre el total, hay que fijar fecha límite del saldo
+    carga_historica = sep_svc.PERMITIR_EDITAR_TODO and usuario.rol.clave in ("admin", "gerencia")
+    if payload.forma_pago == m.FormaPagoEnum.contado and not carga_historica:
+        pagos_ok = [p for p in payload.pagos_previos if p.monto and p.monto > 0]
+        if not pagos_ok:
+            raise HTTPException(status_code=422, detail="En una venta al contado registra al menos un pago con su voucher")
+        if any(not p.voucher_url for p in pagos_ok):
+            raise HTTPException(status_code=422, detail="Cada pago registrado debe tener su voucher")
+        total_pagos = sum((p.monto for p in pagos_ok), Decimal("0"))
+        if total_pagos > payload.precio_total:
+            raise HTTPException(status_code=422, detail="Los pagos registrados superan el precio total de la venta")
+        if total_pagos < payload.precio_total and not payload.fecha_limite_saldo:
+            raise HTTPException(status_code=422, detail="Indica la fecha límite para pagar el saldo restante")
+
     venta = m.Venta(
         id_empresa=usuario.id_empresa,
         id_proyecto=lote.id_proyecto,
@@ -199,6 +217,7 @@ async def _crear_venta(
         id_usuario_registro=usuario.id,
         pagos_previos=[p.model_dump(mode="json") for p in payload.pagos_previos] if payload.pagos_previos else None,
         datos_credito=_datos_credito(payload),
+        fecha_limite_saldo=payload.fecha_limite_saldo if payload.forma_pago == m.FormaPagoEnum.contado else None,
     )
     db.add(venta)
     db.flush()
@@ -517,6 +536,107 @@ async def crear_venta_autorizada(
     db.commit()
     return s.VentaOut.desde_venta(venta)
 
+
+# ---------------------------------------------------------- desistimiento --
+
+@router.post("/{id_venta}/desistir", response_model=s.VentaOut)
+async def desistir_venta(
+    id_venta: int,
+    payload: s.VentaDesistir,
+    usuario: m.Usuario = Depends(require_permiso("aprobar_autorizacion")),
+    db: Session = Depends(get_db),
+):
+    """El cliente desiste de la venta: cancela la venta, anula contrato y separación y libera el lote.
+    Solo si ningún pago pasó la validación de Caja."""
+    venta = svc.cargar_venta(db, id_venta, usuario)
+    cerradas = (
+        m.EstadoVentaEnum.cancelada, m.EstadoVentaEnum.anulada,
+        m.EstadoVentaEnum.escriturada, m.EstadoVentaEnum.finalizada,
+    )
+    if venta.estado in cerradas:
+        raise HTTPException(status_code=409, detail="Esta venta ya está cerrada y no se puede desistir")
+    motivo = (payload.motivo or "").strip()
+    if not motivo:
+        raise HTTPException(status_code=422, detail="Indica el motivo del desistimiento")
+
+    contrato = db.query(m.Contrato).filter(m.Contrato.id == venta.id_contrato).first() if venta.id_contrato else None
+    pagos = db.query(m.Pago).filter(m.Pago.id_contrato == contrato.id).all() if contrato else []
+    if any(p.estado in ("pendiente_facturacion", "validado") for p in pagos):
+        raise HTTPException(
+            status_code=409,
+            detail="Esta venta ya tiene pagos validados por Caja. No se puede desistir hasta resolver la devolución de esos pagos.",
+        )
+
+    estado_previo = venta.estado.value
+    ids_pagos_anulados = []
+    for p in pagos:
+        if p.estado in ("pendiente_caja", "rechazado"):
+            p.estado = "anulado"
+            p.motivo_rechazo = f"Venta desistida: {motivo}"[:300]
+            ids_pagos_anulados.append(p.id)
+
+    if contrato:
+        contrato.estado = m.EstadoContratoEnum.anulado
+    venta.estado = m.EstadoVentaEnum.cancelada
+    venta.motivo_desistimiento = motivo[:300]
+    venta.fecha_desistimiento = sep_svc.ahora_utc()
+    venta.desistido_por = usuario.id
+
+    sep = None
+    if venta.id_separacion:
+        sep = db.query(m.Separacion).filter(m.Separacion.id == venta.id_separacion).first()
+        if sep and sep.estado != m.EstadoSeparacionEnum.anulada:
+            sep.estado = m.EstadoSeparacionEnum.anulada
+
+    lote = db.query(m.Lote).filter(m.Lote.id == venta.id_lote).with_for_update().first()
+    cambio_lote = False
+    if lote and lote.estado != m.EstadoLoteEnum.libre:
+        cambio_lote = sep_svc.cambiar_estado_lote(
+            db, lote, m.EstadoLoteEnum.libre, usuario, f"Desistimiento de la venta #{venta.id}"
+        )
+
+    aud.registrar(
+        db, usuario, "venta", venta.id, "desistir",
+        {
+            "motivo": motivo, "estado_previo": estado_previo, "id_contrato": venta.id_contrato,
+            "id_separacion": venta.id_separacion, "pagos_anulados": ids_pagos_anulados,
+            "lote_liberado": cambio_lote,
+        },
+    )
+
+    ejecutivo = contrato.registrador if contrato else (sep.ejecutivo if sep else None)
+    destinatarios = sep_svc.unicos(
+        [ejecutivo] + sep_svc.usuarios_por_roles(
+            db, venta.id_empresa, venta.id_proyecto, ["caja", "cobranza", "legal", "gerencia", "admin"]
+        ),
+        excluir_id=usuario.id,
+    )
+    codigo = lote.codigo if lote else ""
+    notifs = sep_svc.crear_notificaciones(
+        db, venta.id_empresa, destinatarios,
+        "venta_desistida",
+        "Venta desistida",
+        f"Lote {codigo}: {usuario.nombre} registró el desistimiento. Motivo: {motivo}",
+        {"id_venta": venta.id, "id_proyecto": venta.id_proyecto, "id_lote": venta.id_lote},
+    )
+    db.commit()
+
+    venta_completa = svc.cargar_venta(db, id_venta, usuario)
+    await notificar_venta("venta:actualizada", _resumen_socket(venta_completa), id_proyecto=venta.id_proyecto)
+    await notificar_usuarios(sep_svc.notificaciones_a_dict(notifs))
+    if sep:
+        await notificar_separacion("separacion:actualizada", sep_svc.resumen_socket(sep), venta.id_proyecto, [])
+    if ids_pagos_anulados and contrato:
+        await notificar_pago(
+            "pago:actualizado",
+            {"id_contrato": contrato.id, "estado": "anulado", "numero_contrato": contrato.numero_contrato},
+            venta.id_proyecto, [],
+        )
+    if cambio_lote:
+        await notificar_cambio_estado_lote(
+            sep_svc.lote_out_dict(db, venta.id_lote), id_proyecto=venta.id_proyecto, id_empresa=usuario.id_empresa
+        )
+    return s.VentaOut.desde_venta(venta_completa)
 
 # ----------------------------------------------------------------- consultas --
 

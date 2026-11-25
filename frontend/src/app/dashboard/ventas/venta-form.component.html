@@ -344,7 +344,7 @@
               <header class="vf-sec-head">
                 <div>
                   <h2>Pagos realizados</h2>
-                  <p>Registra lo que el cliente ya pagó hasta hoy.</p>
+                  <p>Registra cada pago con su voucher. Caja y Facturación validan cada uno. Si no cubren el total, indica hasta cuándo se paga el saldo.</p>
                 </div>
                 <button type="button" class="vf-btn vf-btn-ghost vf-btn-sm" (click)="agregarFilaPago()">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
@@ -352,15 +352,7 @@
                 </button>
               </header>
 
-              @if (importeSeparado > 0 && !pagoSeparacionAgregado) {
-                <button type="button" class="vf-callout" (click)="agregarPagoSeparacion()">
-                  <span>
-                    <strong>Incluir el pago de la separación</strong>
-                    <small>S/ {{ importeSeparado | number:'1.2-2' }} el {{ separacion()!.fecha_inicio }}</small>
-                  </span>
-                  <span class="vf-callout-cta">Incluir</span>
-                </button>
-              }
+
 
               <div class="vf-pagos">
                 @for (pago of pagosPrevios; track $index) {
@@ -412,6 +404,13 @@
               </dl>
               @if (pagosExcedenPrecio) {
                 <p class="vf-hint vf-hint-warn">Los pagos registrados superan el precio total de la venta.</p>
+              }
+
+              @if (saldoContado !== null && saldoContado > 0) {
+                <label class="vf-field">
+                  <span>Fecha límite para pagar el saldo (S/ {{ saldoContado | number:'1.2-2' }})</span>
+                  <input type="date" [(ngModel)]="fechaLimiteSaldo" />
+                </label>
               }
             </div>
           </section>
@@ -644,9 +643,7 @@
             @if (descuento !== null && descuento > 0) {
               <div class="is-good"><dt>Descuento</dt><dd>− S/ {{ descuento | number:'1.2-2' }}</dd></div>
             }
-            @if (!directo) {
-              <div><dt>Separación pagada</dt><dd>S/ {{ importeSeparado | number:'1.2-2' }}</dd></div>
-            }
+
 
             @if (formaPago === 'contado') {
               <div><dt>Pagos registrados</dt><dd>S/ {{ totalPagosPrevios | number:'1.2-2' }}</dd></div>

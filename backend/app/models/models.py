@@ -82,6 +82,7 @@ class EstadoSeparacionEnum(str, enum.Enum):
     devolucion_pendiente = "devolucion_pendiente"
     devuelta = "devuelta"
     rechazada = "rechazada"
+    anulada = "anulada"
 
 
 class EstadoVentaEnum(str, enum.Enum):
@@ -569,6 +570,8 @@ class Pago(Base):
     cuota = relationship("CronogramaPago")
     registrador = relationship("Usuario", foreign_keys=[registrado_por])
 
+    validador = relationship("Usuario", foreign_keys=[validado_por])
+
 
 # =========================================================================
 # 7. DOCUMENTOS
@@ -797,6 +800,18 @@ class Devolucion(Base):
     fecha_resolucion = Column(DateTime)
     respuesta = Column(String(300))
     continua_venta = Column(Boolean, nullable=False, default=False, server_default="false")
+
+    # Circuito: pendiente (gerencia) -> pendiente_caja -> pendiente_facturacion -> completada  |  rechazada
+    metodo_pago = Column(String(40))
+    numero_operacion = Column(String(60))
+    voucher_url = Column(String(300))
+    ejecutado_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_ejecucion = Column(DateTime)
+    nota_credito_numero = Column(String(50))
+    nota_credito_url = Column(String(300))
+    nota_credito_por = Column(Integer, ForeignKey("usuarios.id"))
+    fecha_nota_credito = Column(DateTime)
+
     created_at = Column(DateTime, server_default=func.now())
 
     separacion = relationship("Separacion", back_populates="devoluciones")
@@ -824,6 +839,12 @@ class Venta(Base):
     datos_credito = Column(JSONB, nullable=True)
     escritura_url = Column(String(300))
     titulo_url = Column(String(300))
+
+    fecha_limite_saldo = Column(Date)
+    motivo_desistimiento = Column(String(300))
+    fecha_desistimiento = Column(DateTime)
+    desistido_por = Column(Integer, ForeignKey("usuarios.id"))
+
     id_usuario_registro = Column(Integer, ForeignKey("usuarios.id"))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -916,3 +937,15 @@ class Auditoria(Base):
     __table_args__ = (Index("idx_auditoria_entidad", "entidad", "id_entidad"),)
 
     usuario = relationship("Usuario", foreign_keys=[id_usuario])
+
+
+class PushSuscripcion(Base):
+    """Navegador/dispositivo de un usuario que aceptó notificaciones push."""
+    __tablename__ = "push_suscripciones"
+
+    id = Column(BigInteger, primary_key=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
+    endpoint = Column(Text, nullable=False, unique=True)
+    p256dh = Column(String(200), nullable=False)
+    auth = Column(String(100), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())

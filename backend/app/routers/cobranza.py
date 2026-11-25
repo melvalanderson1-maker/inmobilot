@@ -1,7 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.database import get_db
@@ -84,7 +84,8 @@ def resumen_cobranza(
         .filter(
             m.Contrato.id_empresa == usuario.id_empresa,
             m.Contrato.id_proyecto == id_proyecto,
-            m.Contrato.forma_pago == m.FormaPagoEnum.credito,
+            m.Contrato.estado != m.EstadoContratoEnum.anulado,
+            or_(m.Contrato.forma_pago == m.FormaPagoEnum.credito, m.Contrato.saldo_financiado > 0),
         )
         .all()
     )

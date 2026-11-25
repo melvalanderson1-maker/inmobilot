@@ -60,6 +60,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   precioTotal: number | null = null;
   /** true cuando el usuario cambió el precio a mano (ya no se reemplaza solo al cambiar la forma de pago) */
   precioEditado = false;
+  fechaLimiteSaldo = '';
 
   pagosPrevios: PagoPrevio[] = [{ monto: null, fecha: '', numero_operacion: '', voucher_url: '' }];
   subiendoVoucherPago = signal<number | null>(null);
@@ -390,6 +391,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       f: this.formaPago,
       p: this.precioTotal,
       pp: this.pagosPrevios,
+      fl: this.fechaLimiteSaldo,
       dc: this.datosCredito,
       cp: this.cuotasPers,
       e: this.extras().map((x) => x.cliente.id),
@@ -421,6 +423,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       precioTotal: this.precioTotal,
       precioEditado: this.precioEditado,
       pagosPrevios: this.pagosPrevios,
+      fechaLimiteSaldo: this.fechaLimiteSaldo,
       datosCredito: this.datosCredito,
       cuotasPers: this.cuotasPers,
       extras: this.extras(),
@@ -436,6 +439,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.precioTotal = b.precioTotal ?? this.precioTotal;
     this.precioEditado = b.precioEditado ?? this.precioEditado;
     if (b.pagosPrevios?.length) this.pagosPrevios = b.pagosPrevios;
+    this.fechaLimiteSaldo = b.fechaLimiteSaldo ?? this.fechaLimiteSaldo;
     if (b.datosCredito) this.datosCredito = { ...this.datosCredito, ...b.datosCredito };
     if (b.cuotasPers?.length) this.cuotasPers = b.cuotasPers;
     if (b.extras?.length) this.extras.set(b.extras);
@@ -668,6 +672,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       precio_total: this.precioTotal ?? 0,
       clientes,
       pagos_previos: this.formaPago === 'contado' ? (pagosValidos as any) : undefined,
+      fecha_limite_saldo: 
+        this.formaPago === 'contado' && (this.saldoContado ?? 0) > 0 ? this.fechaLimiteSaldo || undefined : undefined,
       datos_credito:
         this.formaPago === 'credito' && dc.inicial_monto
           ? {
@@ -915,12 +921,15 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   get pasoPagoOk(): boolean {
-    if (this.formaPago === 'contado') return true;
+    if (this.formaPago === 'contado') {
+      const filas = this.pagosPrevios.filter((p) => p.monto && p.fecha);
+      const saldoOk = !(this.saldoContado && this.saldoContado > 0) || !!this.fechaLimiteSaldo;
+      return filas.length > 0 && filas.every((p) => !!p.voucher_url) && !this.pagosExcedenPrecio && saldoOk;
+    }
     const dc = this.datosCredito;
     const plazoOk = this.esPersonalizado ? this.cuotasValidas().length > 0 : !!dc.plazo_meses && dc.plazo_meses >= 1;
     return !!dc.inicial_monto && !!dc.fecha_deposito && !!dc.numero_operacion.trim() && !!dc.voucher_url && plazoOk;
   }
-
   irA(id: string): void {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -1021,7 +1030,10 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     if (!this.precioTotal || this.precioTotal <= 0) return 'Indica el precio total de la venta';
     if (this.formaPago === 'contado') {
       const filas = this.pagosPrevios.filter((p) => p.monto && p.fecha);
+      if (filas.length === 0) return 'Registra al menos un pago con su fecha y voucher';
       if (filas.some((p) => !p.voucher_url)) return 'Sube el voucher de cada pago registrado';
+      if (this.pagosExcedenPrecio) return 'Los pagos registrados superan el precio total de la venta';
+      if ((this.saldoContado ?? 0) > 0 && !this.fechaLimiteSaldo) return 'Indica la fecha límite para pagar el saldo restante';
     }
     if (this.formaPago === 'credito') {
       const dc = this.datosCredito;

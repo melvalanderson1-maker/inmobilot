@@ -653,9 +653,10 @@ class PagoColaOut(BaseModel):
     detalle: Optional[str] = None  # ej. "Inicial de la venta #16"
     forma_pago: Optional[str] = None  # contado | credito
     created_at: datetime
-    origen: str = "pago"            # "pago" | "separacion"
+    origen: str = "pago"            # "pago" | "separacion" | "devolucion"
     id_separacion: Optional[int] = None
     convertida: bool = False        # separación ya convertida en venta
+    validado_por_nombre: Optional[str] = None
 
 
 # ----------------------------------------------------------------- LEADS --
@@ -906,6 +907,21 @@ class DevolucionResolver(BaseModel):
     respuesta: Optional[str] = None
 
 
+class DevolucionEjecutar(BaseModel):
+    numero_operacion: str
+    voucher_url: str
+    metodo_pago: Optional[str] = None
+
+
+class DevolucionNotaCredito(BaseModel):
+    numero: str
+    archivo_url: str
+
+
+class VentaDesistir(BaseModel):
+    motivo: str
+
+
 class DevolucionOut(ORMBase):
     id: int
     monto: Decimal
@@ -915,6 +931,13 @@ class DevolucionOut(ORMBase):
     fecha_resolucion: Optional[datetime] = None
     respuesta: Optional[str] = None
     continua_venta: bool = False
+    metodo_pago: Optional[str] = None
+    numero_operacion: Optional[str] = None
+    voucher_url: Optional[str] = None
+    fecha_ejecucion: Optional[datetime] = None
+    nota_credito_numero: Optional[str] = None
+    nota_credito_url: Optional[str] = None
+    fecha_nota_credito: Optional[datetime] = None
 
 class SeparacionClienteOut(ORMBase):
     id: int
@@ -1023,6 +1046,7 @@ class VentaCreate(BaseModel):
     clientes: list[VentaClienteIn] = []
     pagos_previos: list[PagoPrevioIn] = []
     datos_credito: Optional[DatosCreditoIn] = None
+    fecha_limite_saldo: Optional[date] = None  # contado: fecha para pagar el saldo restante
 
 
 class VentaClienteOut(ORMBase):
@@ -1099,6 +1123,10 @@ class VentaOut(ORMBase):
     ubicaciones: list[DocumentoUbicacionOut] = []
     pagos_previos: Optional[list] = None
     datos_credito: Optional[dict] = None
+
+    fecha_limite_saldo: Optional[date] = None
+    motivo_desistimiento: Optional[str] = None
+    fecha_desistimiento: Optional[datetime] = None
 
     @staticmethod
     def desde_venta(venta) -> "VentaOut":

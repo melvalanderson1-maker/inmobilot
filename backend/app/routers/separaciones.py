@@ -21,6 +21,9 @@ router = APIRouter(prefix="/separaciones", tags=["separaciones"])
 E = m.EstadoSeparacionEnum
 LOTE = m.EstadoLoteEnum
 
+# Estados de una devolución que ya comprometen el dinero a devolver
+DEV_APROBADAS = ("aprobada", "pendiente_caja", "pendiente_facturacion", "completada")
+
 
 def _conflicto(detalle: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
@@ -371,6 +374,12 @@ async def validar_voucher(
     sep.validado_por = usuario.id
     sep.fecha_validacion = svc.ahora_utc()
     sep.motivo_rechazo = None
+
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "validar_caja",
+        {"id_lote": sep.id_lote, "importe": str(sep.importe), "voucher_numero": sep.voucher_numero},
+    )
     # Lote libre → pasa a separado. Si es carga histórica sobre un lote ocupado, conserva su estado.
     cambio = False
     if sep.lote.estado == LOTE.libre:
@@ -412,6 +421,16 @@ async def rechazar_voucher(
 
     sep.estado = E.rechazada
     sep.motivo_rechazo = motivo
+
+    
+
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "rechazar_caja",
+        {"id_lote": sep.id_lote, "importe": str(sep.importe), "motivo": motivo},
+    )
+
+
     # La proforma que originó esta separación vuelve a quedar disponible
     db.query(m.Proforma).filter(m.Proforma.id_separacion == sep.id).update(
         {m.Proforma.estado: "emitida", m.Proforma.id_separacion: None}, synchronize_session=False
@@ -463,6 +482,11 @@ async def subir_comprobante(
     if not ya_convertida:
         sep.estado = E.vigente
 
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "facturar",
+        {"id_lote": sep.id_lote, "tipo": tipo, "numero": numero, "importe": str(sep.importe)},
+    )
+
     estado_notif = "convertida" if ya_convertida else "vigente"
     notifs = svc.crear_notificaciones(
         db, sep.id_empresa, svc.unicos([sep.ejecutivo], excluir_id=usuario.id),
@@ -496,6 +520,13 @@ async def rechazar_facturacion(
 
     sep.estado = E.rechazada
     sep.motivo_rechazo = motivo
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "rechazar_facturacion",
+        {"id_lote": sep.id_lote, "importe": str(sep.importe), "motivo": motivo},
+    )
+
+
     db.query(m.Proforma).filter(m.Proforma.id_separacion == sep.id).update(
         {m.Proforma.estado: "emitida", m.Proforma.id_separacion: None}, synchronize_session=False
     )
@@ -665,11 +696,11 @@ async def convertir_separacion(
 
     sep.estado = E.convertida
     sep.fecha_conversion = fecha_conversion or svc.hoy_peru()
-    if svc.PERMITIR_EDITAR_TODO and estado_anterior != E.vigente:
-        aud.registrar(
-            db, usuario, "separacion", sep.id, "convertir_historica",
-            aud.diferencias({"estado": estado_anterior.value}, {"estado": E.convertida.value}),
-        )
+    aud.registrar(
+        db, usuario, "separacion", sep.id,
+        "convertir_historica" if estado_anterior != E.vigente else "convertir",
+        {"estado_anterior": estado_anterior.value, "id_lote": sep.id_lote},
+    )
     db.commit()
 
     await _emitir(db, sep, usuario, [])
@@ -735,7 +766,7 @@ async def solicitar_devolucion(
     ).first() is not None
     if (tiene_venta_activa or sep.estado == E.convertida) and not payload.continua_venta:
         raise _conflicto("La venta ya está en marcha: la devolución debe registrarse indicando que el cliente continúa con la compra")
-    ya_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+    ya_devuelto = sum((d.monto for d in sep.devoluciones if d.estado in DEV_APROBADAS), Decimal("0"))
     disponible = sep.importe - ya_devuelto
     if payload.monto > disponible:
         raise HTTPException(status_code=422, detail=f"El monto no puede superar lo disponible a devolver (S/ {disponible:,.2f})")
@@ -747,6 +778,12 @@ async def solicitar_devolucion(
         id_separacion=sep.id, monto=payload.monto, sustento=sustento,
         solicitado_por=usuario.id, estado="pendiente", continua_venta=payload.continua_venta,
     ))
+
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "solicitar_devolucion",
+        {"monto": str(payload.monto), "sustento": sustento, "continua_venta": payload.continua_venta},
+    )
 
 
     destinatarios = svc.usuarios_por_roles(
@@ -781,14 +818,19 @@ async def resolver_devolucion(
     dev.fecha_resolucion = svc.ahora_utc()
     dev.respuesta = payload.respuesta
 
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "resolver_devolucion",
+        {"id_devolucion": dev.id, "aprobada": payload.aprobar, "monto": str(dev.monto), "respuesta": payload.respuesta},
+    )
+
     # Compatibilidad: separaciones que quedaron en 'devolucion_pendiente' con el flujo anterior
     if sep.estado == E.devolucion_pendiente:
         sep.estado = E.vencida if sep.fecha_vencimiento < svc.hoy_peru() else E.vigente
 
     cambio = False
     if payload.aprobar:
-        dev.estado = "aprobada"
-        total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+        dev.estado = "pendiente_caja"
+        total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado in DEV_APROBADAS), Decimal("0"))
         # Si el cliente continúa con la compra, solo se registra el pago: el lote y la separación NO cambian
         if dev.continua_venta:
             total_devuelto = Decimal("0")
@@ -814,6 +856,17 @@ async def resolver_devolucion(
         f"Lote {sep.lote.codigo}" + (f": {payload.respuesta}" if payload.respuesta else ""),
         {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": sep.estado.value},
     )
+
+    if payload.aprobar:
+        notifs += svc.crear_notificaciones(
+            db, sep.id_empresa,
+            svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["caja", "admin"], excluir_id=usuario.id),
+            "devolucion_pendiente_caja",
+            "Devolución por ejecutar",
+            f"Lote {sep.lote.codigo}: devolver S/ {dev.monto:,.2f} al cliente y registrar el voucher.",
+            {"id_separacion": sep.id, "id_devolucion": dev.id, "id_proyecto": sep.id_proyecto,
+                "id_lote": sep.id_lote, "estado": "pendiente_caja"},
+        )
     db.commit()
 
     await _emitir(db, sep, usuario, notifs, cambio_lote=cambio)
@@ -831,7 +884,7 @@ async def liberar_lote(
     """Libera el lote de una separación vencida, o de una vigente ya devuelta por completo
     cuyo cliente finalmente no continúa con la compra."""
     sep = svc.cargar_separacion(db, id_separacion, usuario)
-    total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado == "aprobada"), Decimal("0"))
+    total_devuelto = sum((d.monto for d in sep.devoluciones if d.estado in DEV_APROBADAS), Decimal("0"))
     ya_devuelta = total_devuelto >= sep.importe
 
     if not (sep.estado == E.vencida or (sep.estado == E.vigente and ya_devuelta)):
@@ -850,6 +903,12 @@ async def liberar_lote(
     )
     if ya_devuelta:
         sep.estado = E.devuelta
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "liberar_lote",
+        {"id_lote": sep.id_lote, "devuelta_por_completo": ya_devuelta},
+    )
+        
     notifs = svc.crear_notificaciones(
         db, sep.id_empresa, svc.unicos([sep.ejecutivo], excluir_id=usuario.id),
         "lote_liberado",
@@ -861,3 +920,96 @@ async def liberar_lote(
 
     await _emitir(db, sep, usuario, notifs, cambio_lote=cambio)
     return _detalle(db, id_separacion, usuario)
+
+
+# ------------------------------------- devolución: Caja y Facturación --
+
+def _cargar_devolucion(db: Session, id_devolucion: int, usuario: m.Usuario):
+    dev = db.query(m.Devolucion).filter(m.Devolucion.id == id_devolucion).first()
+    if not dev:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Devolución no encontrada")
+    sep = svc.cargar_separacion(db, dev.id_separacion, usuario)  # valida empresa y proyecto
+    return dev, sep
+
+
+@router.post("/devoluciones/{id_devolucion}/ejecutar", response_model=s.SeparacionOut)
+async def ejecutar_devolucion(
+    id_devolucion: int,
+    payload: s.DevolucionEjecutar,
+    usuario: m.Usuario = Depends(require_permiso("validar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Caja devolvió el dinero al cliente: registra N° de operación y voucher."""
+    dev, sep = _cargar_devolucion(db, id_devolucion, usuario)
+    if dev.estado != "pendiente_caja":
+        raise _conflicto("Esta devolución no está pendiente de Caja")
+    numero = payload.numero_operacion.strip()
+    if not numero or not payload.voucher_url:
+        raise HTTPException(status_code=422, detail="Indica el N° de operación y sube el voucher de la devolución")
+
+    dev.estado = "pendiente_facturacion"
+    dev.numero_operacion = numero
+    dev.voucher_url = payload.voucher_url
+    dev.metodo_pago = (payload.metodo_pago or "").strip() or None
+    dev.ejecutado_por = usuario.id
+    dev.fecha_ejecucion = svc.ahora_utc()
+    aud.registrar(
+        db, usuario, "devolucion", dev.id, "ejecutar_caja",
+        {"id_separacion": sep.id, "monto": str(dev.monto), "numero_operacion": numero, "voucher_url": payload.voucher_url},
+    )
+    destinatarios = svc.unicos(
+        svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["facturacion", "admin"]) + [sep.ejecutivo],
+        excluir_id=usuario.id,
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "devolucion_pendiente_facturacion",
+        "Devolución realizada: emitir nota de crédito",
+        f"Lote {sep.lote.codigo}: Caja devolvió S/ {dev.monto:,.2f}. Falta la nota de crédito.",
+        {"id_separacion": sep.id, "id_devolucion": dev.id, "id_proyecto": sep.id_proyecto,
+         "id_lote": sep.id_lote, "estado": "pendiente_facturacion"},
+    )
+    db.commit()
+    await _emitir(db, sep, usuario, notifs)
+    return _detalle(db, sep.id, usuario)
+
+
+@router.post("/devoluciones/{id_devolucion}/nota-credito", response_model=s.SeparacionOut)
+async def nota_credito_devolucion(
+    id_devolucion: int,
+    payload: s.DevolucionNotaCredito,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Facturación sube la nota de crédito: la devolución queda completada."""
+    dev, sep = _cargar_devolucion(db, id_devolucion, usuario)
+    if dev.estado != "pendiente_facturacion":
+        raise _conflicto("Esta devolución no está pendiente de nota de crédito")
+    numero = payload.numero.strip()
+    if not numero or not payload.archivo_url:
+        raise HTTPException(status_code=422, detail="Indica el número y sube el archivo de la nota de crédito")
+
+    dev.estado = "completada"
+    dev.nota_credito_numero = numero
+    dev.nota_credito_url = payload.archivo_url
+    dev.nota_credito_por = usuario.id
+    dev.fecha_nota_credito = svc.ahora_utc()
+    aud.registrar(
+        db, usuario, "devolucion", dev.id, "emitir_nota_credito",
+        {"id_separacion": sep.id, "monto": str(dev.monto), "numero": numero},
+    )
+    destinatarios = svc.unicos(
+        [sep.ejecutivo] + svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["gerencia", "admin"]),
+        excluir_id=usuario.id,
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "devolucion_completada",
+        "Devolución completada",
+        f"Lote {sep.lote.codigo}: S/ {dev.monto:,.2f} devueltos. Nota de crédito {numero}.",
+        {"id_separacion": sep.id, "id_devolucion": dev.id, "id_proyecto": sep.id_proyecto,
+         "id_lote": sep.id_lote, "estado": "completada"},
+    )
+    db.commit()
+    await _emitir(db, sep, usuario, notifs)
+    return _detalle(db, sep.id, usuario)

@@ -18,6 +18,8 @@ import socketio
 
 from app.core.security import decode_access_token
 
+from app.services.push_service import enviar_push
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins="*",  # ajustar en producción a settings.cors_origins_list
@@ -126,16 +128,22 @@ async def notificar_separacion(
     for notif in notificaciones:
         await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
 
+    await enviar_push(notificaciones)
+
 
 async def notificar_venta(evento: str, venta_dict: dict, id_proyecto: int):
     """Evento de venta a la sala del proyecto (datos mínimos: id, id_lote, estado)."""
     await emitir_evento(evento, venta_dict, room=f"proyecto:{id_proyecto}")
 
 
+
+
 async def notificar_usuarios(notificaciones: list[dict]):
     """Notificación privada a cada destinatario (sala usuario:{id})."""
     for notif in notificaciones:
         await emitir_evento("notificacion:nueva", notif, room=f"usuario:{notif['id_usuario_destino']}")
+
+    await enviar_push(notificaciones)
 
 
 async def notificar_pago(

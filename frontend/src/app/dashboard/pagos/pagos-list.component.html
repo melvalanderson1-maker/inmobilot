@@ -52,7 +52,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (p of filtrados(); track $index) {
+          @for (p of filtrados(); track (p.origen ?? 'pago') + '-' + p.id) {
             <tr>
               <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
               <td><strong>{{ p.numero_contrato }}</strong><small>Lote {{ p.lote_codigo ?? '—' }}</small></td>
@@ -77,15 +77,22 @@
                     @if (urlCompleta(p.factura_url); as f) { · <a [href]="f" target="_blank" rel="noopener" class="enlace">Ver</a> }
                   </small>
                 }
+                @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }
               </td>
               <td class="acciones">
                 @if (p.estado === 'pendiente_caja' && puedeValidar) {
-                  <button class="btn-ok" (click)="validar(p)" [disabled]="procesando()">Validar</button>
-                  <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                  @if (p.origen === 'devolucion') {
+                    <button class="btn-ok" (click)="abrirDevolucion(p)" [disabled]="procesando()">Registrar devolución</button>
+                  } @else {
+                    <button class="btn-ok" (click)="validar(p)" [disabled]="procesando()">Validar</button>
+                    <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                  }
                 }
                 @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
-                  <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
-                  @if (!p.convertida) {
+                  @if (p.origen === 'devolucion') {
+                    <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir nota de crédito</button>
+                  } @else {
+                    <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
                     <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
                   }
                 }
@@ -123,11 +130,15 @@
       <p class="sub">{{ pagoComprobante()!.concepto }} · S/ {{ pagoComprobante()!.monto | number:'1.2-2' }} · contrato {{ pagoComprobante()!.numero_contrato }}</p>
       <div class="campo">
         <label>Tipo</label>
-        <select [(ngModel)]="comprobanteForm.tipo">
-          <option value="boleta">Boleta</option>
-          <option value="factura">Factura</option>
-          <option value="recibo">Recibo</option>
-        </select>
+        @if (pagoComprobante()!.origen === 'devolucion') {
+          <span class="ok">Nota de crédito</span>
+        } @else {
+          <select [(ngModel)]="comprobanteForm.tipo">
+            <option value="boleta">Boleta</option>
+            <option value="factura">Factura</option>
+            <option value="recibo">Recibo</option>
+          </select>
+        }
       </div>
       <div class="campo">
         <label>Número</label>
@@ -145,6 +156,41 @@
       <div class="pie">
         <button class="btn-sec" (click)="pagoComprobante.set(null)">Cancelar</button>
         <button class="btn-ok" (click)="confirmarComprobante()" [disabled]="procesando() || subiendoArchivo()">Guardar y aplicar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (pagoDevolucion()) {
+  <div class="modal-overlay" (click)="pagoDevolucion.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Registrar devolución</h2>
+      <p class="sub">S/ {{ pagoDevolucion()!.monto | number:'1.2-2' }} · {{ pagoDevolucion()!.cliente_nombre }} · {{ pagoDevolucion()!.numero_contrato }}</p>
+      <div class="campo">
+        <label>Medio</label>
+        <select [(ngModel)]="devolucionForm.metodo_pago">
+          <option value="Transferencia bancaria">Transferencia bancaria</option>
+          <option value="Transferencia (Yape)">Transferencia (Yape)</option>
+          <option value="Transferencia (Plin)">Transferencia (Plin)</option>
+          <option value="Efectivo">Efectivo</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label>N° de operación</label>
+        <input type="text" [(ngModel)]="devolucionForm.numero_operacion" />
+      </div>
+      <div class="campo">
+        <label>Voucher de la devolución (JPG, PNG o PDF)</label>
+        @if (devolucionForm.voucher_url) {
+          <span class="ok">Archivo subido ✓</span>
+        } @else {
+          <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoDevolucion($event)" [disabled]="subiendoVoucherDev()" />
+          @if (subiendoVoucherDev()) { <span class="sub">Subiendo...</span> }
+        }
+      </div>
+      <div class="pie">
+        <button class="btn-sec" (click)="pagoDevolucion.set(null)">Cancelar</button>
+        <button class="btn-ok" (click)="confirmarDevolucion()" [disabled]="procesando() || subiendoVoucherDev()">Guardar y pasar a Facturación</button>
       </div>
     </div>
   </div>

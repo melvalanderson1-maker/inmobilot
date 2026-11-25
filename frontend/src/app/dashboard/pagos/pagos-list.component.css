@@ -132,9 +132,16 @@
 .metodo-ico svg { width: 14px; height: 14px; }
 
 .metodo-yape { background: #f5ecfa; border-color: #e3c9f1; color: #5b1a70; }
-.metodo-yape .metodo-ico { background: #742284; }
 .metodo-plin { background: #e6faf8; border-color: #b6ede8; color: #0b6b63; }
-.metodo-plin .metodo-ico { background: #00b3a4; }
+
+/* Logos originales de Yape y Plin */
+.metodo-yape .metodo-ico,
+.metodo-plin .metodo-ico {
+  width: 30px; height: 30px; background: #fff; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.metodo-yape .metodo-ico { border-radius: 9px; }
+.metodo-ico img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .metodo-deposito { background: #eff6ff; border-color: #cfe0fb; color: #1e3a8a; }
 .metodo-deposito .metodo-ico { background: #1d4ed8; }
 .metodo-transferencia { background: #eef2ff; border-color: #d4dbfb; color: #3730a3; }

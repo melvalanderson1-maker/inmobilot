@@ -113,7 +113,38 @@
                 }
               </td>
               <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
-              <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
+              <td>
+                @if (p.metodo_pago) {
+                  <span class="metodo" [ngClass]="'metodo-' + tipoMetodo(p.metodo_pago)">
+                    <span class="metodo-ico">
+                      @switch (tipoMetodo(p.metodo_pago)) {
+                        @case ('yape') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+                        }
+                        @case ('plin') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+                        }
+                        @case ('deposito') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
+                        }
+                        @case ('transferencia') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>
+                        }
+                        @case ('efectivo') {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+                        }
+                        @default {
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                        }
+                      }
+                    </span>
+                    {{ p.metodo_pago }}
+                  </span>
+                } @else {
+                  <span class="sin-archivo">—</span>
+                }
+                @if (p.numero_operacion) { <small class="n-op">N° {{ p.numero_operacion }}</small> }
+              </td>
               <td>
                 @if (p.comprobante_url) {
                   <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="btn-archivo" title="Ver voucher">
@@ -141,7 +172,7 @@
                   @if (p.origen === 'devolucion') {
                     <button class="btn-ok" (click)="abrirDevolucion(p)" [disabled]="procesando()">Registrar devolución</button>
                   } @else {
-                    <button class="btn-ok" (click)="validar(p)" [disabled]="procesando()">Validar</button>
+                    <button class="btn-ok" (click)="pagoValidar.set(p)" [disabled]="procesando()">Validar</button>
                     <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
                   }
                 }
@@ -175,6 +206,37 @@
       <div class="pie">
         <button class="btn-sec" (click)="pagoRechazo.set(null)">Cancelar</button>
         <button class="btn-no" (click)="confirmarRechazo()" [disabled]="procesando()">Rechazar</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (pagoValidar()) {
+  <div class="modal-overlay" (click)="pagoValidar.set(null)">
+    <div class="modal modal-confirm" (click)="$event.stopPropagation()">
+      <div class="modal-icono">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+      </div>
+      <h2>¿Validar este pago?</h2>
+      <p class="sub centrado">Confirma que el voucher coincide con el monto y la operación.</p>
+
+      <div class="resumen">
+        <div class="resumen-monto">S/ {{ pagoValidar()!.monto | number:'1.2-2' }}</div>
+        <div class="resumen-fila"><span>Cliente</span><strong>{{ pagoValidar()!.cliente_nombre }}</strong></div>
+        <div class="resumen-fila"><span>Contrato</span><strong>{{ pagoValidar()!.numero_contrato }} · Lote {{ pagoValidar()!.lote_codigo ?? '—' }}</strong></div>
+        <div class="resumen-fila"><span>Concepto</span><strong>{{ pagoValidar()!.concepto }}</strong></div>
+        <div class="resumen-fila"><span>Medio</span><strong>{{ pagoValidar()!.metodo_pago ?? '—' }}</strong></div>
+        <div class="resumen-fila"><span>N° operación</span><strong>{{ pagoValidar()!.numero_operacion ?? '—' }}</strong></div>
+        @if (pagoValidar()!.comprobante_url) {
+          <a [href]="urlCompleta(pagoValidar()!.comprobante_url!)!" target="_blank" rel="noopener" class="ver-voucher">Ver voucher ↗</a>
+        }
+      </div>
+
+      <p class="aviso">Al confirmar, el pago avanza en su flujo y no podrás revertirlo desde esta pantalla.</p>
+
+      <div class="pie pie-centro">
+        <button class="btn-sec" (click)="pagoValidar.set(null)">Cancelar</button>
+        <button class="btn-ok" (click)="confirmarValidar()" [disabled]="procesando()">Sí, validar pago</button>
       </div>
     </div>
   </div>

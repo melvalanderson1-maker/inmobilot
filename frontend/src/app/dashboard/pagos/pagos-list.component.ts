@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 
@@ -28,6 +28,8 @@ export class PagosListComponent implements OnInit, OnDestroy {
   procesando = signal(false);
   tab = signal<TabPago>('todos');
   busqueda = signal('');
+
+  pagoValidar = signal<PagoCola | null>(null);
 
   pagoRechazo = signal<PagoCola | null>(null);
   motivoRechazo = '';
@@ -87,6 +89,15 @@ export class PagosListComponent implements OnInit, OnDestroy {
   }
   get puedeFacturar(): boolean {
     return ['admin', 'facturacion'].includes(this.rol);
+  }
+
+  @HostListener('document:keydown.escape')
+  cerrarModales(): void {
+    if (this.procesando()) return;
+    this.pagoValidar.set(null);
+    this.pagoRechazo.set(null);
+    this.pagoComprobante.set(null);
+    this.pagoDevolucion.set(null);
   }
 
   ngOnInit(): void {
@@ -186,6 +197,13 @@ export class PagosListComponent implements OnInit, OnDestroy {
 
   // ---- Caja ----
 
+  confirmarValidar(): void {
+    const p = this.pagoValidar();
+    if (!p) return;
+    this.pagoValidar.set(null);
+    this.validar(p);
+  }
+
   validar(p: PagoCola): void {
     this.procesando.set(true);
     const llamada: Observable<unknown> =
@@ -203,6 +221,16 @@ export class PagosListComponent implements OnInit, OnDestroy {
         this.toastService.error(err?.error?.detail ?? 'No se pudo validar');
       },
     });
+  }
+
+  tipoMetodo(metodo?: string | null): 'yape' | 'plin' | 'deposito' | 'transferencia' | 'efectivo' | 'otro' {
+    const m = (metodo ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (m.includes('yape')) return 'yape';
+    if (m.includes('plin')) return 'plin';
+    if (m.includes('deposito')) return 'deposito';
+    if (m.includes('transferencia')) return 'transferencia';
+    if (m.includes('efectivo')) return 'efectivo';
+    return 'otro';
   }
 
   abrirRechazo(p: PagoCola): void {

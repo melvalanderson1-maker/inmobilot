@@ -1,62 +1,166 @@
-.pagos-page { max-width: 1280px; margin: 0 auto; padding: 24px; }
-.page-header h1 { margin: 0; font-size: 1.5rem; color: #142622; }
+/* ================= BASE ================= */
+:host { display: block; }
+
+.pagos-page {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 20px 0 32px;
+  color: #142622;
+}
+
+.page-header,
+.selector-proyecto,
+.barra,
+.guia,
+.estado { padding-left: 24px; padding-right: 24px; }
+
+.page-header h1 { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: #0b3d33; }
 .subtitle { margin: 4px 0 0; color: #697386; font-size: 0.9rem; }
 
-.selector-proyecto { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-.selector-proyecto label { font-size: 0.78rem; font-weight: 700; color: #697386; text-transform: uppercase; }
-.selector-proyecto select { padding: 9px 12px; border: 1px solid #e1ece8; border-radius: 10px; background: #fff; }
+/* ================= PROYECTO ================= */
+.selector-proyecto { display: flex; align-items: center; gap: 12px; margin: 18px 0 14px; }
+.selector-proyecto label { font-size: 0.72rem; font-weight: 800; color: #697386; text-transform: uppercase; letter-spacing: 0.06em; }
+.selector-proyecto select {
+  padding: 9px 36px 9px 12px; border: 1px solid #dbe7e3; border-radius: 10px; background: #fff;
+  font-weight: 600; color: #0b3d33; cursor: pointer; min-width: 220px;
+}
+.selector-proyecto select:focus { outline: none; border-color: #0f8f73; box-shadow: 0 0 0 3px rgba(15, 143, 115, 0.15); }
 
-.barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+/* ================= TABS + BUSCADOR ================= */
+.barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-.tab { border: 1px solid #e1ece8; background: #fff; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 0.84rem; color: #44514d; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-.tab.activa { background: #0f8f73; border-color: #0f8f73; color: #fff; }
-.contador { background: rgba(0, 0, 0, 0.08); border-radius: 999px; padding: 1px 8px; font-size: 0.74rem; }
-.tab.activa .contador { background: rgba(255, 255, 255, 0.25); }
-.buscar { flex: 1; min-width: 240px; max-width: 420px; padding: 10px 14px; border: 1px solid #e1ece8; border-radius: 10px; font-size: 0.9rem; background: #fff; }
+.tab {
+  border: 1px solid #dbe7e3; background: #fff; padding: 9px 14px; border-radius: 999px;
+  font-weight: 700; font-size: 0.83rem; color: #44514d; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s ease;
+}
+.tab:hover { border-color: #0f8f73; color: #0b3d33; }
+.tab.activa { background: #0f8f73; border-color: #0f8f73; color: #fff; box-shadow: 0 4px 12px rgba(15, 143, 115, 0.28); }
+.contador { background: #eef3f1; color: #0b3d33; border-radius: 999px; padding: 1px 9px; font-size: 0.74rem; font-weight: 800; min-width: 22px; text-align: center; }
+.tab.activa .contador { background: rgba(255, 255, 255, 0.25); color: #fff; }
 
-.estado { text-align: center; padding: 50px 20px; color: #697386; }
+.buscar {
+  flex: 1; min-width: 260px; max-width: 440px; padding: 10px 14px 10px 38px;
+  border: 1px solid #dbe7e3; border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.3-4.3'/%3E%3C/svg%3E") no-repeat 13px center;
+}
+.buscar:focus { outline: none; border-color: #0f8f73; box-shadow: 0 0 0 3px rgba(15, 143, 115, 0.15); }
 
-.tabla-card { background: #fff; border: 1px solid #e1ece8; border-radius: 14px; overflow-x: auto; }
+/* ================= GUÍA POR PESTAÑA ================= */
+.guia {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding-top: 10px; padding-bottom: 10px;
+  background: #f0f9f6; border-top: 1px solid #cfeae2; border-bottom: 1px solid #cfeae2;
+  color: #0b3d33; font-size: 0.86rem; font-weight: 600;
+}
+.guia svg { flex-shrink: 0; color: #0f8f73; }
+.guia.guia-azul { background: #eff6ff; border-color: #cfe0fb; color: #1e3a8a; }
+.guia.guia-azul svg { color: #1d4ed8; }
+.guia.guia-rojo { background: #fef2f2; border-color: #fbd0d0; color: #7f1d1d; }
+.guia.guia-rojo svg { color: #b91c1c; }
+.guia.guia-gris { background: #f4f6f8; border-color: #e1e6ea; color: #44514d; }
+.guia.guia-gris svg { color: #697386; }
+
+/* ================= ESTADO VACÍO / CARGA ================= */
+.estado { text-align: center; padding: 60px 20px; color: #697386; font-size: 0.95rem; }
+
+/* ================= TABLA (ancho completo) ================= */
+.tabla-card {
+  width: 100%; background: #fff; overflow-x: auto;
+  border-top: 1px solid #e1ece8; border-bottom: 1px solid #e1ece8;
+  border-left: 0; border-right: 0; border-radius: 0;
+}
 .tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-.tabla th { text-align: left; padding: 12px 14px; color: #697386; font-weight: 600; border-bottom: 1px solid #e1ece8; white-space: nowrap; }
-.tabla td { padding: 12px 14px; border-bottom: 1px solid #f2f5f4; vertical-align: top; color: #142622; }
-.tabla small { display: block; color: #697386; font-size: 0.76rem; margin-top: 2px; }
-.enlace { color: #0f8f73; font-weight: 600; text-decoration: none; }
+.tabla thead th {
+  position: sticky; top: 0; z-index: 1; text-align: left; padding: 12px 16px;
+  background: #f6faf9; color: #5b6b66; font-size: 0.72rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e1ece8; white-space: nowrap;
+}
+.tabla tbody td { padding: 14px 16px; border-bottom: 1px solid #eef3f1; vertical-align: top; color: #142622; }
+.tabla tbody tr { transition: background 0.12s ease; }
+.tabla tbody tr:hover { background: #f8fcfb; }
+.tabla tbody tr:last-child td { border-bottom: 0; }
+.tabla td strong { font-weight: 700; color: #0b3d33; }
+.tabla small { display: block; color: #697386; font-size: 0.77rem; margin-top: 3px; line-height: 1.35; }
+.tabla small strong { color: #44514d; }
 
-.chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; background: #eef1f0; color: #44514d; }
+/* ================= ÍCONOS DE ARCHIVO ================= */
+.enlace { color: #0f8f73; font-weight: 700; text-decoration: none; }
+.enlace:hover { text-decoration: underline; }
+
+.btn-archivo {
+  display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 9px; border: 1px solid #cfeae2; background: #f0f9f6; color: #0f8f73;
+  text-decoration: none; transition: all 0.15s ease; vertical-align: middle;
+}
+.btn-archivo:hover { background: #0f8f73; border-color: #0f8f73; color: #fff; transform: translateY(-1px); }
+.btn-archivo svg { width: 18px; height: 18px; }
+.btn-archivo.mini { width: 26px; height: 26px; border-radius: 7px; margin-left: 6px; }
+.btn-archivo.mini svg { width: 14px; height: 14px; }
+
+.sin-archivo { color: #b4bdb9; font-weight: 700; }
+
+/* ================= CHIPS DE ESTADO ================= */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 800; background: #eef1f0; color: #44514d; white-space: nowrap;
+}
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.85; }
 .chip-pendiente_caja { background: #fef3c7; color: #92660a; }
 .chip-pendiente_facturacion { background: #dbeafe; color: #1d4ed8; }
 .chip-validado { background: #d1fae5; color: #047857; }
 .chip-rechazado { background: #fee2e2; color: #b91c1c; }
+.chip-anulado { background: #eceff3; color: #5b6472; }
 
-.acciones { white-space: nowrap; }
-.btn-ok, .btn-no, .btn-sec { border: none; padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; margin-right: 6px; }
-.btn-ok { background: #0f8f73; color: #fff; }
-.btn-ok:hover:not(:disabled) { background: #0b3d33; }
-.btn-no { background: #fee2e2; color: #b91c1c; }
-.btn-sec { background: #eef1f0; color: #0b3d33; }
-button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.modal-overlay { position: fixed; inset: 0; background: rgba(6, 35, 28, 0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
-.modal { background: #fff; border-radius: 14px; width: 100%; max-width: 420px; padding: 22px; box-shadow: 0 20px 50px rgba(6, 35, 28, 0.3); }
-.modal h2 { margin: 0 0 4px; font-size: 1.1rem; color: #0b3d33; }
-.sub { color: #697386; font-size: 0.84rem; margin: 0 0 14px; }
-.campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.campo label { font-size: 0.82rem; font-weight: 600; color: #0b3d33; }
-.campo input, .campo select, .campo textarea { padding: 9px 12px; border: 1px solid #e1ece8; border-radius: 8px; font-size: 0.88rem; font-family: inherit; background: #f9fbfa; }
-.ok { color: #047857; font-weight: 600; font-size: 0.86rem; }
-.pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
-
-
-.concepto {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
+/* ================= CONCEPTO ================= */
+.concepto { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
 .concepto-inicial { background: #ede9fe; color: #5b21b6; }
 .concepto-contado { background: #dcfce7; color: #166534; }
 .concepto-cuota { background: #f1f5f9; color: #475569; }
 
-.chip-anulado { background: #eceff3; color: #5b6472; }
+/* ================= ACCIONES ================= */
+.acciones { white-space: nowrap; text-align: right; }
+.btn-ok, .btn-no, .btn-sec {
+  border: none; padding: 9px 14px; border-radius: 9px; font-weight: 800; font-size: 0.8rem;
+  cursor: pointer; margin-left: 6px; font-family: inherit; transition: all 0.15s ease;
+}
+.btn-ok { background: #0f8f73; color: #fff; box-shadow: 0 2px 8px rgba(15, 143, 115, 0.25); }
+.btn-ok:hover:not(:disabled) { background: #0b3d33; transform: translateY(-1px); }
+.btn-no { background: #fff; color: #b91c1c; border: 1px solid #f5c2c2; }
+.btn-no:hover:not(:disabled) { background: #fee2e2; }
+.btn-sec { background: #eef3f1; color: #0b3d33; }
+.btn-sec:hover:not(:disabled) { background: #e1ece8; }
+button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+/* ================= MODALES ================= */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(6, 35, 28, 0.55); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+}
+.modal {
+  background: #fff; border-radius: 16px; width: 100%; max-width: 460px; max-height: 92vh; overflow-y: auto;
+  padding: 24px; box-shadow: 0 24px 60px rgba(6, 35, 28, 0.35);
+}
+.modal h2 { margin: 0 0 6px; font-size: 1.15rem; font-weight: 800; color: #0b3d33; }
+.sub { color: #5b6b66; font-size: 0.84rem; margin: 0 0 12px; line-height: 1.45; }
+.sub strong { color: #0b3d33; }
+.campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.campo label { font-size: 0.8rem; font-weight: 700; color: #0b3d33; }
+.campo input, .campo select, .campo textarea {
+  padding: 10px 12px; border: 1px solid #dbe7e3; border-radius: 9px; font-size: 0.88rem;
+  font-family: inherit; background: #f9fbfa;
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus {
+  outline: none; border-color: #0f8f73; background: #fff; box-shadow: 0 0 0 3px rgba(15, 143, 115, 0.15);
+}
+.ok { color: #047857; font-weight: 700; font-size: 0.86rem; }
+.pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.pie .btn-ok, .pie .btn-no, .pie .btn-sec { margin-left: 0; }
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 720px) {
+  .page-header, .selector-proyecto, .barra, .guia, .estado { padding-left: 14px; padding-right: 14px; }
+  .buscar { max-width: 100%; min-width: 100%; }
+  .tabla tbody td, .tabla thead th { padding: 10px 12px; }
+}

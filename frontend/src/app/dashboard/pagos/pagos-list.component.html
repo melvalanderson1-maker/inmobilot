@@ -31,6 +31,39 @@
     />
   </div>
 
+  @switch (tab()) {
+    @case ('pendiente_caja') {
+      <div class="guia">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Caja: revisa el voucher y pulsa «Validar» (o «Rechazar» con motivo). En devoluciones, pulsa «Registrar devolución» y sube el voucher.
+      </div>
+    }
+    @case ('pendiente_facturacion') {
+      <div class="guia guia-azul">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Facturación: sube el comprobante (boleta, factura o recibo). En devoluciones, sube la nota de crédito.
+      </div>
+    }
+    @case ('rechazado') {
+      <div class="guia guia-rojo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Estos pagos fueron rechazados. Ventas debe corregirlos y reenviarlos; aquí solo consultas el motivo.
+      </div>
+    }
+    @case ('validado') {
+      <div class="guia guia-gris">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Pagos ya aplicados. No requieren acción.
+      </div>
+    }
+    @case ('anulado') {
+      <div class="guia guia-gris">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        Pagos anulados o devueltos. Solo consulta.
+      </div>
+    }
+  }
+
   @if (cargando()) {
     <div class="estado">Cargando pagos...</div>
   } @else if (filtrados().length === 0) {
@@ -69,7 +102,9 @@
                       <strong>Comprobante de la separación:</strong>
                       {{ p.sep_comprobante_tipo | titlecase }} {{ p.sep_comprobante_numero }}
                       @if (p.sep_comprobante_url) {
-                        · <a [href]="urlCompleta(p.sep_comprobante_url)!" target="_blank" rel="noopener" class="enlace">Ver archivo ↗</a>
+                        <a [href]="urlCompleta(p.sep_comprobante_url)!" target="_blank" rel="noopener" class="btn-archivo mini" title="Ver comprobante de la separación">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                        </a>
                       }
                     </small>
                   } @else {
@@ -81,8 +116,10 @@
               <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
               <td>
                 @if (p.comprobante_url) {
-                  <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="enlace">Ver ↗</a>
-                } @else { — }
+                  <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="btn-archivo" title="Ver voucher">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                  </a>
+                } @else { <span class="sin-archivo">—</span> }
               </td>
               <td>
                 <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
@@ -90,7 +127,11 @@
                 @if (p.factura_numero) {
                   <small>
                     {{ p.factura_tipo === 'nota_credito' ? 'Nota de crédito' : (p.factura_tipo | titlecase) }} {{ p.factura_numero }}
-                    @if (p.factura_url) { · <a [href]="urlCompleta(p.factura_url)!" target="_blank" rel="noopener" class="enlace">Ver</a> }
+                    @if (p.factura_url) {
+                      <a [href]="urlCompleta(p.factura_url)!" target="_blank" rel="noopener" class="btn-archivo mini" title="Ver comprobante">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                      </a>
+                    }
                   </small>
                 }
                 @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }
@@ -153,7 +194,9 @@
             <strong>Comprobante de la separación:</strong>
             {{ pagoComprobante()!.sep_comprobante_tipo | titlecase }} {{ pagoComprobante()!.sep_comprobante_numero }}
             @if (pagoComprobante()!.sep_comprobante_url) {
-              · <a [href]="urlCompleta(pagoComprobante()!.sep_comprobante_url!)!" target="_blank" rel="noopener" class="enlace">Ver archivo ↗</a>
+              <a [href]="urlCompleta(pagoComprobante()!.sep_comprobante_url!)!" target="_blank" rel="noopener" class="btn-archivo mini" title="Ver comprobante de la separación">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+              </a>
             }
           </p>
         }

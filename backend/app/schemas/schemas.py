@@ -629,6 +629,14 @@ class PagoComprobanteIn(BaseModel):
     archivo_url: str
 
 
+class PagoCompradorOut(BaseModel):
+    nombre: str
+    documento: str = ""
+    rol: Optional[str] = None
+    dni_frente_url: Optional[str] = None
+    dni_reverso_url: Optional[str] = None
+
+
 class PagoColaOut(BaseModel):
     id: int
     id_contrato: int
@@ -660,6 +668,8 @@ class PagoColaOut(BaseModel):
     sep_comprobante_tipo: Optional[str] = None
     sep_comprobante_numero: Optional[str] = None
     sep_comprobante_url: Optional[str] = None
+    lote_partida: Optional[str] = None
+    compradores: list[PagoCompradorOut] = []
 
 
 # ----------------------------------------------------------------- LEADS --

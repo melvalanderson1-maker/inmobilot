@@ -225,6 +225,18 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #fffbeb;
   border: 1px solid #fde68a; color: #92660a; font-size: 0.8rem; font-weight: 600; line-height: 1.4;
 }
+/* ================= COMPRADORES + DNI ================= */
+.comprador { margin-bottom: 10px; }
+.comprador:last-child { margin-bottom: 0; }
+.dni-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 5px; }
+.btn-dni {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid #cfeae2; background: #f0f9f6; color: #0f8f73;
+  font-size: 0.74rem; font-weight: 800; text-decoration: none; white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btn-dni:hover { background: #0f8f73; border-color: #0f8f73; color: #fff; }
+
 /* ================= RESPONSIVE ================= */
 @media (max-width: 720px) {
   .page-header, .selector-proyecto, .barra, .guia, .estado { padding-left: 14px; padding-right: 14px; }

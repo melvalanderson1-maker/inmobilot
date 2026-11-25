@@ -89,6 +89,26 @@ def _concepto(p: m.Pago) -> str:
     return "Pago a cuenta"
 
 
+def _comprador(cli, rol=None) -> s.PagoCompradorOut:
+    """Nombre + documento + archivos DNI de un comprador (persona natural o jurídica)."""
+    if cli.tipo_persona == "juridica":
+        nombre = cli.razon_social or ""
+        documento = cli.ruc or ""
+    else:
+        nombre = f"{cli.nombres} {cli.apellidos}"
+        documento = cli.numero_documento or ""
+    rol_txt = None
+    if rol is not None:
+        rol_txt = rol.value if hasattr(rol, "value") else str(rol)
+    return s.PagoCompradorOut(
+        nombre=nombre,
+        documento=documento,
+        rol=rol_txt,
+        dni_frente_url=cli.dni_frente_url,
+        dni_reverso_url=cli.dni_reverso_url,
+    )
+
+
 def _a_fila(p: m.Pago) -> s.PagoColaOut:
     c = p.contrato
     titular = next((vc.cliente for vc in c.clientes_rel if vc.rol == m.RolClienteContratoEnum.titular), None)
@@ -111,6 +131,12 @@ def _a_fila(p: m.Pago) -> s.PagoColaOut:
         validado_por_nombre=p.validador.nombre if p.validador else None,
         concepto=_concepto(p),
         detalle=p.observacion,
+        lote_partida=c.lote.partida_registral if c.lote else None,
+        compradores=[
+            _comprador(vc.cliente, vc.rol)
+            for vc in sorted(c.clientes_rel, key=lambda vc: vc.rol != m.RolClienteContratoEnum.titular)
+            if vc.cliente
+        ],
         forma_pago=c.forma_pago.value if c.forma_pago else None,
         created_at=p.created_at,
     )
@@ -184,6 +210,8 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             registrado_por_nombre=x.ejecutivo.nombre if x.ejecutivo else None,
             validado_por_nombre=x.validador.nombre if x.validador else None,
             concepto="Separación de lote", detalle=x.notas, forma_pago=None,
+            lote_partida=x.lote.partida_registral if x.lote else None,
+            compradores=[_comprador(c)] if c else [],
             created_at=x.created_at,
             origen="separacion", id_separacion=x.id,
             convertida=(est == "convertida"),
@@ -237,6 +265,8 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             factura_numero=d.nota_credito_numero, factura_url=d.nota_credito_url,
             registrado_por_nombre=sep.ejecutivo.nombre if sep.ejecutivo else None,
             concepto="Devolución de separación", detalle=d.sustento, forma_pago=None,
+            lote_partida=sep.lote.partida_registral if sep.lote else None,
+            compradores=[_comprador(c)] if c else [],
             created_at=d.created_at or datetime.utcnow(),
             origen="devolucion", id_separacion=sep.id,
             sep_comprobante_tipo=comp_sep.tipo if comp_sep else None,

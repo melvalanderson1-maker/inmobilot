@@ -88,8 +88,36 @@
           @for (p of filtrados(); track claveFila(p)) {
             <tr>
               <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
-              <td><strong>{{ p.numero_contrato }}</strong><small>Lote {{ p.lote_codigo ?? '—' }}</small></td>
-              <td><strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small></td>
+              <td>
+                <strong>{{ p.numero_contrato }}</strong>
+                <small>Lote {{ p.lote_codigo ?? '—' }}</small>
+                <small>Partida: {{ p.lote_partida || '—' }}</small>
+              </td>
+              <td>
+                @if (p.compradores && p.compradores.length > 0) {
+                  @for (c of p.compradores; track $index) {
+                    <div class="comprador">
+                      <strong>{{ c.nombre }}</strong>
+                      <small>{{ c.documento }}@if (c.rol && (p.compradores?.length ?? 0) > 1) { · {{ c.rol | titlecase }} }</small>
+                      <span class="dni-links">
+                        @if (c.dni_frente_url) {
+                          <a [href]="urlCompleta(c.dni_frente_url)!" target="_blank" rel="noopener" class="btn-dni">
+                            {{ c.dni_reverso_url ? 'DNI frente' : 'DNI' }} ↗
+                          </a>
+                        }
+                        @if (c.dni_reverso_url) {
+                          <a [href]="urlCompleta(c.dni_reverso_url)!" target="_blank" rel="noopener" class="btn-dni">DNI reverso ↗</a>
+                        }
+                        @if (!c.dni_frente_url && !c.dni_reverso_url) {
+                          <span class="sin-archivo">Sin DNI</span>
+                        }
+                      </span>
+                    </div>
+                  }
+                } @else {
+                  <strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small>
+                }
+              </td>
               <td>
                 <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
                 @if (subConcepto(p)) { <small>{{ subConcepto(p) }}</small> }

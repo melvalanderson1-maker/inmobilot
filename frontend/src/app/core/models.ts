@@ -807,6 +807,14 @@ export interface CobranzaFila {
   estado: string;
 }
 
+export interface PagoComprador {
+  nombre: string;
+  documento: string;
+  rol?: string | null;
+  dni_frente_url?: string | null;
+  dni_reverso_url?: string | null;
+}
+
 export interface PagoCola {
   id: number;
   id_contrato: number;
@@ -838,6 +846,8 @@ export interface PagoCola {
   sep_comprobante_tipo?: string | null;
   sep_comprobante_numero?: string | null;
   sep_comprobante_url?: string | null;
+  lote_partida?: string | null;
+  compradores?: PagoComprador[];
 }
 
 export interface PagoComprobanteIn {

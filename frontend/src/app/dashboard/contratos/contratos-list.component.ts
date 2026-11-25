@@ -95,16 +95,68 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     return [...mapa.values()].sort((a, b) => b.total - a.total);
   });
 
+  // ---- Búsqueda ----
+  busqueda = signal('');
+
+  /** Quita tildes y mayúsculas para buscar sin complicaciones */
+  private normalizar(t: unknown): string {
+    return String(t ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  get hayFiltros(): boolean {
+    return (
+      !!this.busqueda().trim() ||
+      this.faseFiltro() !== 'todas' ||
+      this.formaFiltro() !== 'todas' ||
+      this.ejecutivoFiltro() !== 'todos'
+    );
+  }
+
+  limpiarBusqueda(): void {
+    this.busqueda.set('');
+  }
+
+  limpiarFiltros(): void {
+    this.busqueda.set('');
+    this.faseFiltro.set('todas');
+    this.formaFiltro.set('todas');
+    this.ejecutivoFiltro.set('todos');
+  }
+
   contratosFiltrados = computed(() => {
     const f = this.faseFiltro();
     const forma = this.formaFiltro();
     const ej = this.ejecutivoFiltro();
-    return this.contratos().filter(
-      (c) =>
+    const tokens = this.normalizar(this.busqueda()).split(/\s+/).filter(Boolean);
+
+    return this.contratos().filter((c) => {
+      const pasa =
         (f === 'todas' || c.fase_documental === f) &&
         (forma === 'todas' || c.forma_pago === forma) &&
-        (ej === 'todos' || c.id_ejecutivo === ej)
-    );
+        (ej === 'todos' || c.id_ejecutivo === ej);
+      if (!pasa) return false;
+      if (!tokens.length) return true;
+
+      const base = this.normalizar(
+        [
+          c.numero_contrato,
+          c.lote?.codigo,
+          ...(c.clientes ?? []).flatMap((cl) => [cl.nombres, cl.apellidos, cl.numero_documento]),
+          c.ejecutivo_nombre,
+          c.forma_pago === 'contado' ? 'contado minuta' : 'credito preparatorio',
+          c.estado,
+          this.etiquetaFase(c.fase_documental),
+          c.precio_total,
+          c.fecha_contrato,
+          c.ubicacion_actual,
+        ].join(' ')
+      );
+      return tokens.every((t) => base.includes(t));
+    });
   });
 
   kpis = computed(() => {

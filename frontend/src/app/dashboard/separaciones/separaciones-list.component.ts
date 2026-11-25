@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -37,10 +37,80 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     return [...mapa.values()].sort((a, b) => b.total - a.total);
   });
 
+  // ---- Búsqueda y orden ----
+  busqueda = signal('');
+  orden = signal<{ campo: 'lote' | 'cliente' | 'importe' | 'vencimiento' | 'estado'; dir: 'asc' | 'desc' } | null>(null);
+
+  @ViewChild('buscador') buscador?: ElementRef<HTMLInputElement>;
+
+  /** Quita tildes y mayúsculas para buscar sin complicaciones */
+  private normalizar(t: unknown): string {
+    return String(t ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
   separacionesVista = computed(() => {
     const ej = this.ejecutivoFiltro();
-    return ej === 'todos' ? this.separaciones() : this.separaciones().filter((s) => s.id_ejecutivo === ej);
+    const tokens = this.normalizar(this.busqueda()).split(/\s+/).filter(Boolean);
+    let lista = this.separaciones().filter((s) => ej === 'todos' || s.id_ejecutivo === ej);
+
+    if (tokens.length) {
+      lista = lista.filter((s) => {
+        const base = this.normalizar(
+          [
+            s.lote?.codigo,
+            this.nombreCliente(s),
+            this.docCliente(s),
+            s.ejecutivo_nombre,
+            this.etiquetaEstado(s.estado),
+            s.importe,
+            s.fecha_vencimiento,
+            s.motivo_rechazo,
+          ].join(' ')
+        );
+        return tokens.every((t) => base.includes(t));
+      });
+    }
+
+    const o = this.orden();
+    if (o) {
+      const dir = o.dir === 'asc' ? 1 : -1;
+      const valor = (s: Separacion): string | number => {
+        switch (o.campo) {
+          case 'lote': return this.normalizar(s.lote?.codigo);
+          case 'cliente': return this.normalizar(this.nombreCliente(s));
+          case 'importe': return Number(s.importe);
+          case 'vencimiento': return String(s.fecha_vencimiento);
+          default: return this.normalizar(this.etiquetaEstado(s.estado));
+        }
+      };
+      lista = [...lista].sort((a, b) => {
+        const x = valor(a);
+        const y = valor(b);
+        const r = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'es', { numeric: true });
+        return r * dir;
+      });
+    }
+    return lista;
   });
+
+  get hayFiltros(): boolean {
+    return !!this.busqueda().trim() || this.ejecutivoFiltro() !== 'todos' || this.filtroEstado !== 'todos';
+  }
+
+  /** Atajo: la tecla "/" lleva el cursor al buscador */
+  @HostListener('document:keydown', ['$event'])
+  atajos(e: KeyboardEvent): void {
+    const t = e.target as HTMLElement | null;
+    const escribiendo = !!t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable);
+    if (e.key === '/' && !escribiendo) {
+      e.preventDefault();
+      this.buscador?.nativeElement.focus();
+    }
+  }
 
   idProyectoSeleccionado: number | null = null;
   filtroEstado: 'todos' | EstadoSeparacion = 'todos';
@@ -101,11 +171,17 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
     this.cargarSeparaciones();
   }
 
-  /** Vuelve el filtro de estado a "Todos" y recarga. */
+  /** Limpia búsqueda, ejecutivo y estado, y recarga. */
   limpiarFiltros(): void {
+    this.busqueda.set('');
     this.ejecutivoFiltro.set('todos');
     this.filtroEstado = 'todos';
     this.cargarSeparaciones();
+  }
+
+  limpiarBusqueda(): void {
+    this.busqueda.set('');
+    this.buscador?.nativeElement.focus();
   }
 
   cargarSeparaciones(silencioso = false): void {
@@ -139,5 +215,49 @@ export class SeparacionesListComponent implements OnInit, OnDestroy {
 
   etiquetaEstado(estado: EstadoSeparacion): string {
     return this.estados.find((e) => e.valor === estado)?.etiqueta ?? estado;
+  }
+
+  nombreCliente(sep: Separacion): string {
+    return sep.cliente ? `${sep.cliente.nombres} ${sep.cliente.apellidos}`.trim() : '';
+  }
+
+  /** Si tu modelo usa otro nombre para el documento, cámbialo aquí */
+  docCliente(sep: Separacion): string {
+    return String((sep.cliente as any)?.numero_documento ?? '');
+  }
+
+  inicial(sep: Separacion): string {
+    return (sep.cliente?.nombres ?? '?').trim().charAt(0).toUpperCase() || '?';
+  }
+
+  ordenarPor(campo: 'lote' | 'cliente' | 'importe' | 'vencimiento' | 'estado'): void {
+    const o = this.orden();
+    if (!o || o.campo !== campo) this.orden.set({ campo, dir: 'asc' });
+    else if (o.dir === 'asc') this.orden.set({ campo, dir: 'desc' });
+    else this.orden.set(null);
+  }
+
+  dirOrden(campo: string): string {
+    const o = this.orden();
+    return o && o.campo === campo ? o.dir : '';
+  }
+
+  ariaSort(campo: string): 'ascending' | 'descending' | 'none' {
+    const d = this.dirOrden(campo);
+    return d === 'asc' ? 'ascending' : d === 'desc' ? 'descending' : 'none';
+  }
+
+  /** Aviso de vencimiento solo para separaciones vigentes */
+  vencimientoInfo(sep: Separacion): { texto: string; clase: string } | null {
+    if (sep.estado !== 'vigente') return null;
+    const [y, m, d] = String(sep.fecha_vencimiento).slice(0, 10).split('-').map(Number);
+    if (!y || !m || !d) return null;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const dias = Math.round((new Date(y, m - 1, d).getTime() - hoy.getTime()) / 86400000);
+    if (dias < 0) return { texto: `Venció hace ${-dias} d`, clase: 'venc-mal' };
+    if (dias === 0) return { texto: 'Vence hoy', clase: 'venc-alerta' };
+    if (dias <= 3) return { texto: `Vence en ${dias} d`, clase: 'venc-alerta' };
+    return { texto: `Faltan ${dias} d`, clase: 'venc-ok' };
   }
 }

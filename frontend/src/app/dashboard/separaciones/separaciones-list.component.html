@@ -22,43 +22,76 @@
     </div>
   </div>
 
-  <div class="filtros-bar">
-    <div class="selector-proyecto">
-      <label for="filtro-proyecto">Proyecto</label>
-      <select id="filtro-proyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
-        @for (p of proyectos(); track p.id) {
-          <option [value]="p.id">{{ p.nombre }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="selector-proyecto">
-      <label for="filtro-estado">Estado</label>
-      <select id="filtro-estado" [(ngModel)]="filtroEstado" (ngModelChange)="cambiarFiltro()">
-        <option value="todos">Todos</option>
-        @for (e of estados; track e.valor) {
-          <option [value]="e.valor">{{ e.etiqueta }}</option>
-        }
-      </select>
-    </div>
-
-    <span class="filtros-contador">
-      {{ separaciones().length }} {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
-    </span>
-
-    @if (ejecutivosKpi().length > 0) {
-      <div class="ejecutivos-kpis" role="group" aria-label="Separaciones por ejecutivo de ventas">
-        <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === 'todos'" (click)="ejecutivoFiltro.set('todos')">
-          Todos los ejecutivos
-        </button>
-        @for (e of ejecutivosKpi(); track e.id) {
-          <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === e.id" (click)="ejecutivoFiltro.set(e.id)">
-            {{ e.nombre }} <strong>{{ e.total }}</strong>
+  <!-- ============ BUSCADOR + FILTROS ============ -->
+  <section class="toolbar" aria-label="Buscar y filtrar separaciones">
+    <div class="toolbar-fila">
+      <div class="buscador">
+        <svg class="buscador-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input
+          #buscador
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Buscar por lote, cliente, DNI, ejecutivo, estado o monto…"
+          aria-label="Buscar separaciones"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          (keydown.escape)="limpiarBusqueda()"
+        />
+        @if (busqueda()) {
+          <button type="button" class="buscador-limpiar" (click)="limpiarBusqueda()" aria-label="Borrar búsqueda">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
           </button>
+        } @else {
+          <kbd class="atajo" aria-hidden="true">/</kbd>
         }
       </div>
-    }
-  </div>
+
+      <div class="selector-proyecto">
+        <label for="filtro-proyecto">Proyecto</label>
+        <select id="filtro-proyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+          @for (p of proyectos(); track p.id) {
+            <option [value]="p.id">{{ p.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="selector-proyecto">
+        <label for="filtro-estado">Estado</label>
+        <select id="filtro-estado" [(ngModel)]="filtroEstado" (ngModelChange)="cambiarFiltro()">
+          <option value="todos">Todos</option>
+          @for (e of estados; track e.valor) {
+            <option [value]="e.valor">{{ e.etiqueta }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="toolbar-fila toolbar-meta">
+      @if (ejecutivosKpi().length > 0) {
+        <div class="ejecutivos-kpis" role="group" aria-label="Separaciones por ejecutivo de ventas">
+          <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === 'todos'" (click)="ejecutivoFiltro.set('todos')">
+            Todos los ejecutivos
+          </button>
+          @for (e of ejecutivosKpi(); track e.id) {
+            <button type="button" class="ejec-chip" [class.activo]="ejecutivoFiltro() === e.id" (click)="ejecutivoFiltro.set(e.id)">
+              {{ e.nombre }} <strong>{{ e.total }}</strong>
+            </button>
+          }
+        </div>
+      }
+      <div class="meta-der">
+        <span class="filtros-contador" aria-live="polite">
+          {{ separacionesVista().length }} de {{ separaciones().length }} {{ separaciones().length === 1 ? 'separación' : 'separaciones' }}
+        </span>
+        @if (hayFiltros) {
+          <button type="button" class="btn-link" (click)="limpiarFiltros()">Limpiar filtros</button>
+        }
+      </div>
+    </div>
+  </section>
 
   @if (cargando()) {
     <div class="skeleton-lista" aria-busy="true" aria-label="Cargando separaciones">
@@ -71,21 +104,23 @@
         </div>
       }
     </div>
-  } @else if (separaciones().length === 0) {
+  } @else if (separacionesVista().length === 0) {
     <div class="estado-vacio">
       <div class="vacio-icono">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-          <path d="M3 9h18"></path>
-          <path d="m8 14 2 2 4-4"></path>
+          <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
         </svg>
       </div>
-      <p>No hay separaciones que coincidan con este filtro.</p>
+      @if (busqueda().trim()) {
+        <p>No encontramos resultados para <strong>«{{ busqueda().trim() }}»</strong>. Revisa la ortografía o prueba con el lote o el DNI.</p>
+      } @else {
+        <p>No hay separaciones que coincidan con este filtro.</p>
+      }
       <div class="vacio-acciones">
-        @if (filtroEstado !== 'todos') {
+        @if (hayFiltros) {
           <button class="btn-secundario" (click)="limpiarFiltros()">Limpiar filtros</button>
         }
-        <button class="btn-primary" (click)="irANueva()">Crear la primera</button>
+        <button class="btn-primary" (click)="irANueva()">Nueva separación</button>
       </div>
     </div>
   } @else {
@@ -93,27 +128,54 @@
       <table class="tabla-sep">
         <thead>
           <tr>
-            <th>Lote</th>
-            <th>Cliente</th>
-            <th>Importe</th>
-            <th>Vencimiento</th>
+            <th class="th-sort" [attr.aria-sort]="ariaSort('lote')">
+              <button type="button" (click)="ordenarPor('lote')">Lote <span class="sort-ico" [attr.data-dir]="dirOrden('lote')"></span></button>
+            </th>
+            <th class="th-sort" [attr.aria-sort]="ariaSort('cliente')">
+              <button type="button" (click)="ordenarPor('cliente')">Cliente <span class="sort-ico" [attr.data-dir]="dirOrden('cliente')"></span></button>
+            </th>
+            <th class="th-sort th-derecha" [attr.aria-sort]="ariaSort('importe')">
+              <button type="button" (click)="ordenarPor('importe')">Importe <span class="sort-ico" [attr.data-dir]="dirOrden('importe')"></span></button>
+            </th>
+            <th class="th-sort" [attr.aria-sort]="ariaSort('vencimiento')">
+              <button type="button" (click)="ordenarPor('vencimiento')">Vencimiento <span class="sort-ico" [attr.data-dir]="dirOrden('vencimiento')"></span></button>
+            </th>
             <th class="col-ejecutivo">Ejecutivo</th>
-            <th>Estado</th>
+            <th class="th-sort" [attr.aria-sort]="ariaSort('estado')">
+              <button type="button" (click)="ordenarPor('estado')">Estado <span class="sort-ico" [attr.data-dir]="dirOrden('estado')"></span></button>
+            </th>
+            <th class="th-flecha"></th>
           </tr>
         </thead>
         <tbody>
           @for (sep of separacionesVista(); track sep.id) {
             <tr tabindex="0" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
-              <td class="td-lote">{{ sep.lote?.codigo || '—' }}</td>
-              <td>{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : '—' }}</td>
+              <td class="td-lote"><span class="lote-tag">{{ sep.lote?.codigo || '—' }}</span></td>
+              <td>
+                <div class="cliente-celda">
+                  <span class="avatar" aria-hidden="true">{{ inicial(sep) }}</span>
+                  <div class="cliente-txt">
+                    <span class="cliente-nombre">{{ nombreCliente(sep) || '—' }}</span>
+                    @if (docCliente(sep)) { <span class="cliente-doc">Doc. {{ docCliente(sep) }}</span> }
+                  </div>
+                </div>
+              </td>
               <td class="td-importe">S/ {{ sep.importe | number:'1.2-2' }}</td>
-              <td class="td-fecha">{{ sep.fecha_vencimiento }}</td>
+              <td class="td-fecha">
+                <span>{{ sep.fecha_vencimiento }}</span>
+                @if (vencimientoInfo(sep); as v) {
+                  <span class="venc" [ngClass]="v.clase">{{ v.texto }}</span>
+                }
+              </td>
               <td class="col-ejecutivo">{{ sep.ejecutivo_nombre || '—' }}</td>
               <td>
                 <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
                 @if (sep.estado === 'rechazada' && sep.motivo_rechazo) {
                   <small class="motivo-rechazo">{{ sep.motivo_rechazo }} · abre para corregir</small>
                 }
+              </td>
+              <td class="td-flecha" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"></path></svg>
               </td>
             </tr>
           }
@@ -125,10 +187,16 @@
       @for (sep of separacionesVista(); track sep.id) {
         <div class="sep-card" tabindex="0" role="button" (click)="irADetalle(sep)" (keydown.enter)="irADetalle(sep)">
           <div class="sep-card-top">
-            <strong>{{ sep.lote?.codigo || '—' }}</strong>
+            <span class="lote-tag">{{ sep.lote?.codigo || '—' }}</span>
             <span class="chip" [ngClass]="'chip-' + sep.estado">{{ etiquetaEstado(sep.estado) }}</span>
           </div>
-          <p class="sep-card-cliente">{{ sep.cliente ? (sep.cliente.nombres + ' ' + sep.cliente.apellidos) : 'Sin cliente' }}</p>
+          <div class="cliente-celda">
+            <span class="avatar" aria-hidden="true">{{ inicial(sep) }}</span>
+            <div class="cliente-txt">
+              <span class="cliente-nombre">{{ nombreCliente(sep) || 'Sin cliente' }}</span>
+              @if (docCliente(sep)) { <span class="cliente-doc">Doc. {{ docCliente(sep) }}</span> }
+            </div>
+          </div>
           @if (sep.estado === 'rechazada' && sep.motivo_rechazo) {
             <p class="motivo-rechazo">{{ sep.motivo_rechazo }} · toca para corregir</p>
           }
@@ -139,7 +207,10 @@
             </div>
             <div class="dato">
               <span class="dato-label">Vence</span>
-              <span class="dato-valor">{{ sep.fecha_vencimiento }}</span>
+              <span class="dato-valor">
+                {{ sep.fecha_vencimiento }}
+                @if (vencimientoInfo(sep); as v) { <span class="venc" [ngClass]="v.clase">{{ v.texto }}</span> }
+              </span>
             </div>
             <div class="dato dato-ancho">
               <span class="dato-label">Ejecutivo</span>

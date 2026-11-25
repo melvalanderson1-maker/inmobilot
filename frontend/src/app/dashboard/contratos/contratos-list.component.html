@@ -13,6 +13,34 @@
 
   <!-- ============ BARRA DE FILTRO ============ -->
   <section class="toolbar">
+    <div class="buscador">
+      <svg class="buscador-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
+      </svg>
+      <input
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Buscar por N° de contrato, lote, cliente, DNI, ejecutivo, estado o monto…"
+        aria-label="Buscar contratos"
+        [ngModel]="busqueda()"
+        (ngModelChange)="busqueda.set($event)"
+        (keydown.escape)="limpiarBusqueda()"
+      />
+      @if (busqueda()) {
+        <button type="button" class="buscador-limpiar" (click)="limpiarBusqueda()" aria-label="Borrar búsqueda">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
+        </button>
+      }
+    </div>
+    @if (!cargando() && contratos().length > 0) {
+      <div class="buscador-meta">
+        <span class="contador" aria-live="polite">{{ contratosFiltrados().length }} de {{ contratos().length }} contratos</span>
+        @if (hayFiltros) {
+          <button type="button" class="btn-link" (click)="limpiarFiltros()">Limpiar filtros</button>
+        }
+      </div>
+    }
     <div class="selector-proyecto">
       <label for="selProyecto">Proyecto</label>
       <select id="selProyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
@@ -142,6 +170,17 @@
           }
         </tbody>
       </table>
+      @if (contratosFiltrados().length === 0) {
+        <div class="sin-resultados">
+          <div class="vacio-icono" aria-hidden="true">🔎</div>
+          @if (busqueda().trim()) {
+            <p>No encontramos resultados para <strong>«{{ busqueda().trim() }}»</strong>. Prueba con el N° de contrato, el lote o el DNI.</p>
+          } @else {
+            <p>Ningún contrato coincide con los filtros seleccionados.</p>
+          }
+          <button type="button" class="btn-secundario" (click)="limpiarFiltros()">Limpiar filtros</button>
+        </div>
+      }
     </div>
   }
 

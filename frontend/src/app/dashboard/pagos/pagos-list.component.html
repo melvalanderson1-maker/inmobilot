@@ -59,13 +59,13 @@
               <td><strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small></td>
               <td>
                 <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
-                @if (subConcepto(p); as sub) { <small>{{ sub }}</small> }
+                @if (subConcepto(p)) { <small>{{ subConcepto(p) }}</small> }
               </td>
               <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
               <td>{{ p.metodo_pago ?? '—' }}<small>{{ p.numero_operacion ?? '' }}</small></td>
               <td>
-                @if (urlCompleta(p.comprobante_url); as url) {
-                  <a [href]="url" target="_blank" rel="noopener" class="enlace">Ver ↗</a>
+                @if (p.comprobante_url) {
+                  <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="enlace">Ver ↗</a>
                 } @else { — }
               </td>
               <td>
@@ -73,8 +73,8 @@
                 @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
                 @if (p.factura_numero) {
                   <small>
-                    {{ p.factura_tipo | titlecase }} {{ p.factura_numero }}
-                    @if (urlCompleta(p.factura_url); as f) { · <a [href]="f" target="_blank" rel="noopener" class="enlace">Ver</a> }
+                    {{ p.factura_tipo === 'nota_credito' ? 'Nota de crédito' : (p.factura_tipo | titlecase) }} {{ p.factura_numero }}
+                    @if (p.factura_url) { · <a [href]="urlCompleta(p.factura_url)!" target="_blank" rel="noopener" class="enlace">Ver</a> }
                   </small>
                 }
                 @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }

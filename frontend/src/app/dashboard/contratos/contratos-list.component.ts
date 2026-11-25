@@ -224,6 +224,8 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
     this.socket.conectar();
     this.suscripcionSocket = this.socket.onEvento.subscribe((evento) => {
+
+      if (evento.evento === 'socket:conectado') this.cargarContratos(true);
       // Caja valida, rechaza o registra un pago: refresca el drawer y la lista al instante
       if (evento.evento === 'pago:actualizado') {
         const idContrato = (evento.data as any)?.id_contrato;
@@ -448,6 +450,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
       pendiente_facturacion: 'En Facturación',
       validado: 'Aplicado',
       rechazado: 'Rechazado',
+      anulado: 'Anulado',
     };
     return mapa[estado] ?? estado;
   }
@@ -754,16 +757,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
 
 
   nuevaVenta(): void {
-    console.log('CLICK EN NUEVO CONTRATO');
-
-    this.router.navigateByUrl('/dashboard/ventas/nueva')
-      .then((navego) => {
-        console.log('¿Navegación realizada?', navego);
-        console.log('URL actual:', this.router.url);
-      })
-      .catch((error) => {
-        console.error('ERROR AL NAVEGAR:', error);
-      });
+    this.router.navigateByUrl('/dashboard/ventas/nueva');
   }
 
   onLoteSeleccionado(): void {

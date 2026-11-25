@@ -251,8 +251,8 @@
         }
 
         <!-- Cronograma / pagos -->
-        @if (ct.forma_pago === 'contado') {
-          <p class="texto-tenue">Contrato al contado — no genera cronograma de cuotas.</p>
+        @if (ct.forma_pago === 'contado' && !(toNum(ct.saldo_financiado) > 0)) {
+          <p class="texto-tenue">Contrato al contado pagado en su totalidad — no genera cronograma de cuotas.</p>
 
           <h4 class="titulo-historial">Historial de pagos</h4>
           @if ((pagosPorContrato()[ct.id] ?? []).length === 0) {
@@ -379,7 +379,7 @@
               }
             </div>
 
-            @if (puedeRegistrarPago && pendientesDe(ct.id).length > 0) {
+            @if (puedeRegistrarPago && ct.estado !== 'anulado' && ct.estado !== 'cancelado' && pendientesDe(ct.id).length > 0) {
               <div class="acciones-pago">
                 @if (pendientesDe(ct.id).length > 1) {
                   <button type="button" class="btn-secundario-sm" (click)="abrirPagarVarias(ct.id)"
@@ -393,11 +393,13 @@
                     }
                   }
                 }
-                @if (cancelacionEnProceso(ct.id)) {
-                  <span class="chip chip-pago-pendiente_caja">Cancelación en validación</span>
-                } @else {
-                  <button type="button" class="btn-secundario-sm btn-cancelar-credito" (click)="abrirCancelar(ct.id)"
-                          title="Liquida todo: cuotas vencidas + capital + interés hasta el día de pago">Cancelar crédito</button>
+                @if (ct.forma_pago === 'credito') {
+                  @if (cancelacionEnProceso(ct.id)) {
+                    <span class="chip chip-pago-pendiente_caja">Cancelación en validación</span>
+                  } @else {
+                    <button type="button" class="btn-secundario-sm btn-cancelar-credito" (click)="abrirCancelar(ct.id)"
+                            title="Liquida todo: cuotas vencidas + capital + interés hasta el día de pago">Cancelar crédito</button>
+                  }
                 }
               </div>
             }
@@ -455,7 +457,7 @@
                         @if (f.paga && f.c.estado !== 'pagada') {
                           @if (pagoEnProceso(ct.id, f.c.id)) {
                             <span class="chip chip-pago-pendiente_caja">En validación</span>
-                          } @else if (puedeRegistrarPago) {
+                          } @else if (puedeRegistrarPago && ct.estado !== 'anulado' && ct.estado !== 'cancelado') {
                             <button type="button" class="btn-pagar" (click)="abrirRegistrarPago(ct.id, f.c)">Pagar</button>
                           }
                         }

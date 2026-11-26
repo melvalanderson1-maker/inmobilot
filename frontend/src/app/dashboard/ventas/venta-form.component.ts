@@ -791,7 +791,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         numero: f.numero,
         fecha: f.fecha,
         capital: !paga ? Number(f.capital) : i > 0 ? Number(raw[i - 1].capital) : Number(ev.monto_financiar),
-        amortizacion: Number(f.amortizacion),
+        amortizacion: ev.cronograma_mensual?.length && paga
+          ? this.r2(Number(f.monto) - Number(f.acumulado ?? 0))
+          : Number(f.amortizacion),
         interes: Number(paga ? (f.acumulado ?? f.interes) : f.interes),
         acumulado: Number(f.acumulado ?? 0),
         interesMes: Number(f.interes ?? 0),

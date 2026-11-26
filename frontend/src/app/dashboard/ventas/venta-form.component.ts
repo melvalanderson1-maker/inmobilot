@@ -790,7 +790,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       return {
         numero: f.numero,
         fecha: f.fecha,
-        capital: !paga ? Number(f.capital) : i > 0 ? Number(raw[i - 1].capital) : Number(f.capital) + Number(f.amortizacion),
+        capital: !paga ? Number(f.capital) : i > 0 ? Number(raw[i - 1].capital) : Number(ev.monto_financiar),
         amortizacion: Number(f.amortizacion),
         interes: Number(paga ? (f.acumulado ?? f.interes) : f.interes),
         acumulado: Number(f.acumulado ?? 0),
@@ -817,7 +817,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     const cuota = this.filasSimuladas.filter((f) => f.requiere_pago).reduce((acc, f) => acc + f.monto, 0);
     const financiado = Number(ev?.monto_financiar ?? 0);
     const interes = ev?.interes_total != null ? this.r2(Number(ev.interes_total)) : this.r2(cuota - financiado);
-    return { amortizacion: financiado, interes, cuota };
+    return { amortizacion: financiado, interes, cuota: this.r2(financiado + interes) };
   }
 
   get financiarMostrado(): number {

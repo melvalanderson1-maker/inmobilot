@@ -173,12 +173,12 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
                 else:
                     monto = _d(ini_x + interes_x)      # la última cuota liquida todo
                     amort = ini_c
-                    acum = monto - amort
+                    acum = _d(interes_x)               # el Excel redondea el interés por separado
                     fila["interes"] = acum - acum_previo
                     fila["acumulado"] = acum
                     capital_x = 0.0
                 capital_c = ini_c - amort
-                interes_total += acum
+                interes_total += (monto - amort)       # total = cuotas - capital (cuadra con el Excel: 36,381.91)
                 fila.update({
                     "capital": ini_c if EXCEL_CAPITAL_SALDO_INICIAL else capital_c,
                     "amortizacion": amort, "monto": monto, "requiere_pago": True,
@@ -191,6 +191,53 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
     return filas
 
 
+def generar_cronograma_mensual_excel(saldo, n: int, tea_pct, fecha_base: date) -> list[dict]:
+    """Mensual con interés, igual que el Excel de Gruselva:
+    - Fechas a fin de mes: fila k = EOMONTH(fecha_base, k).
+    - Interés de cada fila = capital * ((1+TEA)^(dias/365) - 1), con los días reales del mes.
+    - Cuota fija = (S*i*f - 1)/(f - 1) con i = TEM y f = (1+i)^n (mismo defecto del Excel).
+    - La última fila liquida capital + interés."""
+    tea = float(Decimal(str(tea_pct or 0)) / 100)
+    capital_c = Decimal(str(saldo)).quantize(Q2, rounding=ROUND_HALF_UP)
+    capital_x = float(capital_c)
+    tem = (1 + tea) ** (1 / 12) - 1
+    f = (1 + tem) ** n
+    cuota_x = (capital_x * tem * f - (1 if EXCEL_PARENTESIS_CUOTA else 0)) / (f - 1)
+    cuota = _d(cuota_x)
+
+    filas = _Filas()
+    interes_x_total = 0.0
+    acumulado = Decimal("0.00")
+    previa = fecha_base
+    for k in range(1, n + 1):
+        fecha = _sumar_meses_fin_de_mes(fecha_base, k)
+        dias = (fecha - previa).days
+        ini_x = capital_x
+        ini_c = _d(ini_x)
+        interes_x = ini_x * ((1 + tea) ** (dias / 365) - 1)
+        interes = _d(interes_x)
+        ajustada = False
+        if k < n:
+            monto = cuota
+            amort = _d(cuota_x - interes_x)
+            capital_x = ini_x - (cuota_x - interes_x)
+        else:
+            monto = _d(ini_x + interes_x)
+            amort = ini_c
+            capital_x = 0.0
+            ajustada = abs(monto - cuota) > Decimal("0.05")
+        interes_x_total += interes_x
+        acumulado += interes
+        filas.append({
+            "numero": k, "fecha": fecha, "capital": _d(capital_x),
+            "amortizacion": amort, "interes": interes, "acumulado": acumulado,
+            "monto": monto, "ajustada": ajustada, "requiere_pago": True,
+        })
+        previa = fecha
+    filas.interes_exacto = _d(interes_x_total)
+    return filas
+
+
 def construir_cronograma(saldo, frecuencia: str, plazo_meses: int, tea_pct, fecha_base: date,
                          cuotas_personalizadas: list[dict] | None = None) -> list[dict]:
     """Punto único de entrada: lo usan la vista previa (evaluar) y la creación del contrato."""
@@ -198,6 +245,8 @@ def construir_cronograma(saldo, frecuencia: str, plazo_meses: int, tea_pct, fech
         filas = generar_cuotas_personalizadas(saldo, cuotas_personalizadas or [], tea_pct, fecha_base)
     elif frecuencia == "anual":
         filas = generar_cronograma_anual(saldo, plazo_meses // 12, tea_pct, fecha_base)
+    elif frecuencia == "mensual" and Decimal(str(tea_pct or 0)) > 0:
+        filas = generar_cronograma_mensual_excel(saldo, plazo_meses, tea_pct, fecha_base)
     else:
         n = numero_cuotas(frecuencia, plazo_meses)
         filas = generar_cuotas(saldo, n, meses_por_cuota(frecuencia, plazo_meses), tea_pct, fecha_base) if n > 0 else []

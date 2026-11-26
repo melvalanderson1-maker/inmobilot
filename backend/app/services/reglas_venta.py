@@ -110,14 +110,15 @@ def _factor_tea(tea: float, dias: int) -> float:
     """(1+TEA)^(dias/365) - 1 : interés compuesto por días reales."""
     return (1 + tea) ** (dias / 365) - 1
 
-# Réplica del Excel de Gruselva (cronograma anual con detalle mensual).
-EXCEL_PARENTESIS_CUOTA = True            # cuota = (S*TEM*f - 1)/(f - 1), como la celda del Excel
-EXCEL_FILA2_USA_TEM = True               # en la hoja, la fila 2 usa TEM en vez de días reales
-EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA = True   # la última cuota sube al centavo siguiente
+# Réplica del Excel de Gruselva (hojas "cronograma anual" y "cronograma mensual").
+# True = reproduce el defecto del Excel tal cual; False = aplica la fórmula correcta.
+EXCEL_ANIO2_DIV_360 = False          # el Excel divide entre 360 (no 365) los días del 2.º año
+EXCEL_PARENTESIS_CUOTA = False       # el Excel resta 1 dentro del numerador: (S*i*f - 1)/(f - 1)
+EXCEL_CAPITAL_SALDO_INICIAL = True   # el Excel muestra en CAPITAL el saldo ANTES de pagar la cuota del año
 
 
 class _Filas(list):
-    """Filas del cronograma + interés total exacto (sin redondear mes a mes)."""
+    """Filas del cronograma + interés total del financiamiento."""
     interes_exacto: Decimal | None = None
 
 
@@ -125,92 +126,68 @@ def _d(x: float) -> Decimal:
     return Decimal(str(round(x, 2) + 0.0)).quantize(Q2, rounding=ROUND_HALF_UP)
 
 
-def _techo_centavo(x: float) -> float:
-    return math.ceil(round(x * 100, 4)) / 100
-
-
 def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> list[dict]:
-    """Una fila por MES, un pago por AÑO (cada 12 filas). Interés por días reales, sin redondear mes a mes."""
+    """Igual que el Excel: una fila por MES (la 1.ª es el fin del mes de inicio), un pago por AÑO.
+    - Fechas: fin de mes (EOMONTH). Fila k = EOMONTH(fecha_base, k-1). Pagos en las filas 13, 25, 37...
+    - El capital NO baja durante el año; el interés se acumula (compuesto, días reales / 365)
+      desde la fecha de inicio (1.er año) o desde el pago anterior (años siguientes).
+    - Cuota fija anual = anualidad con la TEA y n = años. La última cuota liquida capital + interés.
+    - TEA = 0 (plazo <= 24 meses): cuotas anuales iguales, sin interés."""
     if anios < 1:
         raise HTTPException(status_code=422, detail="El pago anual requiere un plazo de al menos 12 meses")
-    n = anios * 12
     tea = float(Decimal(str(tea_pct or 0)) / 100)
+    capital_c = Decimal(str(saldo)).quantize(Q2, rounding=ROUND_HALF_UP)   # saldo en centavos (cuadra al sol)
+    capital_x = float(capital_c)                                             # saldo sin redondear (como el Excel)
 
-    # ---- Sin interés: reparto igual, un pago por aniversario ----
-    if tea <= 0:
-        restante = Decimal(str(saldo))
-        cuota = (restante / anios).quantize(Q2, rounding=ROUND_HALF_UP)
-        filas = _Filas()
-        for k in range(1, n + 1):
-            paga = k % 12 == 0
-            monto = Decimal("0.00")
-            if paga:
-                monto = restante if k == n else cuota
-                restante -= monto
-            filas.append({
-                "numero": k, "fecha": fecha_base + relativedelta(months=k), "capital": restante,
-                "amortizacion": monto, "interes": Decimal("0.00"), "acumulado": Decimal("0.00"),
-                "monto": monto, "requiere_pago": paga,
-                "ajustada": paga and k == n and abs(monto - cuota) > Decimal("0.05"),
-            })
-        filas.interes_exacto = Decimal("0.00")
-        return filas
-
-    # ---- Con interés: método del Excel ----
-    S = float(Decimal(str(saldo)))
-    tem = (1 + tea) ** (1 / 12) - 1
-    f = (1 + tem) ** n
-    cuota = (S * tem * f - (1 if EXCEL_PARENTESIS_CUOTA else 0)) / (f - 1)
+    if tea > 0:
+        f = (1 + tea) ** anios
+        cuota = _d((capital_x * tea * f - (1 if EXCEL_PARENTESIS_CUOTA else 0)) / (f - 1))
+    else:
+        cuota = (capital_c / anios).quantize(Q2, rounding=ROUND_HALF_UP)
 
     filas = _Filas()
-    capital = S
-    previa = fecha_base
-    interes_total = acum = amort_anio = cuota_anio = 0.0
-    total_monto = 0.0                  # suma exacta de todas las cuotas, sin redondear
-    suma_pagos = Decimal("0.00")       # suma de los pagos anuales ya redondeados
-    for k in range(1, n + 1):
-        fecha = fecha_base + relativedelta(months=k)
-        dias = (fecha - previa).days
-        if EXCEL_FILA2_USA_TEM and k == 2:
-            interes = capital * tem
-        else:
-            interes = capital * _factor_tea(tea, dias)
-        if k == n:
-            amort = capital
-            monto = _techo_centavo(capital + interes) if EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA else capital + interes
-        else:
-            amort = min(cuota - interes, capital)
-            monto = cuota
-        capital -= amort
-        interes_total += interes
-        acum += interes
-        amort_anio += amort
-        cuota_anio += monto
-        total_monto += monto
-
-        fila = {
-            "numero": k, "fecha": fecha, "capital": _d(capital), "amortizacion": Decimal("0.00"),
-            "interes": _d(interes), "acumulado": _d(acum), "monto": Decimal("0.00"),
-            "requiere_pago": False, "ajustada": False,
-        }
-        if k % 12 == 0:  # fila de pago anual: junta lo de los 12 meses
-            amort_r = _d(amort_anio)
-            monto_r = _d(cuota_anio)
-            acum_r = _d(acum)
-            if k == n:
-                # la última cuota absorbe el centavo: los pagos suman exactamente el total del Excel
-                monto_r = _d(total_monto) - suma_pagos
-                acum_r = monto_r - amort_r
-            suma_pagos += monto_r
-            fila.update({
-                "amortizacion": amort_r, "monto": monto_r, "acumulado": acum_r,
-                "requiere_pago": True,
-                "ajustada": k == n and abs(monto - cuota) > 0.05,
-            })
-            acum = amort_anio = cuota_anio = 0.0
-        filas.append(fila)
-        previa = fecha
-    filas.interes_exacto = _d(interes_total)
+    interes_total = Decimal("0.00")
+    inicio_periodo = fecha_base      # 1.er año: días desde la fecha real de inicio; luego, desde el último pago
+    k = 0
+    for anio in range(1, anios + 1):
+        ini_c, ini_x = capital_c, capital_x
+        divisor = 360 if (EXCEL_ANIO2_DIV_360 and anio == 2) else 365
+        filas_del_anio = 13 if anio == 1 else 12
+        acum_previo = Decimal("0.00")
+        for j in range(1, filas_del_anio + 1):
+            k += 1
+            fecha = _sumar_meses_fin_de_mes(fecha_base, k - 1)
+            dias = (fecha - inicio_periodo).days
+            interes_x = ini_x * ((1 + tea) ** (dias / divisor) - 1) if tea > 0 else 0.0
+            acum = _d(interes_x)
+            fila = {
+                "numero": k, "fecha": fecha, "capital": ini_c, "amortizacion": Decimal("0.00"),
+                "interes": acum - acum_previo, "acumulado": acum, "monto": Decimal("0.00"),
+                "requiere_pago": False, "ajustada": False,
+            }
+            if j == filas_del_anio:  # fila de pago anual
+                if anio < anios:
+                    monto = cuota
+                    amort = monto - acum
+                    capital_x = ini_x - (float(cuota) - interes_x)
+                else:
+                    monto = _d(ini_x + interes_x)      # la última cuota liquida todo
+                    amort = ini_c
+                    acum = monto - amort
+                    fila["interes"] = acum - acum_previo
+                    fila["acumulado"] = acum
+                    capital_x = 0.0
+                capital_c = ini_c - amort
+                interes_total += acum
+                fila.update({
+                    "capital": ini_c if EXCEL_CAPITAL_SALDO_INICIAL else capital_c,
+                    "amortizacion": amort, "monto": monto, "requiere_pago": True,
+                    "ajustada": anio == anios and abs(monto - cuota) > Decimal("0.05"),
+                })
+                inicio_periodo = fecha
+            acum_previo = acum
+            filas.append(fila)
+    filas.interes_exacto = interes_total
     return filas
 
 

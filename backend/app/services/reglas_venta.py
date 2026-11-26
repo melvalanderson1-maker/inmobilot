@@ -155,6 +155,7 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
         divisor = 360 if (EXCEL_ANIO2_DIV_360 and anio == 2) else 365
         filas_del_anio = 13 if anio == 1 else 12
         acum_previo = Decimal("0.00")
+        acum_previo_x = 0.0              # interés acumulado SIN redondear (como el Excel)
         for j in range(1, filas_del_anio + 1):
             k += 1
             fecha = _sumar_meses_fin_de_mes(fecha_base, k - 1)
@@ -163,23 +164,25 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
             acum = _d(interes_x)
             fila = {
                 "numero": k, "fecha": fecha, "capital": ini_c, "amortizacion": Decimal("0.00"),
-                "interes": acum - acum_previo, "acumulado": acum, "monto": Decimal("0.00"),
+                "interes": _d(interes_x - acum_previo_x), "acumulado": acum, "monto": Decimal("0.00"),
                 "requiere_pago": False, "ajustada": False,
             }
             if j == filas_del_anio:  # fila de pago anual
                 if anio < anios:
                     monto = cuota
                     amort = monto - acum
+                    amort_cap = amort
                     capital_x = ini_x - (float(cuota) - interes_x)
                 else:
                     monto = _d(ini_x + interes_x)      # la última cuota liquida todo
-                    amort = ini_c
+                    amort_cap = ini_c                  # capital en centavos: para el saldo y el total de interés
+                    amort = _d(ini_x)                  # el Excel muestra aquí el saldo sin redondear previo (15,201.55)
                     acum = _d(interes_x)               # el Excel redondea el interés por separado
-                    fila["interes"] = acum - acum_previo
+                    fila["interes"] = _d(interes_x - acum_previo_x)
                     fila["acumulado"] = acum
                     capital_x = 0.0
-                capital_c = ini_c - amort
-                interes_total += (monto - amort)       # total = cuotas - capital (cuadra con el Excel: 36,381.91)
+                capital_c = ini_c - amort_cap
+                interes_total += (monto - amort_cap)   # total = cuotas - capital (cuadra con el Excel: 36,381.91)
                 fila.update({
                     "capital": ini_c if EXCEL_CAPITAL_SALDO_INICIAL else capital_c,
                     "amortizacion": amort, "monto": monto, "requiere_pago": True,
@@ -187,6 +190,7 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
                 })
                 inicio_periodo = fecha
             acum_previo = acum
+            acum_previo_x = interes_x
             filas.append(fila)
     filas.interes_exacto = interes_total
     return filas

@@ -820,17 +820,24 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     }
 
     const anual: { fila: any; capitalAntes: number }[] = [];
+    const totalExacto = this.r2(filas.reduce((a, x) => a + x.monto, 0));
+    let sumaMontos = 0;
     for (let i = 0; i < filas.length; i += 12) {
       const g = filas.slice(i, i + 12);
+      const esUltima = i + 12 >= filas.length;
+      const amort = this.r2(g.reduce((a, x) => a + x.amortizacion, 0));
+      // la última cuota absorbe el centavo para que la suma de pagos = total exacto
+      const monto = esUltima ? this.r2(totalExacto - sumaMontos) : this.r2(g.reduce((a, x) => a + x.monto, 0));
+      sumaMontos = this.r2(sumaMontos + monto);
       anual.push({
         capitalAntes: g[0].capital,
         fila: {
           numero: i / 12 + 1,
           fecha: g[g.length - 1].fecha,
-          amortizacion: this.r2(g.reduce((a, x) => a + x.amortizacion, 0)),
-          acumulado: this.r2(g.reduce((a, x) => a + x.interes, 0)),
-          monto: this.r2(g.reduce((a, x) => a + x.monto, 0)),
-          ajustada: g.some((x) => x.ajustada),
+          amortizacion: amort,
+          acumulado: esUltima ? this.r2(monto - amort) : this.r2(g.reduce((a, x) => a + x.interes, 0)),
+          monto,
+          ajustada: g.some((x) => x.ajustada) || esUltima,
         },
       });
     }

@@ -166,6 +166,8 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
     capital = S
     previa = fecha_base
     interes_total = acum = amort_anio = cuota_anio = 0.0
+    total_monto = 0.0                  # suma exacta de todas las cuotas, sin redondear
+    suma_pagos = Decimal("0.00")       # suma de los pagos anuales ya redondeados
     for k in range(1, n + 1):
         fecha = fecha_base + relativedelta(months=k)
         dias = (fecha - previa).days
@@ -184,6 +186,7 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
         acum += interes
         amort_anio += amort
         cuota_anio += monto
+        total_monto += monto
 
         fila = {
             "numero": k, "fecha": fecha, "capital": _d(capital), "amortizacion": Decimal("0.00"),
@@ -191,8 +194,17 @@ def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> li
             "requiere_pago": False, "ajustada": False,
         }
         if k % 12 == 0:  # fila de pago anual: junta lo de los 12 meses
+            amort_r = _d(amort_anio)
+            monto_r = _d(cuota_anio)
+            acum_r = _d(acum)
+            if k == n:
+                # la última cuota absorbe el centavo: los pagos suman exactamente el total del Excel
+                monto_r = _d(total_monto) - suma_pagos
+                acum_r = monto_r - amort_r
+            suma_pagos += monto_r
             fila.update({
-                "amortizacion": _d(amort_anio), "monto": _d(cuota_anio), "requiere_pago": True,
+                "amortizacion": amort_r, "monto": monto_r, "acumulado": acum_r,
+                "requiere_pago": True,
                 "ajustada": k == n and abs(monto - cuota) > 0.05,
             })
             acum = amort_anio = cuota_anio = 0.0

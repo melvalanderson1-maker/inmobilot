@@ -115,6 +115,7 @@ def _factor_tea(tea: float, dias: int) -> float:
 EXCEL_ANIO2_DIV_360 = True           # el Excel divide entre 360 (no 365) los días del 2.º año
 EXCEL_PARENTESIS_CUOTA = True        # el Excel resta 1 dentro del numerador: (S*i*f - 1)/(f - 1)
 EXCEL_CAPITAL_SALDO_INICIAL = False  # tu frontend calcula "capital antes" a partir del saldo DESPUÉS de pagar
+EXCEL_MENSUAL_FILA2_TEM = True       # en el cronograma mensual, el Excel calcula el interés de la fila 2 con la TEM completa
 
 
 class _Filas(list):
@@ -214,7 +215,10 @@ def generar_cronograma_mensual_excel(saldo, n: int, tea_pct, fecha_base: date) -
         dias = (fecha - previa).days
         ini_x = capital_x
         ini_c = _d(ini_x)
-        interes_x = ini_x * ((1 + tea) ** (dias / 365) - 1)
+        if EXCEL_MENSUAL_FILA2_TEM and k == 2:
+            interes_x = ini_x * tem  # el Excel usa la TEM completa en la fila 2
+        else:
+            interes_x = ini_x * ((1 + tea) ** (dias / 365) - 1)
         interes = _d(interes_x)
         ajustada = False
         if k < n:

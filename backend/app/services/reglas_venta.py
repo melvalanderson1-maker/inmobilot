@@ -112,8 +112,8 @@ def _factor_tea(tea: float, dias: int) -> float:
 
 # Réplica del Excel de Gruselva (hojas "cronograma anual" y "cronograma mensual").
 # True = reproduce el defecto del Excel tal cual; False = aplica la fórmula correcta.
-EXCEL_ANIO2_DIV_360 = False          # el Excel divide entre 360 (no 365) los días del 2.º año
-EXCEL_PARENTESIS_CUOTA = False       # el Excel resta 1 dentro del numerador: (S*i*f - 1)/(f - 1)
+EXCEL_ANIO2_DIV_360 = True           # el Excel divide entre 360 (no 365) los días del 2.º año
+EXCEL_PARENTESIS_CUOTA = True        # el Excel resta 1 dentro del numerador: (S*i*f - 1)/(f - 1)
 EXCEL_CAPITAL_SALDO_INICIAL = False  # tu frontend calcula "capital antes" a partir del saldo DESPUÉS de pagar
 
 

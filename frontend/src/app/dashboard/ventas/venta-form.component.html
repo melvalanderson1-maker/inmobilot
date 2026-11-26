@@ -795,8 +795,9 @@
                             <th>Fecha de pago</th>
                             <th class="num">Capital</th>
                             <th class="num">Amortización</th>
-                            <th class="num">Interés</th>
+                            <th class="num">Interés acumulado</th>
                             <th class="num">Cuota</th>
+                            <th class="num">Interés mensual</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -808,13 +809,14 @@
                               <td class="num">
                                 @if (r.fila.requiere_pago !== false) { {{ r.fila.amortizacion | number:'1.2-2' }} }
                               </td>
-                              <td class="num">{{ r.fila.interes | number:'1.2-2' }}</td>
+                              <td class="num">{{ r.fila.acumulado | number:'1.2-2' }}</td>
                               <td class="num">
                                 @if (r.fila.requiere_pago !== false) {
                                   {{ r.fila.monto | number:'1.2-2' }}
                                   @if (r.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
                                 }
                               </td>
+                              <td class="num">{{ r.fila.interesMes | number:'1.2-2' }}</td>
                             </tr>
                           }
                         </tbody>

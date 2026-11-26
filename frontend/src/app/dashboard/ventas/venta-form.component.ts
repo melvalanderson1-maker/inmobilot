@@ -38,6 +38,8 @@ interface FilaSim {
   ajustada: boolean;
   requiere_pago: boolean;
   pagoAnual: boolean; // última fila de cada año
+  acumulado: number;  // INTERÉS ACUMULADO del Excel
+  interesMes: number; // INTERES MENSUAL del Excel
 }
 interface Simulado {
   tea: number;
@@ -776,6 +778,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         capital: !paga ? Number(f.capital) : i > 0 ? Number(raw[i - 1].capital) : Number(f.capital) + Number(f.amortizacion),
         amortizacion: Number(f.amortizacion),
         interes: Number(paga ? (f.acumulado ?? f.interes) : f.interes),
+        acumulado: Number(f.acumulado ?? 0),
+        interesMes: Number(f.interes ?? 0),
         monto: Number(f.monto),
         ajustada: !!f.ajustada,
         requiere_pago: paga,

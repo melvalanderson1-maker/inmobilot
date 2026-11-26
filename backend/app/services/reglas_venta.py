@@ -1,5 +1,6 @@
 """Reglas de negocio de la venta (PDF PROCESO DE VENTA) y cálculo del cronograma."""
 import calendar
+import math
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -109,14 +110,14 @@ def _factor_tea(tea: float, dias: int) -> float:
     """(1+TEA)^(dias/365) - 1 : interés compuesto por días reales."""
     return (1 + tea) ** (dias / 365) - 1
 
-# Réplica exacta del Excel de Gruselva. Si pones False en cualquiera, ya NO coincide con el PDF.
-EXCEL_PARENTESIS_CUOTA = True            # F15 del Excel: (S*(r*f) - 1)/(f-1) -> cuota 0.63 menor
-EXCEL_BASE_360_ANIO_2 = True             # el Excel usa /360 en los 12 meses del 2.º año
-EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA = True   # la última cuota del Excel está tipeada y sube al centavo siguiente
+# Réplica del Excel de Gruselva (cronograma anual con detalle mensual).
+EXCEL_PARENTESIS_CUOTA = True            # cuota = (S*TEM*f - 1)/(f - 1), como la celda del Excel
+EXCEL_FILA2_USA_TEM = True               # en la hoja, la fila 2 usa TEM en vez de días reales
+EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA = True   # la última cuota sube al centavo siguiente
 
 
 class _Filas(list):
-    """Filas del cronograma + interés total exacto (sin redondear mes a mes), como el SUM del Excel."""
+    """Filas del cronograma + interés total exacto (sin redondear mes a mes)."""
     interes_exacto: Decimal | None = None
 
 
@@ -124,81 +125,81 @@ def _d(x: float) -> Decimal:
     return Decimal(str(round(x, 2) + 0.0)).quantize(Q2, rounding=ROUND_HALF_UP)
 
 
+def _techo_centavo(x: float) -> float:
+    return math.ceil(round(x * 100, 4)) / 100
+
+
 def generar_cronograma_anual(saldo, anios: int, tea_pct, fecha_base: date) -> list[dict]:
-    """Una fila por MES y un pago por AÑO (método del Excel de Gruselva). Sin redondear mes a mes."""
+    """Una fila por MES, un pago por AÑO (cada 12 filas). Interés por días reales, sin redondear mes a mes."""
     if anios < 1:
         raise HTTPException(status_code=422, detail="El pago anual requiere un plazo de al menos 12 meses")
-    S = float(Decimal(str(saldo)))
+    n = anios * 12
     tea = float(Decimal(str(tea_pct or 0)) / 100)
-    if tea > 0:
-        f = (1 + tea) ** anios
-        if EXCEL_PARENTESIS_CUOTA:
-            cuota = round((S * (tea * f) - 1) / (f - 1), 2)
-        else:
-            cuota = round(S * tea * f / (f - 1), 2)
-    else:
-        cuota = round(S / anios, 2)
 
-    sin_interes = tea <= 0
-    n_mes = 1
-    if sin_interes:
-        # Sin interés: aniversarios exactos del día de inicio (06/08/2026 -> 06/08/2027 ...)
-        fechas_pago = [fecha_base + relativedelta(months=12 * (k + 1)) for k in range(anios)]
-        fecha = fecha_base + relativedelta(months=1)
-    else:
-        # Con interés: método del Excel de Gruselva (fin de mes)
-        fechas_pago = [_sumar_meses_fin_de_mes(fecha_base, 12 * (k + 1)) for k in range(anios)]
-        fecha = _fin_de_mes(fecha_base.year, fecha_base.month)
-        if fecha <= fecha_base:
-            fecha = _sumar_meses_fin_de_mes(fecha_base, 1)
+    # ---- Sin interés: reparto igual, un pago por aniversario ----
+    if tea <= 0:
+        restante = Decimal(str(saldo))
+        cuota = (restante / anios).quantize(Q2, rounding=ROUND_HALF_UP)
+        filas = _Filas()
+        for k in range(1, n + 1):
+            paga = k % 12 == 0
+            monto = Decimal("0.00")
+            if paga:
+                monto = restante if k == n else cuota
+                restante -= monto
+            filas.append({
+                "numero": k, "fecha": fecha_base + relativedelta(months=k), "capital": restante,
+                "amortizacion": monto, "interes": Decimal("0.00"), "acumulado": Decimal("0.00"),
+                "monto": monto, "requiere_pago": paga,
+                "ajustada": paga and k == n and abs(monto - cuota) > Decimal("0.05"),
+            })
+        filas.interes_exacto = Decimal("0.00")
+        return filas
 
-    filas: list[dict] = []
+    # ---- Con interés: método del Excel ----
+    S = float(Decimal(str(saldo)))
+    tem = (1 + tea) ** (1 / 12) - 1
+    f = (1 + tem) ** n
+    cuota = (S * tem * f - (1 if EXCEL_PARENTESIS_CUOTA else 0)) / (f - 1)
+
+    filas = _Filas()
     capital = S
-    interes_exacto = 0.0
-    acum_prev = 0.0
     previa = fecha_base
-    k = 0
-    primero = True
-    while k < anios:
+    interes_total = acum = amort_anio = cuota_anio = 0.0
+    for k in range(1, n + 1):
+        fecha = fecha_base + relativedelta(months=k)
         dias = (fecha - previa).days
-        base = 360 if (EXCEL_BASE_360_ANIO_2 and k == 1) else 365
-        g = (1 + tea) ** (dias / base) - 1
-        acum = capital * g if primero else (capital + acum_prev) * g + acum_prev
+        if EXCEL_FILA2_USA_TEM and k == 2:
+            interes = capital * tem
+        else:
+            interes = capital * _factor_tea(tea, dias)
+        if k == n:
+            amort = capital
+            monto = _techo_centavo(capital + interes) if EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA else capital + interes
+        else:
+            amort = min(cuota - interes, capital)
+            monto = cuota
+        capital -= amort
+        interes_total += interes
+        acum += interes
+        amort_anio += amort
+        cuota_anio += monto
+
         fila = {
-            "numero": len(filas) + 1, "fecha": fecha, "capital": _d(capital), "amortizacion": Decimal("0.00"),
-            "interes": _d(acum) - _d(acum_prev), "acumulado": _d(acum), "monto": Decimal("0.00"),
+            "numero": k, "fecha": fecha, "capital": _d(capital), "amortizacion": Decimal("0.00"),
+            "interes": _d(interes), "acumulado": _d(acum), "monto": Decimal("0.00"),
             "requiere_pago": False, "ajustada": False,
         }
-        if fecha == fechas_pago[k]:
-            if k == anios - 1:
-                total = capital + acum
-                if EXCEL_ULTIMA_CUOTA_HACIA_ARRIBA:
-                    monto = (-(-round(total * 100, 4) // 1)) / 100   # techo al centavo
-                else:
-                    monto = round(total, 2)
-                fila["ajustada"] = abs(monto - cuota) > 0.05
-            else:
-                monto = cuota
-            amort = monto - acum
-            capital -= amort
-            interes_exacto += acum
-            fila.update({"amortizacion": _d(amort), "monto": _d(monto), "requiere_pago": True, "capital": _d(capital)})
-            acum_prev = 0.0
-            k += 1
-            primero = True
-        else:
-            acum_prev = acum
-            primero = False
+        if k % 12 == 0:  # fila de pago anual: junta lo de los 12 meses
+            fila.update({
+                "amortizacion": _d(amort_anio), "monto": _d(cuota_anio), "requiere_pago": True,
+                "ajustada": k == n and abs(monto - cuota) > 0.05,
+            })
+            acum = amort_anio = cuota_anio = 0.0
         filas.append(fila)
         previa = fecha
-        if sin_interes:
-            n_mes += 1
-            fecha = fecha_base + relativedelta(months=n_mes)
-        else:
-            fecha = _sumar_meses_fin_de_mes(fecha, 1)
-    resultado = _Filas(filas)
-    resultado.interes_exacto = _d(interes_exacto)
-    return resultado
+    filas.interes_exacto = _d(interes_total)
+    return filas
 
 
 def construir_cronograma(saldo, frecuencia: str, plazo_meses: int, tea_pct, fecha_base: date,

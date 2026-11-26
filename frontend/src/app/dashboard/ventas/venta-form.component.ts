@@ -773,21 +773,23 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / 86400000);
   }
 
-  /** Calcula el cronograma al instante con lo que hay en el formulario */
+  /** Calcula el cronograma al instante (mismo método que el backend y la hoja Excel) */
   private calcularLocal(): void {
     const dc = this.datosCredito;
     const plazo = Number(dc.plazo_meses) || 0;
     const financiar = this.r2((Number(this.precioTotal) || 0) - (Number(dc.inicial_monto) || 0));
 
-    if (this.formaPago !== 'credito' || this.esPersonalizado || plazo <= 24 || financiar <= 0 || !dc.fecha_deposito) {
+    if (this.formaPago !== 'credito' || this.esPersonalizado || plazo <= 24 || plazo % 12 !== 0 || financiar <= 0 || !dc.fecha_deposito) {
       this.simulado.set(null);
       return;
     }
 
     const tea = dc.tea_financiamiento != null && Number(dc.tea_financiamiento) > 0 ? Number(dc.tea_financiamiento) : this.TEA_LARGO;
-    const tem = Math.pow(1 + tea / 100, 1 / 12) - 1;
-    // ===== PRUEBA TEMPORAL: reproducir la hoja A14 =====
-    const cuotaBase = 624.5553; // PRUEBA: cuota de la hoja
+    const teaF = tea / 100;
+    const tem = Math.pow(1 + teaF, 1 / 12) - 1;
+    const f = Math.pow(1 + tem, plazo);
+    const cuotaBase = (financiar * tem * f - 1) / (f - 1); // cuota de la hoja (sin redondear)
+
     const filas: FilaSim[] = [];
     let capital = financiar;
     let previa = dc.fecha_deposito;
@@ -795,11 +797,12 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     for (let k = 1; k <= plazo; k++) {
       const fecha = this.fechaMes(dc.fecha_deposito, k);
       const dias = this.diasEntre(previa, fecha);
-      let interes = capital * (Math.pow(1 + tea / 100, dias / 365) - 1);
-      if (k === 2) interes = capital * tem; // PRUEBA: fila 2 manual de la hoja
+      const interes = k === 2 ? capital * tem : capital * (Math.pow(1 + teaF, dias / 365) - 1);
       const ultima = k === plazo;
       const amortizacion = ultima ? capital : Math.min(cuotaBase - interes, capital);
-      const cuota = amortizacion + interes;
+      const cuota = ultima
+        ? Math.ceil(Number(((capital + interes) * 100).toFixed(4))) / 100 // la última sube al centavo
+        : cuotaBase;
 
       filas.push({
         numero: k,
@@ -808,9 +811,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
         amortizacion,
         interes,
         monto: cuota,
-        ajustada: ultima && Math.abs(cuota - cuotaBase) > 0.005,
+        ajustada: ultima && Math.abs(cuota - cuotaBase) > 0.05,
         requiere_pago: true,
-        pagoAnual: k % 12 === 0 || ultima,
+        pagoAnual: k % 12 === 0,
       });
       capital = capital - amortizacion; // sin redondear
       previa = fecha;
@@ -832,7 +835,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
       });
     }
 
-    this.simulado.set({ tea, financiar, cuota: cuotaBase, filas, anual });
+    this.simulado.set({ tea, financiar, cuota: this.r2(cuotaBase), filas, anual });
   }
 
   /** Filas normalizadas: local si hay simulación, si no las del backend */

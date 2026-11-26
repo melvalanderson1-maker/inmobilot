@@ -654,10 +654,10 @@
               @if (datosCredito.inicial_monto) {
                 <div><dt>Inicial</dt><dd>S/ {{ datosCredito.inicial_monto | number:'1.2-2' }}</dd></div>
               }
-              @if (evaluacion(); as ev) {
-                <div><dt>Monto a financiar</dt><dd>S/ {{ ev.monto_financiar | number:'1.2-2' }}</dd></div>
-                <div><dt>Pagos del cronograma</dt><dd>{{ ev.numero_cuotas }}</dd></div>
-                <div class="is-strong"><dt>Cuota estimada</dt><dd>S/ {{ ev.cuota_estimada | number:'1.2-2' }}</dd></div>
+              @if (hayCronograma) {
+                <div><dt>Monto a financiar</dt><dd>S/ {{ financiarMostrado | number:'1.2-2' }}</dd></div>
+                <div><dt>Pagos del cronograma</dt><dd>{{ pagosMostrados }}</dd></div>
+                <div class="is-strong"><dt>Cuota estimada</dt><dd>S/ {{ cuotaMostrada | number:'1.2-2' }}</dd></div>
                 @if (teaAplicada > 0) {
                   <div><dt>TEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
                   <div><dt>TCEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
@@ -706,32 +706,30 @@
         </header>
 
         @if (hayCronograma) {
-          @if (evaluacion(); as ev) {
-            <dl class="vf-terms">
-              <div><dt>Monto a financiar</dt><dd>S/ {{ ev.monto_financiar | number:'1.2-2' }}</dd></div>
-              @if (teaAplicada > 0) {
-                <div><dt>TEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
-              } @else {
-                <div><dt>Interés</dt><dd>Sin interés</dd></div>
-              }
-              <div class="is-key"><dt>Cuota</dt><dd>S/ {{ ev.cuota_estimada | number:'1.2-2' }}</dd></div>
-              @if (teaAplicada > 0) {
-                <div><dt>TCEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
-              } @else {
-                <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
-              }
-              <div><dt>Pagos</dt><dd>{{ ev.numero_cuotas }}</dd></div>
-              @if (teaAplicada > 0) {
-                <div><dt>TEM</dt><dd>{{ temAplicada | number:'1.2-2' }}%</dd></div>
-              } @else {
-                <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
-              }
-              @if (teaAplicada > 0) {
-                <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
-                <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
-              }
-            </dl>
-          }
+          <dl class="vf-terms">
+            <div><dt>Monto a financiar</dt><dd>S/ {{ financiarMostrado | number:'1.2-2' }}</dd></div>
+            @if (teaAplicada > 0) {
+              <div><dt>TEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+            } @else {
+              <div><dt>Interés</dt><dd>Sin interés</dd></div>
+            }
+            <div class="is-key"><dt>Cuota</dt><dd>S/ {{ cuotaMostrada | number:'1.2-2' }}</dd></div>
+            @if (teaAplicada > 0) {
+              <div><dt>TCEA</dt><dd>{{ teaAplicada | number:'1.2-2' }}%</dd></div>
+            } @else {
+              <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
+            }
+            <div><dt>Pagos</dt><dd>{{ pagosMostrados }}</dd></div>
+            @if (teaAplicada > 0) {
+              <div><dt>TEM</dt><dd>{{ temAplicada | number:'1.2-2' }}%</dd></div>
+            } @else {
+              <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
+            }
+            @if (teaAplicada > 0) {
+              <div><dt>Filas del cronograma</dt><dd>{{ filasSimuladas.length }}</dd></div>
+              <div><dt>Mora</dt><dd>{{ datosCredito.tasa_interes }}% anual</dd></div>
+            }
+          </dl>
 
           @if (filasAnuales.length > 0) {
             <div class="vf-anual">
@@ -797,28 +795,26 @@
                             <th>Fecha de pago</th>
                             <th class="num">Capital</th>
                             <th class="num">Amortización</th>
-                            <th class="num">Interés acumulado</th>
+                            <th class="num">Interés</th>
                             <th class="num">Cuota</th>
-                            <th class="num">Interés mensual</th>
                           </tr>
                         </thead>
                         <tbody>
                           @for (r of pag; track r.fila.numero) {
-                            <tr [class.is-pago]="resaltarPagos && r.fila.requiere_pago !== false">
+                            <tr [class.is-pago]="resaltarPagos && r.fila.pagoAnual">
                               <td class="c-n">{{ r.fila.numero }}</td>
                               <td>{{ fmtFecha(r.fila.fecha) }}</td>
                               <td class="num">{{ r.capital | number:'1.2-2' }}</td>
                               <td class="num">
                                 @if (r.fila.requiere_pago !== false) { {{ r.fila.amortizacion | number:'1.2-2' }} }
                               </td>
-                              <td class="num">{{ r.fila.acumulado | number:'1.2-2' }}</td>
+                              <td class="num">{{ r.fila.interes | number:'1.2-2' }}</td>
                               <td class="num">
                                 @if (r.fila.requiere_pago !== false) {
                                   {{ r.fila.monto | number:'1.2-2' }}
                                   @if (r.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
                                 }
                               </td>
-                              <td class="num">{{ r.fila.interes | number:'1.2-2' }}</td>
                             </tr>
                           }
                         </tbody>
@@ -838,9 +834,8 @@
             <div class="vf-totales" role="group" aria-label="Totales del cronograma">
               <span class="vf-totales-t">Totales</span>
               <div><small>Amortización</small><strong>{{ totalesSimulados.amortizacion | number:'1.2-2' }}</strong></div>
-              <div><small>Interés acumulado</small><strong>{{ totalesSimulados.interes | number:'1.2-2' }}</strong></div>
+              <div><small>Interés</small><strong>{{ totalesSimulados.interes | number:'1.2-2' }}</strong></div>
               <div class="is-key"><small>Cuota</small><strong>{{ totalesSimulados.cuota | number:'1.2-2' }}</strong></div>
-              <div><small>Interés mensual</small><strong>{{ totalesSimulados.interes | number:'1.2-2' }}</strong></div>
             </div>
           </div>
         } @else {

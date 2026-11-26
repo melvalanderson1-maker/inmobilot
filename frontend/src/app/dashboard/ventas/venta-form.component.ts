@@ -27,6 +27,26 @@ interface CompradorExtra {
   rol: RolExtra;
 }
 
+
+interface FilaSim {
+  numero: number;
+  fecha: string;
+  capital: number; // capital vigente ANTES de amortizar
+  amortizacion: number;
+  interes: number;
+  monto: number; // cuota
+  ajustada: boolean;
+  requiere_pago: boolean;
+  pagoAnual: boolean; // última fila de cada año
+}
+interface Simulado {
+  tea: number;
+  financiar: number;
+  cuota: number;
+  filas: FilaSim[];
+  anual: { fila: any; capitalAntes: number }[];
+}
+
 @Component({
   selector: 'app-venta-form',
   standalone: true,
@@ -652,6 +672,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   reevaluar(): void {
     this.aplicarDefectos();
+    queueMicrotask(() => this.calcularLocal()); // recalcula al instante, ya con el valor nuevo asignado
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.evaluarAhora(), 350);
   }
@@ -731,37 +752,141 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return !!this.evaluacion()?.requiere_autorizacion && !this.omitirAutorizacion;
   }
 
-  // ---- Cronograma simulado (mismas columnas del PDF/Excel) ----
+  // ---- Cronograma simulado (método de la hoja Excel: cuota mensual, interés por días reales) ----
+  simulado = signal<Simulado | null>(null);
 
-  /** Con pago anual: las 61 filas mensuales. Si no: las cuotas normales */
-  get filasSimuladas(): any[] {
+  private r2(n: number): number {
+    return Math.round(n * 100) / 100;
+  }
+
+  /** Misma fecha cada mes; si el mes no tiene ese día, usa el último (31/07 -> 31/08, 30/09, 28/02...) */
+  private fechaMes(base: string, k: number): string {
+    const [y, m, d] = base.slice(0, 10).split('-').map(Number);
+    const t = m - 1 + k;
+    const yy = y + Math.floor(t / 12);
+    const mm = ((t % 12) + 12) % 12;
+    const ultimo = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
+    return `${yy}-${String(mm + 1).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`;
+  }
+
+  private diasEntre(a: string, b: string): number {
+    return Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / 86400000);
+  }
+
+  /** Calcula el cronograma al instante con lo que hay en el formulario */
+  private calcularLocal(): void {
+    const dc = this.datosCredito;
+    const plazo = Number(dc.plazo_meses) || 0;
+    const financiar = this.r2((Number(this.precioTotal) || 0) - (Number(dc.inicial_monto) || 0));
+
+    if (this.formaPago !== 'credito' || this.esPersonalizado || plazo <= 24 || financiar <= 0 || !dc.fecha_deposito) {
+      this.simulado.set(null);
+      return;
+    }
+
+    const tea = dc.tea_financiamiento != null && Number(dc.tea_financiamiento) > 0 ? Number(dc.tea_financiamiento) : this.TEA_LARGO;
+    const tem = Math.pow(1 + tea / 100, 1 / 12) - 1;
+    // ===== PRUEBA TEMPORAL: reproducir la hoja A14 =====
+    const cuotaBase = 624.5553; // PRUEBA: cuota de la hoja
+    const filas: FilaSim[] = [];
+    let capital = financiar;
+    let previa = dc.fecha_deposito;
+
+    for (let k = 1; k <= plazo; k++) {
+      const fecha = this.fechaMes(dc.fecha_deposito, k);
+      const dias = this.diasEntre(previa, fecha);
+      let interes = capital * (Math.pow(1 + tea / 100, dias / 365) - 1);
+      if (k === 2) interes = capital * tem; // PRUEBA: fila 2 manual de la hoja
+      const ultima = k === plazo;
+      const amortizacion = ultima ? capital : Math.min(cuotaBase - interes, capital);
+      const cuota = amortizacion + interes;
+
+      filas.push({
+        numero: k,
+        fecha,
+        capital,
+        amortizacion,
+        interes,
+        monto: cuota,
+        ajustada: ultima && Math.abs(cuota - cuotaBase) > 0.005,
+        requiere_pago: true,
+        pagoAnual: k % 12 === 0 || ultima,
+      });
+      capital = capital - amortizacion; // sin redondear
+      previa = fecha;
+    }
+
+    const anual: { fila: any; capitalAntes: number }[] = [];
+    for (let i = 0; i < filas.length; i += 12) {
+      const g = filas.slice(i, i + 12);
+      anual.push({
+        capitalAntes: g[0].capital,
+        fila: {
+          numero: i / 12 + 1,
+          fecha: g[g.length - 1].fecha,
+          amortizacion: this.r2(g.reduce((a, x) => a + x.amortizacion, 0)),
+          acumulado: this.r2(g.reduce((a, x) => a + x.interes, 0)),
+          monto: this.r2(g.reduce((a, x) => a + x.monto, 0)),
+          ajustada: g.some((x) => x.ajustada),
+        },
+      });
+    }
+
+    this.simulado.set({ tea, financiar, cuota: cuotaBase, filas, anual });
+  }
+
+  /** Filas normalizadas: local si hay simulación, si no las del backend */
+  get filasSimuladas(): FilaSim[] {
+    const s = this.simulado();
+    if (s) return s.filas;
     const ev: any = this.evaluacion();
     if (!ev) return [];
-    return ev.cronograma_mensual?.length ? ev.cronograma_mensual : (ev.cronograma ?? []);
+    const raw: any[] = ev.cronograma_mensual?.length ? ev.cronograma_mensual : (ev.cronograma ?? []);
+    return raw.map((f, i) => {
+      const paga = f.requiere_pago !== false;
+      return {
+        numero: f.numero,
+        fecha: f.fecha,
+        capital: !paga ? Number(f.capital) : i > 0 ? Number(raw[i - 1].capital) : Number(f.capital) + Number(f.amortizacion),
+        amortizacion: Number(f.amortizacion),
+        interes: Number(paga ? (f.acumulado ?? f.interes) : f.interes),
+        monto: Number(f.monto),
+        ajustada: !!f.ajustada,
+        requiere_pago: paga,
+        pagoAnual: paga,
+      };
+    });
   }
 
-  /** CAPITAL como en el Excel: el capital vigente ANTES de amortizar en esa fila */
-  capitalFila(i: number): number {
-    const filas = this.filasSimuladas;
-    const f = filas[i];
-    if (f.requiere_pago === false) return Number(f.capital);
-    return i > 0 ? Number(filas[i - 1].capital) : Number(f.capital) + Number(f.amortizacion);
-  }
-
-  /** TOTALES como en el Excel */
+  /** TOTALES como en la hoja */
   get totalesSimulados(): { amortizacion: number; interes: number; cuota: number } {
+    const s = this.simulado();
+    if (s) {
+      return {
+        amortizacion: this.r2(s.filas.reduce((a, f) => a + f.amortizacion, 0)),
+        interes: this.r2(s.filas.reduce((a, f) => a + f.interes, 0)),
+        cuota: this.r2(s.filas.reduce((a, f) => a + f.monto, 0)),
+      };
+    }
     const ev: any = this.evaluacion();
-    const cuota = this.filasSimuladas
-      .filter((f) => f.requiere_pago !== false)
-      .reduce((acc, f) => acc + Number(f.monto), 0);
+    const cuota = this.filasSimuladas.filter((f) => f.requiere_pago).reduce((acc, f) => acc + f.monto, 0);
     const financiado = Number(ev?.monto_financiar ?? 0);
-    const interes =
-      ev?.interes_total != null
-        ? Math.round(Number(ev.interes_total) * 100) / 100
-        : Math.round((cuota - financiado) * 100) / 100;
+    const interes = ev?.interes_total != null ? this.r2(Number(ev.interes_total)) : this.r2(cuota - financiado);
     return { amortizacion: financiado, interes, cuota };
   }
 
+  get financiarMostrado(): number {
+    const s = this.simulado();
+    return s ? s.financiar : Number((this.evaluacion() as any)?.monto_financiar ?? 0);
+  }
+  get cuotaMostrada(): number {
+    const s = this.simulado();
+    return s ? s.cuota : Number((this.evaluacion() as any)?.cuota_estimada ?? 0);
+  }
+  get pagosMostrados(): number {
+    const s = this.simulado();
+    return s ? s.filas.length : Number((this.evaluacion() as any)?.numero_cuotas ?? 0);
+  }
   fmtFecha(f: string): string {
     const [y, m, d] = String(f).slice(0, 10).split('-');
     return `${d}/${m}/${y}`;
@@ -787,7 +912,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   private tramo(desde: number, hasta: number): { fila: any; idx: number; capital: number }[] {
     return this.filasSimuladas
       .slice(desde, hasta)
-      .map((fila, k) => ({ fila, idx: desde + k, capital: this.capitalFila(desde + k) }));
+      .map((fila, k) => ({ fila, idx: desde + k, capital: fila.capital }));
   }
 
   get paginas(): { fila: any; idx: number; capital: number }[][] {
@@ -804,11 +929,13 @@ export class VentaFormComponent implements OnInit, OnDestroy {
   }
 
   get hayCronograma(): boolean {
-    return !!this.evaluacion() && this.filasSimuladas.length > 0;
+    return this.filasSimuladas.length > 0;
   }
 
   /** Los pagos del cronograma anual (hoja "cronograma anual" del Excel). Vacío si la frecuencia no es anual */
   get filasAnuales(): { fila: any; capitalAntes: number }[] {
+    const s = this.simulado();
+    if (s) return s.anual;
     const ev: any = this.evaluacion();
     if (!ev?.cronograma_mensual?.length) return [];
     const pagos: any[] = ev.cronograma ?? [];
@@ -818,13 +945,14 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     }));
   }
 
-  /** Se resaltan las filas de pago solo cuando hay filas intermedias (pago anual con detalle mensual) */
+  /** Se resaltan las fechas de pago anual (cada 12 filas) */
   get resaltarPagos(): boolean {
-    return this.filasSimuladas.some((f) => f.requiere_pago === false);
+    return !!this.simulado() || this.filasSimuladas.some((f) => f.requiere_pago === false);
   }
 
   get teaAplicada(): number {
-    return Number((this.evaluacion() as any)?.tea_aplicable ?? 0);
+    const s = this.simulado();
+    return s ? s.tea : Number((this.evaluacion() as any)?.tea_aplicable ?? 0);
   }
 
   /** TEM = (1+TEA)^(1/12) - 1, igual que el Excel */

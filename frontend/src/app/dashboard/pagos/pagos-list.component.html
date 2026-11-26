@@ -1,19 +1,20 @@
 <div class="pagos-page">
-  <div class="page-header">
-    <h1>Pagos</h1>
-    <p class="subtitle">Validación de Caja y comprobantes de Facturación</p>
-  </div>
+  <header class="cabecera">
+    <div>
+      <h1>Pagos</h1>
+      <p>Validación de Caja y comprobantes de Facturación</p>
+    </div>
+    <label class="proyecto">
+      <span>Proyecto</span>
+      <select [(ngModel)]="idProyecto" (ngModelChange)="cargar()">
+        @for (p of proyectos(); track p.id) {
+          <option [ngValue]="p.id">{{ p.nombre }}</option>
+        }
+      </select>
+    </label>
+  </header>
 
-  <div class="selector-proyecto">
-    <label>Proyecto</label>
-    <select [(ngModel)]="idProyecto" (ngModelChange)="cargar()">
-      @for (p of proyectos(); track p.id) {
-        <option [ngValue]="p.id">{{ p.nombre }}</option>
-      }
-    </select>
-  </div>
-
-  <div class="barra">
+  <section class="panel">
     <div class="tabs">
       @for (t of tabs; track t.valor) {
         <button type="button" class="tab" [class.activa]="tab() === t.valor" (click)="tab.set(t.valor)">
@@ -22,203 +23,197 @@
         </button>
       }
     </div>
-    <input
-      type="text"
-      class="buscar"
-      placeholder="Buscar por cliente, DNI, lote, contrato u operación"
-      [ngModel]="busqueda()"
-      (ngModelChange)="busqueda.set($event)"
-    />
-  </div>
 
-  @switch (tab()) {
-    @case ('pendiente_caja') {
-      <div class="guia">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Caja: revisa el voucher y pulsa «Validar» (o «Rechazar» con motivo). En devoluciones, pulsa «Registrar devolución» y sube el voucher.
-      </div>
-    }
-    @case ('pendiente_facturacion') {
-      <div class="guia guia-azul">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Facturación: sube el comprobante (boleta, factura o recibo). En devoluciones, sube la nota de crédito.
-      </div>
-    }
-    @case ('rechazado') {
-      <div class="guia guia-rojo">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Estos pagos fueron rechazados. Ventas debe corregirlos y reenviarlos; aquí solo consultas el motivo.
-      </div>
-    }
-    @case ('validado') {
-      <div class="guia guia-gris">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Pagos ya aplicados. No requieren acción.
-      </div>
-    }
-    @case ('anulado') {
-      <div class="guia guia-gris">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        Pagos anulados o devueltos. Solo consulta.
-      </div>
-    }
-  }
+    <div class="herramientas">
+      <input
+        type="text"
+        class="buscar"
+        placeholder="Buscar por cliente, DNI, lote, contrato u operación"
+        [ngModel]="busqueda()"
+        (ngModelChange)="busqueda.set($event)"
+      />
+      <span class="total">{{ filtrados().length }} registros</span>
+    </div>
 
-  @if (cargando()) {
-    <div class="estado">Cargando pagos...</div>
-  } @else if (filtrados().length === 0) {
-    <div class="estado">No hay pagos en esta vista.</div>
-  } @else {
-    <div class="tabla-card">
-      <table class="tabla">
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Contrato / Lote</th>
-            <th>Cliente</th>
-            <th>Concepto</th>
-            <th>Monto</th>
-            <th>Operación</th>
-            <th>Voucher</th>
-            <th>Estado</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (p of filtrados(); track claveFila(p)) {
+    @switch (tab()) {
+      @case ('pendiente_caja') {
+        <div class="guia guia-ambar">Caja: revisa el voucher y pulsa «Validar» (o «Rechazar» con motivo). En devoluciones, pulsa «Registrar devolución» y sube el voucher.</div>
+      }
+      @case ('pendiente_facturacion') {
+        <div class="guia guia-azul">Facturación: sube el comprobante (boleta, factura o recibo). En devoluciones, sube la nota de crédito.</div>
+      }
+      @case ('rechazado') {
+        <div class="guia guia-rojo">Estos pagos fueron rechazados. Ventas debe corregirlos y reenviarlos; aquí solo consultas el motivo.</div>
+      }
+      @case ('validado') {
+        <div class="guia">Pagos ya aplicados. No requieren acción.</div>
+      }
+      @case ('anulado') {
+        <div class="guia">Pagos anulados o devueltos. Solo consulta.</div>
+      }
+    }
+
+    @if (cargando()) {
+      <div class="estado">Cargando pagos...</div>
+    } @else if (filtrados().length === 0) {
+      <div class="estado">No hay pagos en esta vista.</div>
+    } @else {
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead>
             <tr>
-              <td>{{ p.fecha_pago }}<small>por {{ p.registrado_por_nombre ?? '—' }}</small></td>
-              <td>
-                <strong>{{ p.numero_contrato }}</strong>
-                <small>Lote {{ p.lote_codigo ?? '—' }}</small>
-                <small>Partida: {{ p.lote_partida || '—' }}</small>
-              </td>
-              <td>
-                @if (p.compradores && p.compradores.length > 0) {
-                  @for (c of p.compradores; track $index) {
-                    <div class="comprador">
-                      <strong>{{ c.nombre }}</strong>
-                      <small>{{ c.documento }}@if (c.rol && (p.compradores?.length ?? 0) > 1) { · {{ c.rol | titlecase }} }</small>
-                      <span class="dni-links">
-                        @if (c.dni_frente_url) {
-                          <a [href]="urlCompleta(c.dni_frente_url)!" target="_blank" rel="noopener" class="btn-dni">
-                            {{ c.dni_reverso_url ? 'DNI frente' : 'DNI' }} ↗
-                          </a>
+              <th>Contrato</th>
+              <th>Cliente</th>
+              <th>Concepto</th>
+              <th>Pago</th>
+              <th>Documentos</th>
+              <th>Estado</th>
+              <th class="derecha">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of filtrados(); track claveFila(p)) {
+              <tr>
+                <td data-label="Contrato">
+                  <strong>{{ p.numero_contrato }}</strong>
+                  <small>Lote {{ p.lote_codigo ?? '—' }} · Partida {{ p.lote_partida || '—' }}</small>
+                  <small>{{ p.fecha_pago }} · por {{ p.registrado_por_nombre ?? '—' }}</small>
+                </td>
+
+                <td data-label="Cliente">
+                  @if (p.compradores && p.compradores.length > 0) {
+                    @for (c of p.compradores; track $index) {
+                      <div class="comprador">
+                        <strong>{{ c.nombre }}</strong>
+                        <small>{{ c.documento }}@if (c.rol && (p.compradores?.length ?? 0) > 1) { · {{ c.rol | titlecase }} }</small>
+                        <span class="enlaces">
+                          @if (c.dni_frente_url) {
+                            <a [href]="urlCompleta(c.dni_frente_url)!" target="_blank" rel="noopener" class="enlace">
+                              {{ c.dni_reverso_url ? 'DNI frente' : 'Ver DNI' }} ↗
+                            </a>
+                          }
+                          @if (c.dni_reverso_url) {
+                            <a [href]="urlCompleta(c.dni_reverso_url)!" target="_blank" rel="noopener" class="enlace">DNI reverso ↗</a>
+                          }
+                          @if (!c.dni_frente_url && !c.dni_reverso_url) {
+                            <span class="vacio">Sin DNI</span>
+                          }
+                        </span>
+                      </div>
+                    }
+                  } @else {
+                    <strong>{{ p.cliente_nombre }}</strong>
+                    <small>{{ p.cliente_documento }}</small>
+                  }
+                </td>
+
+                <td data-label="Concepto">
+                  <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
+                  @if (subConcepto(p)) { <small>{{ subConcepto(p) }}</small> }
+                  @if (p.origen === 'devolucion') {
+                    @if (p.detalle) {
+                      <small><b>Motivo:</b> {{ p.detalle }}</small>
+                    }
+                    @if (p.sep_comprobante_numero) {
+                      <small>
+                        <b>Comprobante de la separación:</b>
+                        {{ p.sep_comprobante_tipo | titlecase }} {{ p.sep_comprobante_numero }}
+                        @if (p.sep_comprobante_url) {
+                          <a [href]="urlCompleta(p.sep_comprobante_url)!" target="_blank" rel="noopener" class="enlace">Ver ↗</a>
                         }
-                        @if (c.dni_reverso_url) {
-                          <a [href]="urlCompleta(c.dni_reverso_url)!" target="_blank" rel="noopener" class="btn-dni">DNI reverso ↗</a>
-                        }
-                        @if (!c.dni_frente_url && !c.dni_reverso_url) {
-                          <span class="sin-archivo">Sin DNI</span>
+                      </small>
+                    } @else {
+                      <small>Sin comprobante de separación registrado</small>
+                    }
+                  }
+                </td>
+
+                <td data-label="Pago">
+                  <strong class="monto">S/ {{ p.monto | number:'1.2-2' }}</strong>
+                  @if (p.metodo_pago) {
+                    <span class="metodo">
+                      <span class="metodo-ico" [ngClass]="'metodo-' + tipoMetodo(p.metodo_pago)">
+                        @switch (tipoMetodo(p.metodo_pago)) {
+                          @case ('yape') {
+                            <img src="assets/metodos/yape.png" alt="Yape" />
+                          }
+                          @case ('plin') {
+                            <img src="assets/metodos/plin.png" alt="Plin" />
+                          }
+                          @case ('deposito') {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
+                          }
+                          @case ('transferencia') {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>
+                          }
+                          @case ('efectivo') {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
+                          }
+                          @default {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                          }
                         }
                       </span>
-                    </div>
-                  }
-                } @else {
-                  <strong>{{ p.cliente_nombre }}</strong><small>{{ p.cliente_documento }}</small>
-                }
-              </td>
-              <td>
-                <span class="concepto" [ngClass]="claseConcepto(p)">{{ p.concepto }}</span>
-                @if (subConcepto(p)) { <small>{{ subConcepto(p) }}</small> }
-                @if (p.origen === 'devolucion') {
-                  @if (p.detalle) {
-                    <small><strong>Motivo:</strong> {{ p.detalle }}</small>
-                  }
-                  @if (p.sep_comprobante_numero) {
-                    <small>
-                      <strong>Comprobante de la separación:</strong>
-                      {{ p.sep_comprobante_tipo | titlecase }} {{ p.sep_comprobante_numero }}
-                      @if (p.sep_comprobante_url) {
-                        <a [href]="urlCompleta(p.sep_comprobante_url)!" target="_blank" rel="noopener" class="btn-archivo mini" title="Ver comprobante de la separación">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
-                        </a>
-                      }
-                    </small>
-                  } @else {
-                    <small>Sin comprobante de separación registrado</small>
-                  }
-                }
-              </td>
-              <td><strong>S/ {{ p.monto | number:'1.2-2' }}</strong></td>
-              <td>
-                @if (p.metodo_pago) {
-                  <span class="metodo" [ngClass]="'metodo-' + tipoMetodo(p.metodo_pago)">
-                    <span class="metodo-ico">
-                      @switch (tipoMetodo(p.metodo_pago)) {
-                        @case ('yape') {
-                          <img src="assets/metodos/yape.png" alt="Yape" />
-                        }
-                        @case ('plin') {
-                          <img src="assets/metodos/plin.png" alt="Plin" />
-                        }
-                        @case ('deposito') {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 21h18"/></svg>
-                        }
-                        @case ('transferencia') {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>
-                        }
-                        @case ('efectivo') {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>
-                        }
-                        @default {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                        }
-                      }
+                      {{ p.metodo_pago }}
                     </span>
-                    {{ p.metodo_pago }}
-                  </span>
-                } @else {
-                  <span class="sin-archivo">—</span>
-                }
-                @if (p.numero_operacion) { <small class="n-op">N° {{ p.numero_operacion }}</small> }
-              </td>
-              <td>
-                @if (p.comprobante_url) {
-                  <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="btn-archivo" title="Ver voucher">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-                  </a>
-                } @else { <span class="sin-archivo">—</span> }
-              </td>
-              <td>
-                <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
-                @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
-                @if (p.factura_numero) {
-                  <small>
-                    {{ p.factura_tipo === 'nota_credito' ? 'Nota de crédito' : (p.factura_tipo | titlecase) }} {{ p.factura_numero }}
-                    @if (p.factura_url) {
-                      <a [href]="urlCompleta(p.factura_url)!" target="_blank" rel="noopener" class="btn-archivo mini" title="Ver comprobante">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
+                  }
+                  @if (p.numero_operacion) { <small class="n-op">N° {{ p.numero_operacion }}</small> }
+                </td>
+
+                <td data-label="Documentos">
+                  <div class="documentos">
+                    @if (p.comprobante_url) {
+                      <a [href]="urlCompleta(p.comprobante_url)!" target="_blank" rel="noopener" class="doc">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+                        Voucher
                       </a>
+                    } @else {
+                      <span class="vacio">Sin voucher</span>
                     }
-                  </small>
-                }
-                @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }
-              </td>
-              <td class="acciones">
-                @if (p.estado === 'pendiente_caja' && puedeValidar) {
-                  @if (p.origen === 'devolucion') {
-                    <button class="btn-ok" (click)="abrirDevolucion(p)" [disabled]="procesando()">Registrar devolución</button>
-                  } @else {
-                    <button class="btn-ok" (click)="pagoValidar.set(p)" [disabled]="procesando()">Validar</button>
-                    <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                    @if (p.factura_numero) {
+                      @if (p.factura_url) {
+                        <a [href]="urlCompleta(p.factura_url)!" target="_blank" rel="noopener" class="doc">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
+                          {{ p.factura_tipo === 'nota_credito' ? 'Nota de crédito' : (p.factura_tipo | titlecase) }} {{ p.factura_numero }}
+                        </a>
+                      } @else {
+                        <small>{{ p.factura_tipo === 'nota_credito' ? 'Nota de crédito' : (p.factura_tipo | titlecase) }} {{ p.factura_numero }}</small>
+                      }
+                    }
+                  </div>
+                </td>
+
+                <td data-label="Estado">
+                  <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
+                  @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
+                  @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }
+                </td>
+
+                <td class="acciones">
+                  @if (p.estado === 'pendiente_caja' && puedeValidar) {
+                    @if (p.origen === 'devolucion') {
+                      <button class="btn-ok" (click)="abrirDevolucion(p)" [disabled]="procesando()">Registrar devolución</button>
+                    } @else {
+                      <button class="btn-ok" (click)="pagoValidar.set(p)" [disabled]="procesando()">Validar</button>
+                      <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                    }
                   }
-                }
-                @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
-                  @if (p.origen === 'devolucion') {
-                    <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir nota de crédito</button>
-                  } @else {
-                    <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
-                    <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                  @if (p.estado === 'pendiente_facturacion' && puedeFacturar) {
+                    @if (p.origen === 'devolucion') {
+                      <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir nota de crédito</button>
+                    } @else {
+                      <button class="btn-ok" (click)="abrirComprobante(p)" [disabled]="procesando()">Subir comprobante</button>
+                      <button class="btn-no" (click)="abrirRechazo(p)" [disabled]="procesando()">Rechazar</button>
+                    }
                   }
-                }
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
 </div>
 
 @if (pagoRechazo()) {

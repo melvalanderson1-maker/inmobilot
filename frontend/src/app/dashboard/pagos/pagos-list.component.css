@@ -243,3 +243,169 @@ button:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important
   .buscar { max-width: 100%; min-width: 100%; }
   .tabla tbody td, .tabla thead th { padding: 10px 12px; }
 }
+
+
+/* =====================================================================
+   DISEÑO PAGOS (pegar SIEMPRE al final del archivo)
+   ===================================================================== */
+:host { color-scheme: dark; }
+:host-context([data-tema='claro']) { color-scheme: light; }
+
+.pagos-page { padding: 0 0 24px; color: var(--text); }
+
+/* ---------- Alineación y títulos ---------- */
+.page-header,
+.selector-proyecto,
+.barra,
+.estado { padding-left: 4px; padding-right: 4px; }
+
+.page-header h1,
+.selector-proyecto select,
+.tabla td strong,
+.tabla small strong { color: var(--text); }
+
+.subtitle,
+.selector-proyecto label,
+.estado,
+.tabla small { color: var(--text-muted); }
+
+.selector-proyecto select,
+.tab,
+.buscar { background-color: var(--bg-surface); border-color: var(--border-fuerte); color: var(--text); }
+
+.tab:hover { border-color: var(--accent); color: var(--accent); }
+.tab.activa,
+.tab.activa:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); }
+.contador { background: var(--btn-neutral-bg); color: inherit; }
+
+/* ---------- Guía de cada pestaña ---------- */
+.guia,
+.guia.guia-azul,
+.guia.guia-rojo,
+.guia.guia-gris {
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  color: var(--text);
+}
+.guia.guia-azul { border-left-color: #3b82f6; }
+.guia.guia-rojo { border-left-color: #ef4444; }
+.guia.guia-gris { border-left-color: #94a3b8; }
+
+/* ---------- Tabla en tarjeta ---------- */
+.estado,
+.tabla-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.tabla-card { box-shadow: 0 6px 20px rgba(15, 42, 39, 0.05); }
+
+.tabla thead th {
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-fuerte);
+}
+.tabla tbody td { color: var(--text); border-bottom-color: var(--border); vertical-align: middle; }
+.tabla tbody tr:hover { background: var(--bg-hover); }
+.tabla thead th,
+.tabla tbody td { padding-left: 12px; padding-right: 12px; }
+.tabla td:nth-child(1) { min-width: 120px; }
+.tabla td:nth-child(2) { min-width: 130px; }
+.tabla td:nth-child(3) { min-width: 180px; }
+.tabla td:nth-child(4) { min-width: 180px; }
+.tabla td:nth-child(5) { white-space: nowrap; }
+.tabla td:nth-child(8) { min-width: 130px; }
+
+/* Los botones siempre visibles a la derecha */
+.tabla th:last-child,
+.tabla td.acciones { position: sticky; right: 0; width: 1%; background: var(--bg-surface); }
+.tabla thead th:last-child { z-index: 2; }
+.tabla td.acciones button { display: block; width: 100%; margin: 3px 0; }
+
+.btn-archivo,
+.btn-dni { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.btn-archivo:hover,
+.btn-dni:hover { background: var(--accent); color: var(--accent-contrast); }
+
+.btn-ok { background: var(--accent); color: var(--accent-contrast); }
+.btn-ok:hover:not(:disabled) { background: var(--accent); filter: brightness(0.9); }
+.btn-no { background: transparent; }
+.btn-sec,
+.btn-sec:hover:not(:disabled) { background: var(--btn-neutral-bg); color: var(--text); }
+
+/* ---------- Ventanas emergentes ---------- */
+.modal { background: var(--bg-surface); color: var(--text); }
+.modal h2,
+.sub strong,
+.campo label,
+.resumen-monto,
+.resumen-fila strong { color: var(--text); }
+.sub,
+.resumen-fila span { color: var(--text-muted); }
+.resumen { background: var(--btn-neutral-bg); border-color: var(--border); }
+.resumen-fila { border-top-color: var(--border-fuerte); }
+.campo input,
+.campo select,
+.campo textarea,
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus { background: var(--bg-surface); border-color: var(--border-fuerte); color: var(--text); }
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus { border-color: var(--accent); }
+
+/* ---------- Celular: cada pago como tarjeta ---------- */
+@media (max-width: 720px) {
+  .page-header, .selector-proyecto, .barra, .estado { padding-left: 0; padding-right: 0; }
+  .selector-proyecto select { flex: 1; min-width: 0; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: 4px; }
+  .tab { flex-shrink: 0; }
+  .buscar { min-width: 100%; }
+
+  .tabla-card { background: transparent; border: 0; box-shadow: none; overflow: visible; }
+  .tabla, .tabla tbody, .tabla tr, .tabla td { display: block; }
+  .tabla thead { display: none; }
+  .tabla tbody tr {
+    margin-bottom: 12px;
+    padding: 6px 0;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .tabla tbody td,
+  .tabla tbody tr:last-child td {
+    position: relative;
+    min-width: 0;
+    min-height: 34px;
+    padding: 8px 14px 8px 112px;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tabla td::before {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    width: 90px;
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .tabla td:nth-child(1)::before { content: 'Fecha'; }
+  .tabla td:nth-child(2)::before { content: 'Contrato'; }
+  .tabla td:nth-child(3)::before { content: 'Cliente'; }
+  .tabla td:nth-child(4)::before { content: 'Concepto'; }
+  .tabla td:nth-child(5)::before { content: 'Monto'; }
+  .tabla td:nth-child(6)::before { content: 'Operación'; }
+  .tabla td:nth-child(7)::before { content: 'Voucher'; }
+  .tabla td:nth-child(8)::before { content: 'Estado'; }
+  .tabla td.acciones { position: static; width: auto; padding-left: 14px; background: transparent; }
+  .tabla td.acciones:empty { display: none; }
+  .metodo,
+  .concepto { white-space: normal; }
+}

@@ -1340,3 +1340,21 @@ nav {
     border-radius: 0 16px 16px 0;
   }
 }
+
+
+/* ---------- Barra superior flotante, igual que el menú ---------- */
+@media (min-width: 901px) {
+  .topbar {
+    top: 12px;
+    margin: 12px 12px 0;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: 0 -12px 0 var(--bg-app);
+  }
+}
+
+@media (min-width: 901px) {
+  main {
+    padding: 16px 12px;
+  }
+}

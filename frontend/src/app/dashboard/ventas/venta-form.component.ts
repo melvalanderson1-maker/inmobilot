@@ -642,13 +642,35 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     this.reevaluar();
   }
 
+  /** true cuando el usuario eligió "Anual (con detalle mensual)" */
+  get esAnual(): boolean {
+    return this.datosCredito.frecuencia_cuota === 'anual';
+  }
+
+  /** Botones rápidos: en anual llegan hasta 10 años; en las demás, hasta 60 meses */
+  get plazosRapidosVista(): number[] {
+    return this.esAnual ? [12, 24, 36, 48, 60, 72, 84, 96, 108, 120] : this.plazosRapidos;
+  }
+
+  /** Plazo expresado en años (solo para la frecuencia anual) */
+  get plazoAnios(): number | null {
+    const m = Number(this.datosCredito.plazo_meses) || 0;
+    return m > 0 ? Math.round((m / 12) * 100) / 100 : null;
+  }
+
+  setPlazoAnios(anios: number | null): void {
+    const a = Math.max(Math.round(Number(anios) || 0), 0);
+    this.datosCredito.plazo_meses = a * 12;
+    this.reevaluar();
+  }
+
   // ---- Valores automáticos según el plazo (más de 24 meses = método del Excel Gruselva) ----
   readonly TEA_LARGO = 20.98;   // TEA cuando el plazo supera 24 meses
   readonly MORA_CORTO = 25;     // mora (% anual) hasta 24 meses
   readonly MORA_LARGO = 40;     // mora (% anual) con más de 24 meses (pie del Excel)
   private autoTea: number | null = null;
   private autoMora = 25;
-  private frecuenciaForzada = false;
+
 
   /** Pone TEA, mora y frecuencia según el plazo, sin pisar lo que el usuario escribió a mano */
   private aplicarDefectos(): void {
@@ -662,14 +684,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     if (Number(dc.tasa_interes) === this.autoMora) dc.tasa_interes = nuevaMora;
     this.autoTea = nuevaTea;
     this.autoMora = nuevaMora;
-
-    if (largo && dc.frecuencia_cuota !== 'anual') {
-      dc.frecuencia_cuota = 'anual';
-      this.frecuenciaForzada = true;
-    } else if (!largo && this.frecuenciaForzada) {
-      dc.frecuencia_cuota = 'mensual';
-      this.frecuenciaForzada = false;
-    }
+    // La frecuencia ya NO se cambia sola: la elige el usuario.
   }
 
   reevaluar(): void {
@@ -919,10 +934,9 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return this.datosCredito.frecuencia_cuota === 'personalizado';
   }
 
-  /** Más de 24 meses (y no personalizado) => siempre método anual con detalle mensual */
+  /** La frecuencia es la que elige el usuario (mensual, anual con detalle mensual, etc.) */
   get frecuenciaEfectiva(): string {
-    if (this.esPersonalizado) return 'personalizado';
-    return Number(this.datosCredito.plazo_meses) > 24 ? 'anual' : this.datosCredito.frecuencia_cuota;
+    return this.datosCredito.frecuencia_cuota;
   }
 
   get totalSimulado(): number {
@@ -931,6 +945,8 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   onFrecuenciaCambiada(): void {
     if (this.esPersonalizado && this.cuotasPers.length === 0) this.generarCuotas();
+    // Al pasar a anual, el plazo debe ser múltiplo de 12 meses: se ajusta solo (30 -> 36)
+    if (this.esAnual && this.plazoInvalidoAnual) this.datosCredito.plazo_meses = this.plazoSugeridoAnual;
     this.reevaluar();
   }
 

@@ -477,7 +477,7 @@
               <!-- Financiamiento -->
               <div class="vf-group">
                 <h3>Financiamiento</h3>
-                <p class="vf-group-sub">Con más de 24 meses entra interés y el pago pasa a ser anual con detalle mensual. La tasa, la mora y la frecuencia se completan solas; puedes cambiarlas a mano.</p>
+                                <p class="vf-group-sub">Hasta 24 meses no hay interés. Con más de 24 meses entra interés. Elige <strong>Mensual</strong> para cuotas mensuales (cada fila con amortización e interés) o <strong>Anual (con detalle mensual)</strong> para un pago por año. La tasa y la mora se completan solas; puedes cambiarlas a mano.</p>
 
                 <label class="vf-field">
                   <span>Frecuencia de pago</span>
@@ -492,22 +492,37 @@
                   <div class="vf-field">
                     <span class="vf-label">Plazo @if (plazoTexto) { <em>({{ plazoTexto }})</em> }</span>
                     <div class="vf-quick" role="group" aria-label="Plazos rápidos">
-                      @for (m of plazosRapidos; track m) {
-                        <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">{{ m }} meses</button>
+                      @for (m of plazosRapidosVista; track m) {
+                        <button type="button" class="vf-quick-item" [class.is-on]="datosCredito.plazo_meses === m" (click)="setPlazo(m)">
+                          {{ esAnual ? (m / 12) + (m === 12 ? ' año' : ' años') : m + ' meses' }}
+                        </button>
                       }
                     </div>
                   </div>
 
-                  <label class="vf-field">
-                    <span>Plazo en meses</span>
-                    <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
+                  @if (esAnual) {
+                    <div class="vf-row-2">
+                      <label class="vf-field">
+                        <span>Plazo en años</span>
+                        <input type="number" inputmode="numeric" min="1" max="10" step="1" [ngModel]="plazoAnios" (ngModelChange)="setPlazoAnios($event)" />
+                      </label>
+                      <label class="vf-field">
+                        <span>Equivalente en meses</span>
+                        <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
+                      </label>
+                    </div>
                     @if (plazoInvalidoAnual) {
                       <small class="vf-hint vf-hint-warn">
-                        Con pago anual el plazo va en múltiplos de 12 meses (5 años = 60).
+                        Con pago anual el plazo va en años completos (múltiplos de 12 meses).
                         <button type="button" class="vf-link" (click)="ajustarPlazoAnual()">Usar {{ plazoSugeridoAnual }} meses</button>
                       </small>
                     }
-                  </label>
+                  } @else {
+                    <label class="vf-field">
+                      <span>Plazo en meses</span>
+                      <input type="number" inputmode="numeric" min="1" [(ngModel)]="datosCredito.plazo_meses" (ngModelChange)="reevaluar()" />
+                    </label>
+                  }
                 } @else {
                   <div class="vf-field">
                     <span class="vf-label">Cuotas del cronograma <em>(deja el monto vacío y el sistema lo calcula)</em></span>
@@ -788,39 +803,69 @@
                 <article class="vf-page" [class.vf-page-l]="p === 0" [class.vf-page-r]="p === 1" [attr.aria-label]="'Página ' + (spreadActual * 2 + p + 1)">
                   @if (pag.length > 0) {
                     <div class="vf-page-scroll">
-                      <table class="vf-ledger vf-ledger-mes">
-                        <thead>
-                          <tr>
-                            <th class="c-n">Nro</th>
-                            <th>Fecha de pago</th>
-                            <th class="num">Capital</th>
-                            <th class="num">Amortización</th>
-                            <th class="num">Interés acumulado</th>
-                            <th class="num">Cuota</th>
-                            <th class="num">Interés mensual</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (r of pag; track r.fila.numero) {
-                            <tr [class.is-pago]="resaltarPagos && r.fila.pagoAnual">
-                              <td class="c-n">{{ r.fila.numero }}</td>
-                              <td>{{ fmtFecha(r.fila.fecha) }}</td>
-                              <td class="num">{{ r.capital | number:'1.2-2' }}</td>
-                              <td class="num">
-                                @if (r.fila.requiere_pago !== false) { {{ r.fila.amortizacion | number:'1.2-2' }} }
-                              </td>
-                              <td class="num">{{ r.fila.acumulado | number:'1.2-2' }}</td>
-                              <td class="num">
-                                @if (r.fila.requiere_pago !== false) {
+                      @if (filasAnuales.length > 0) {
+                        <table class="vf-ledger vf-ledger-mes">
+                          <thead>
+                            <tr>
+                              <th class="c-n">Nro</th>
+                              <th>Fecha de pago</th>
+                              <th class="num">Capital</th>
+                              <th class="num">Amortización</th>
+                              <th class="num">Interés acumulado</th>
+                              <th class="num">Cuota</th>
+                              <th class="num">Interés mensual</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (r of pag; track r.fila.numero) {
+                              <tr [class.is-pago]="resaltarPagos && r.fila.pagoAnual">
+                                <td class="c-n">{{ r.fila.numero }}</td>
+                                <td>{{ fmtFecha(r.fila.fecha) }}</td>
+                                <td class="num">{{ r.capital | number:'1.2-2' }}</td>
+                                <td class="num">
+                                  @if (r.fila.requiere_pago !== false) { {{ r.fila.amortizacion | number:'1.2-2' }} }
+                                </td>
+                                <td class="num">{{ r.fila.acumulado | number:'1.2-2' }}</td>
+                                <td class="num">
+                                  @if (r.fila.requiere_pago !== false) {
+                                    {{ r.fila.monto | number:'1.2-2' }}
+                                    @if (r.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
+                                  }
+                                </td>
+                                <td class="num">{{ r.fila.interesMes | number:'1.2-2' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      } @else {
+                        <table class="vf-ledger vf-ledger-mes">
+                          <thead>
+                            <tr>
+                              <th class="c-n">Nro</th>
+                              <th>Fecha de pago</th>
+                              <th class="num">Capital</th>
+                              <th class="num">Amortización</th>
+                              <th class="num">Interés</th>
+                              <th class="num">Cuota</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (r of pag; track r.fila.numero) {
+                              <tr>
+                                <td class="c-n">{{ r.fila.numero }}</td>
+                                <td>{{ fmtFecha(r.fila.fecha) }}</td>
+                                <td class="num">{{ r.capital | number:'1.2-2' }}</td>
+                                <td class="num">{{ r.fila.amortizacion | number:'1.2-2' }}</td>
+                                <td class="num">{{ r.fila.interesMes | number:'1.2-2' }}</td>
+                                <td class="num">
                                   {{ r.fila.monto | number:'1.2-2' }}
                                   @if (r.fila.ajustada) { <span class="vf-ajuste" title="El sistema ajustó esta cuota para cerrar el saldo exacto">ajustada</span> }
-                                }
-                              </td>
-                              <td class="num">{{ r.fila.interesMes | number:'1.2-2' }}</td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      }
                     </div>
                   } @else {
                     <div class="vf-page-blank">Fin del cronograma</div>

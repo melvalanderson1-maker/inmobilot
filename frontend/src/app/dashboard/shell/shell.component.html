@@ -5,7 +5,7 @@
 
   <aside class="sidebar" [class.colapsado]="colapsado()" [class.abierto-movil]="menuMovilAbierto()">
     <div class="sidebar-top">
-      <div class="logo" [class.logo-solo]="colapsado()">
+      <div class="logo">
         <!-- Emblema Gruselva -->
         <svg class="logo-emblema" viewBox="0 0 64 56" fill="none" aria-hidden="true">
           <ellipse class="hoja" cx="12" cy="30" rx="11" ry="5.2" transform="rotate(-38 12 30)"></ellipse>
@@ -21,22 +21,13 @@
           </div>
         }
       </div>
+
+      <button class="btn-colapsar" (click)="toggleSidebar()" [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotado]="colapsado()">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
     </div>
-
-    <button class="btn-colapsar" (click)="toggleSidebar()" [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" [class.rotado]="colapsado()">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-      @if (!colapsado()) {
-        <span>Colapsar menú</span>
-      }
-    </button>
-
-    @if (!colapsado()) {
-      <div class="nav-etiqueta">Navegación</div>
-    } @else {
-      <div class="nav-separador"></div>
-    }
 
     <nav>
       @for (modulo of modulos; track modulo.id) {

@@ -114,7 +114,7 @@ def _factor_tea(tea: float, dias: int) -> float:
 # True = reproduce el defecto del Excel tal cual; False = aplica la fórmula correcta.
 EXCEL_ANIO2_DIV_360 = False          # el Excel divide entre 360 (no 365) los días del 2.º año
 EXCEL_PARENTESIS_CUOTA = False       # el Excel resta 1 dentro del numerador: (S*i*f - 1)/(f - 1)
-EXCEL_CAPITAL_SALDO_INICIAL = True   # el Excel muestra en CAPITAL el saldo ANTES de pagar la cuota del año
+EXCEL_CAPITAL_SALDO_INICIAL = False  # tu frontend calcula "capital antes" a partir del saldo DESPUÉS de pagar
 
 
 class _Filas(list):

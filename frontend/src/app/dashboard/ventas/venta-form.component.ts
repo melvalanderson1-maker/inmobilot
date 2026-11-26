@@ -672,7 +672,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
 
   reevaluar(): void {
     this.aplicarDefectos();
-    queueMicrotask(() => this.calcularLocal()); // recalcula al instante, ya con el valor nuevo asignado
+    this.simulado.set(null); // el cronograma lo calcula SOLO el backend (una única fuente de verdad)
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => this.evaluarAhora(), 350);
   }
@@ -759,91 +759,7 @@ export class VentaFormComponent implements OnInit, OnDestroy {
     return Math.round(n * 100) / 100;
   }
 
-  /** Misma fecha cada mes; si el mes no tiene ese día, usa el último (31/07 -> 31/08, 30/09, 28/02...) */
-  private fechaMes(base: string, k: number): string {
-    const [y, m, d] = base.slice(0, 10).split('-').map(Number);
-    const t = m - 1 + k;
-    const yy = y + Math.floor(t / 12);
-    const mm = ((t % 12) + 12) % 12;
-    const ultimo = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
-    return `${yy}-${String(mm + 1).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`;
-  }
 
-  private diasEntre(a: string, b: string): number {
-    return Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / 86400000);
-  }
-
-  /** Calcula el cronograma al instante (mismo método que el backend y la hoja Excel) */
-  private calcularLocal(): void {
-    const dc = this.datosCredito;
-    const plazo = Number(dc.plazo_meses) || 0;
-    const financiar = this.r2((Number(this.precioTotal) || 0) - (Number(dc.inicial_monto) || 0));
-
-    if (this.formaPago !== 'credito' || this.esPersonalizado || plazo <= 24 || plazo % 12 !== 0 || financiar <= 0 || !dc.fecha_deposito) {
-      this.simulado.set(null);
-      return;
-    }
-
-    const tea = dc.tea_financiamiento != null && Number(dc.tea_financiamiento) > 0 ? Number(dc.tea_financiamiento) : this.TEA_LARGO;
-    const teaF = tea / 100;
-    const tem = Math.pow(1 + teaF, 1 / 12) - 1;
-    const f = Math.pow(1 + tem, plazo);
-    const cuotaBase = (financiar * tem * f - 1) / (f - 1); // cuota de la hoja (sin redondear)
-
-    const filas: FilaSim[] = [];
-    let capital = financiar;
-    let previa = dc.fecha_deposito;
-
-    for (let k = 1; k <= plazo; k++) {
-      const fecha = this.fechaMes(dc.fecha_deposito, k);
-      const dias = this.diasEntre(previa, fecha);
-      const interes = k === 2 ? capital * tem : capital * (Math.pow(1 + teaF, dias / 365) - 1);
-      const ultima = k === plazo;
-      const amortizacion = ultima ? capital : Math.min(cuotaBase - interes, capital);
-      const cuota = ultima
-        ? Math.ceil(Number(((capital + interes) * 100).toFixed(4))) / 100 // la última sube al centavo
-        : cuotaBase;
-
-      filas.push({
-        numero: k,
-        fecha,
-        capital,
-        amortizacion,
-        interes,
-        monto: cuota,
-        ajustada: ultima && Math.abs(cuota - cuotaBase) > 0.05,
-        requiere_pago: true,
-        pagoAnual: k % 12 === 0,
-      });
-      capital = capital - amortizacion; // sin redondear
-      previa = fecha;
-    }
-
-    const anual: { fila: any; capitalAntes: number }[] = [];
-    const totalExacto = this.r2(filas.reduce((a, x) => a + x.monto, 0));
-    let sumaMontos = 0;
-    for (let i = 0; i < filas.length; i += 12) {
-      const g = filas.slice(i, i + 12);
-      const esUltima = i + 12 >= filas.length;
-      const amort = this.r2(g.reduce((a, x) => a + x.amortizacion, 0));
-      // la última cuota absorbe el centavo para que la suma de pagos = total exacto
-      const monto = esUltima ? this.r2(totalExacto - sumaMontos) : this.r2(g.reduce((a, x) => a + x.monto, 0));
-      sumaMontos = this.r2(sumaMontos + monto);
-      anual.push({
-        capitalAntes: g[0].capital,
-        fila: {
-          numero: i / 12 + 1,
-          fecha: g[g.length - 1].fecha,
-          amortizacion: amort,
-          acumulado: esUltima ? this.r2(monto - amort) : this.r2(g.reduce((a, x) => a + x.interes, 0)),
-          monto,
-          ajustada: g.some((x) => x.ajustada) || esUltima,
-        },
-      });
-    }
-
-    this.simulado.set({ tea, financiar, cuota: this.r2(cuotaBase), filas, anual });
-  }
 
   /** Filas normalizadas: local si hay simulación, si no las del backend */
   get filasSimuladas(): FilaSim[] {

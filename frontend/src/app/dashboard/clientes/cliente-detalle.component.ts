@@ -164,3 +164,5 @@ export class ClienteDetalleComponent implements OnInit {
     return mapa[estado] ?? estado;
   }
 }
+
+

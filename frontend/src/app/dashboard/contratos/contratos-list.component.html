@@ -7,32 +7,43 @@
       <p class="subtitle">Expedientes de venta: documentos, cronogramas y pagos</p>
     </div>
     <button type="button" class="btn-primary" (click)="nuevaVenta()">
-      <span class="icono-mas" aria-hidden="true">+</span> Nuevo contrato
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Nuevo contrato
     </button>
   </header>
 
   <!-- ============ BARRA DE FILTRO ============ -->
   <section class="toolbar">
-    <div class="buscador">
-      <svg class="buscador-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path>
-      </svg>
-      <input
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder="Buscar por N° de contrato, lote, cliente, DNI, ejecutivo, estado o monto…"
-        aria-label="Buscar contratos"
-        [ngModel]="busqueda()"
-        (ngModelChange)="busqueda.set($event)"
-        (keydown.escape)="limpiarBusqueda()"
-      />
-      @if (busqueda()) {
-        <button type="button" class="buscador-limpiar" (click)="limpiarBusqueda()" aria-label="Borrar búsqueda">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>
-        </button>
-      }
+    <div class="toolbar-fila">
+      <div class="buscador">
+        <svg class="ico buscador-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Buscar por N° de contrato, lote, cliente, DNI, ejecutivo, estado o monto…"
+          aria-label="Buscar contratos"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          (keydown.escape)="limpiarBusqueda()"
+        />
+        @if (busqueda()) {
+          <button type="button" class="buscador-limpiar" (click)="limpiarBusqueda()" aria-label="Borrar búsqueda">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        }
+      </div>
+
+      <div class="selector-proyecto">
+        <label for="selProyecto">Proyecto</label>
+        <select id="selProyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
+          @for (p of proyectos(); track p.id) {
+            <option [ngValue]="p.id">{{ p.nombre }}</option>
+          }
+        </select>
+      </div>
     </div>
+
     @if (!cargando() && contratos().length > 0) {
       <div class="buscador-meta">
         <span class="contador" aria-live="polite">{{ contratosFiltrados().length }} de {{ contratos().length }} contratos</span>
@@ -40,16 +51,7 @@
           <button type="button" class="btn-link" (click)="limpiarFiltros()">Limpiar filtros</button>
         }
       </div>
-    }
-    <div class="selector-proyecto">
-      <label for="selProyecto">Proyecto</label>
-      <select id="selProyecto" [(ngModel)]="idProyectoSeleccionado" (ngModelChange)="cambiarProyecto()">
-        @for (p of proyectos(); track p.id) {
-          <option [ngValue]="p.id">{{ p.nombre }}</option>
-        }
-      </select>
-    </div>
-    @if (!cargando() && contratos().length > 0) {
+
       <div class="fases-chips" role="group" aria-label="Filtrar por fase del documento">
         @for (f of fases; track f.clave) {
           <button type="button" class="fase-chip" [class.activo]="faseFiltro() === f.clave" (click)="faseFiltro.set(f.clave)">
@@ -71,11 +73,9 @@
         }
       </div>
     }
-
   </section>
 
-
-    <!-- ============ KPIs ============ -->
+  <!-- ============ KPIs ============ -->
   @if (!cargando() && contratos().length > 0) {
     <div class="kpis">
       <button type="button" class="kpi" [class.activo]="formaFiltro() === 'todas'" (click)="formaFiltro.set('todas')">
@@ -101,7 +101,9 @@
     </div>
   } @else if (contratos().length === 0) {
     <div class="estado-vacio">
-      <div class="vacio-icono" aria-hidden="true">📄</div>
+      <div class="vacio-icono" aria-hidden="true">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+      </div>
       <p>Aún no hay contratos en este proyecto.</p>
       <button type="button" class="btn-primary" (click)="nuevaVenta()">Crear el primero</button>
     </div>
@@ -118,7 +120,7 @@
             <th>Documento</th>
             <th>Estado</th>
             <th>Ejecutivo</th>
-            <th></th>
+            <th><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
@@ -131,10 +133,10 @@
               <td data-label="Lote">
                 <span class="lote-tag">{{ c.lote?.codigo ?? '—' }}</span>
               </td>
-              <td data-label="Cliente">
+              <td data-label="Cliente" class="celda-cliente">
                 <div class="cliente-celda">
                   <span class="avatar" aria-hidden="true">{{ clienteTitular(c)?.nombres?.charAt(0) }}</span>
-                  <div>
+                  <div class="cliente-textos">
                     <span class="valor">{{ clienteTitular(c)?.nombres }} {{ clienteTitular(c)?.apellidos }}</span>
                     <span class="documento">{{ clienteTitular(c)?.numero_documento }}</span>
                   </div>
@@ -142,28 +144,49 @@
               </td>
               <td data-label="Monto" class="monto">S/ {{ c.precio_total }}</td>
               <td data-label="Forma"><span class="chip chip-forma">{{ c.forma_pago === 'contado' ? 'Contado' : 'Crédito' }}</span></td>
-              <td data-label="Documento">
+              <td data-label="Documento" class="celda-doc">
                 <span class="chip fase-burbuja" [attr.data-fase]="c.fase_documental ?? 'sin_venta'">
                   {{ etiquetaFase(c.fase_documental) }}
                 </span>
-                <ul class="mini-checks">
-                  @for (p of pasosDoc(c); track p.etiqueta) {
-                    <li [class.ok]="p.hecho">
-                      <span class="mini-marca" aria-hidden="true">{{ p.hecho ? '✓' : '○' }}</span>
-                      {{ p.etiqueta }}
-                      @if (!p.hecho) { <em>Pendiente</em> }
-                    </li>
-                  }
-                </ul>
+
+                @if (pasosDoc(c).length > 0) {
+                  <div class="doc-progreso" aria-hidden="true">
+                    @for (p of pasosDoc(c); track p.etiqueta) {
+                      <span class="doc-seg" [class.ok]="p.hecho"></span>
+                    }
+                  </div>
+                  <ul class="doc-pasos">
+                    @for (p of pasosDoc(c); track p.etiqueta) {
+                      <li [class.ok]="p.hecho">
+                        <span class="doc-marca" aria-hidden="true">
+                          @if (p.hecho) {
+                            <svg class="ico" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                          }
+                        </span>
+                        <span class="doc-texto">
+                          <span class="doc-nombre">{{ p.etiqueta }}</span>
+                          <em>{{ p.hecho ? 'Completado' : 'Pendiente' }}</em>
+                        </span>
+                      </li>
+                    }
+                  </ul>
+                }
+
                 @if (c.ubicacion_actual) {
-                  <span class="documento">Ubicación: {{ c.ubicacion_actual }}{{ c.tramite_actual ? ' · ' + c.tramite_actual : '' }}</span>
+                  <span class="doc-ubic">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                    <span>Ubicación: {{ c.ubicacion_actual }}{{ c.tramite_actual ? ' · ' + c.tramite_actual : '' }}</span>
+                  </span>
                 }
               </td>
               <td data-label="Estado"><span class="chip" [ngClass]="'chip-' + c.estado">{{ c.estado }}</span></td>
-              <td data-label="Ejecutivo">{{ c.ejecutivo_nombre || '—' }}</td>
-              <td data-label="">
+              <td data-label="Ejecutivo" class="celda-ejecutivo">{{ c.ejecutivo_nombre || '—' }}</td>
+              <td data-label="" class="celda-ver">
                 @if (c.id_venta) {
-                  <button type="button" class="btn-secundario-sm" (click)="verVenta(c, $event)">Ver venta →</button>
+                  <button type="button" class="btn-secundario-sm" (click)="verVenta(c, $event)">
+                    Ver venta
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </button>
                 }
               </td>
             </tr>
@@ -172,7 +195,9 @@
       </table>
       @if (contratosFiltrados().length === 0) {
         <div class="sin-resultados">
-          <div class="vacio-icono" aria-hidden="true">🔎</div>
+          <div class="vacio-icono" aria-hidden="true">
+            <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
           @if (busqueda().trim()) {
             <p>No encontramos resultados para <strong>«{{ busqueda().trim() }}»</strong>. Prueba con el N° de contrato, el lote o el DNI.</p>
           } @else {
@@ -198,7 +223,9 @@
             <span class="chip" [ngClass]="'chip-' + ct.estado">{{ ct.estado }}</span>
           </div>
         </div>
-        <button type="button" class="btn-cerrar" (click)="cerrarDrawer()" aria-label="Cerrar">✕</button>
+        <button type="button" class="btn-cerrar" (click)="cerrarDrawer()" aria-label="Cerrar">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <div class="drawer-body">
@@ -233,7 +260,11 @@
             <ol class="doc-linea">
               @for (d of documentosVenta(venta); track d.clave) {
                 <li class="doc-paso" [class.hecho]="d.hecho">
-                  <span class="doc-punto" aria-hidden="true">{{ d.hecho ? '✓' : '' }}</span>
+                  <span class="doc-punto" aria-hidden="true">
+                    @if (d.hecho) {
+                      <svg class="ico" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+                    }
+                  </span>
                   <div class="doc-info">
                     <strong>{{ d.etiqueta }}</strong>
                     <span class="documento">
@@ -241,7 +272,10 @@
                     </span>
                   </div>
                   @if (d.url) {
-                    <a [href]="d.url" target="_blank" rel="noopener" class="btn-secundario-sm">Ver ↗</a>
+                    <a [href]="d.url" target="_blank" rel="noopener" class="btn-secundario-sm">
+                      Ver
+                      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </a>
                   }
                 </li>
               }
@@ -250,19 +284,21 @@
               <span>Fase de la venta</span>
               <span class="chip fase-burbuja" [attr.data-fase]="ct.fase_documental ?? 'iniciada'">{{ etiquetaFase(ct.fase_documental) }}</span>
             </div>
-            <button type="button" class="btn-secundario-sm btn-abrir-venta" (click)="abrirVenta(venta.id)">Abrir venta completa →</button>
+            <button type="button" class="btn-secundario-sm btn-abrir-venta" (click)="abrirVenta(venta.id)">
+              Abrir venta completa
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
           } @else {
             <p class="texto-tenue">Este contrato no proviene del flujo de ventas, así que no tiene documentos asociados.</p>
           }
         </section>
 
-
         @if (pagosRechazados(ct.id).length > 0) {
-          <section class="mensaje-error" role="alert">
+          <section class="mensaje-error bloque-rechazos" role="alert">
             <strong>Pagos rechazados por corregir</strong>
             @for (p of pagosRechazados(ct.id); track p.id) {
-              <div>
-                {{ conceptoPago(p) }} · S/ {{ p.monto }}: {{ p.motivo_rechazo || 'Sin motivo indicado' }}
+              <div class="rechazo-item">
+                <span>{{ conceptoPago(p) }} · S/ {{ p.monto }}: {{ p.motivo_rechazo || 'Sin motivo indicado' }}</span>
                 @if (puedeEditarPago(p)) {
                   <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, p)">Corregir y reenviar</button>
                 }
@@ -321,7 +357,9 @@
                       <td data-label="N° op.">{{ pago.numero_operacion ?? '—' }}</td>
                       <td data-label="Comp.">
                         @if (pago.comprobante_url) {
-                          <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">📎</button>
+                          <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                          </button>
                         } @else {
                           <span class="sin-comprobante">—</span>
                         }
@@ -331,7 +369,7 @@
                           {{ etiquetaPago(pago.estado) }}
                         </span>
                       </td>
-                      <td data-label="">
+                      <td data-label="" class="celda-accion">
                         @if (puedeEditarPago(pago)) {
                           <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, pago)">{{ pago.estado === 'rechazado' ? 'Corregir' : 'Editar' }}</button>
                         }
@@ -471,8 +509,10 @@
                       [class.fila-vencida]="f.paga && f.c.estado === 'vencida'"
                       [class.fila-proxima]="f.paga && f.c.estado !== 'pagada' && f.c.fecha_pago_programada === r.proximaFecha">
                       <td data-label="N°" class="celda-num">
-                        <span class="punto" [ngClass]="f.paga ? 'punto-' + f.c.estado : 'punto-interes'"></span>
-                        {{ f.paga ? (f.c.numero_pago ?? f.c.numero_cuota) : f.c.numero_cuota }}
+                        <span class="num-wrap">
+                          <span class="punto" [ngClass]="f.paga ? 'punto-' + f.c.estado : 'punto-interes'"></span>
+                          {{ f.paga ? (f.c.numero_pago ?? f.c.numero_cuota) : f.c.numero_cuota }}
+                        </span>
                       </td>
                       <td data-label="Vencimiento">{{ fmtFecha(f.c.fecha_pago_programada) }}</td>
                       <td data-label="Capital" class="num">S/ {{ f.capital | number:'1.2-2' }}</td>
@@ -551,7 +591,9 @@
                         <td data-label="N° op.">{{ pago.numero_operacion ?? '—' }}</td>
                         <td data-label="Comp.">
                           @if (pago.comprobante_url) {
-                            <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">📎</button>
+                            <button type="button" class="btn-ver-comprobante" (click)="abrirComprobante(pago.comprobante_url)" aria-label="Ver comprobante">
+                              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                            </button>
                           } @else {
                             <span class="sin-comprobante">—</span>
                           }
@@ -561,7 +603,7 @@
                             {{ etiquetaPago(pago.estado) }}
                           </span>
                         </td>
-                        <td data-label="">
+                        <td data-label="" class="celda-accion">
                           @if (puedeEditarPago(pago)) {
                             <button type="button" class="btn-secundario-sm" (click)="abrirEditarPago(ct.id, pago)">Editar</button>
                           }
@@ -584,7 +626,9 @@
       <div class="modal modal-grande" role="dialog" aria-modal="true" aria-label="Nuevo contrato" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Nuevo contrato</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarModal()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModal()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -760,7 +804,9 @@
       <div class="modal" role="dialog" aria-modal="true" aria-label="Registrar pago" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Registrar pago</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarModalPago()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalPago()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -818,7 +864,10 @@
             <label>Comprobante de pago (JPG, PNG o PDF) *</label>
             <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
             @if (archivoComprobante) {
-              <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span>
+              <span class="archivo-seleccionado">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                {{ archivoComprobante.name }}
+              </span>
             }
           </div>
 
@@ -844,7 +893,9 @@
       <div class="modal" role="dialog" aria-modal="true" aria-label="Pagar varias cuotas" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Registrar abono</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarModalVarias()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalVarias()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
         <div class="modal-body">
           @if (errorPago()) {
@@ -855,7 +906,7 @@
             <label>Monto del abono (S/)</label>
             <input [(ngModel)]="montoAbono" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" />
             @if (repartoAbono; as rep) {
-              <small class="texto-tenue">Máximo que se puede abonar ahora: S/ {{ rep.maxAbono | number:'1.2-2' }}</small>
+              <small class="texto-ayuda">Máximo que se puede abonar ahora: S/ {{ rep.maxAbono | number:'1.2-2' }}</small>
             }
           </div>
 
@@ -875,7 +926,7 @@
                   <tbody>
                     @for (f of rep.filas; track f.numero) {
                       <tr>
-                        <td data-label="Cuota" class="celda-num">{{ f.numero }}</td>
+                        <td data-label="Cuota" class="celda-num"><span class="num-wrap">{{ f.numero }}</span></td>
                         <td data-label="Vence">{{ fmtFecha(f.vence) }}</td>
                         <td data-label="Falta" class="num">S/ {{ f.falta | number:'1.2-2' }}</td>
                         <td data-label="Se aplica" class="num celda-cuota">S/ {{ f.aplica | number:'1.2-2' }}</td>
@@ -922,7 +973,12 @@
           <div class="campo">
             <label>Comprobante de pago (JPG, PNG o PDF) *</label>
             <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
-            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+            @if (archivoComprobante) {
+              <span class="archivo-seleccionado">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                {{ archivoComprobante.name }}
+              </span>
+            }
           </div>
 
           <div class="campo">
@@ -940,13 +996,15 @@
     </div>
   }
 
-    <!-- ============ MODAL: CANCELAR CRÉDITO ============ -->
+  <!-- ============ MODAL: CANCELAR CRÉDITO ============ -->
   @if (modalCancelAbierto()) {
     <div class="modal-overlay" (click)="cerrarModalCancel()">
       <div class="modal modal-amort" role="dialog" aria-modal="true" aria-label="Cancelar crédito" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Cancelar crédito</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarModalCancel()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalCancel()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -990,7 +1048,7 @@
                 @if (cot.con_interes) {
                   <div><span class="etiqueta-mini">Intereses futuros que NO se cobran</span><span class="cuota-resumen-valor valor-ahorro">S/ {{ toNum(cot.ahorro_interes) | number:'1.2-2' }}</span></div>
                 }
-                <div><span class="etiqueta-mini">TOTAL A PAGAR</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.monto_total) | number:'1.2-2' }}</span></div>
+                <div class="amort-total"><span class="etiqueta-mini">TOTAL A PAGAR</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.monto_total) | number:'1.2-2' }}</span></div>
               </div>
             </div>
           }
@@ -1015,7 +1073,12 @@
           <div class="campo">
             <label>Comprobante de pago (JPG, PNG o PDF) *</label>
             <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
-            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+            @if (archivoComprobante) {
+              <span class="archivo-seleccionado">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                {{ archivoComprobante.name }}
+              </span>
+            }
           </div>
 
           <div class="campo">
@@ -1040,7 +1103,9 @@
       <div class="modal modal-amort" role="dialog" aria-modal="true" aria-label="Amortizar capital" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Amortizar capital</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarModalAmort()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarModalAmort()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -1096,11 +1161,19 @@
                 <div><span class="etiqueta-mini">Capital pendiente</span><span class="cuota-resumen-valor">S/ {{ toNum(cot.capital_despues) | number:'1.2-2' }}</span></div>
                 <div>
                   <span class="etiqueta-mini">Cuota</span>
-                  <span class="cuota-resumen-valor">S/ {{ toNum(cot.cuota_anterior) | number:'1.2-2' }} → S/ {{ toNum(cot.cuota_nueva) | number:'1.2-2' }}</span>
+                  <span class="cuota-resumen-valor">
+                    S/ {{ toNum(cot.cuota_anterior) | number:'1.2-2' }}
+                    <svg class="ico flecha-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    S/ {{ toNum(cot.cuota_nueva) | number:'1.2-2' }}
+                  </span>
                 </div>
                 <div>
                   <span class="etiqueta-mini">Cuotas que faltan</span>
-                  <span class="cuota-resumen-valor">{{ cot.cuotas_antes }} → {{ cot.cuotas_despues }}</span>
+                  <span class="cuota-resumen-valor">
+                    {{ cot.cuotas_antes }}
+                    <svg class="ico flecha-inline" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    {{ cot.cuotas_despues }}
+                  </span>
                 </div>
                 <div><span class="etiqueta-mini">Ahorro de intereses</span><span class="cuota-resumen-valor valor-ahorro">S/ {{ toNum(cot.ahorro_interes) | number:'1.2-2' }}</span></div>
               </div>
@@ -1119,7 +1192,7 @@
                   <tbody>
                     @for (f of cot.cronograma; track f.numero) {
                       <tr>
-                        <td data-label="N°" class="celda-num">{{ f.numero }}</td>
+                        <td data-label="N°" class="celda-num"><span class="num-wrap">{{ f.numero }}</span></td>
                         <td data-label="Vencimiento">{{ fmtFecha(f.fecha) }}</td>
                         <td data-label="Capital" class="num">S/ {{ toNum(f.capital) | number:'1.2-2' }}</td>
                         <td data-label="Amortiz." class="num">S/ {{ toNum(f.amortizacion) | number:'1.2-2' }}</td>
@@ -1152,7 +1225,12 @@
           <div class="campo">
             <label>Comprobante de pago (JPG, PNG o PDF) *</label>
             <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoSeleccionado($event)" />
-            @if (archivoComprobante) { <span class="archivo-seleccionado">📎 {{ archivoComprobante.name }}</span> }
+            @if (archivoComprobante) {
+              <span class="archivo-seleccionado">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+                {{ archivoComprobante.name }}
+              </span>
+            }
           </div>
 
           <div class="campo">
@@ -1177,7 +1255,9 @@
       <div class="modal" role="dialog" aria-modal="true" aria-label="Editar pago" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Editar pago</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarEditarPago()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarEditarPago()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
 
         <div class="modal-body">
@@ -1195,7 +1275,7 @@
             <label>Monto (S/)</label>
             <input [(ngModel)]="editarPagoForm.monto" type="number" inputmode="decimal" [disabled]="!montoPagoEditable" />
             @if (!montoPagoEditable) {
-              <small class="texto-tenue">El monto de una amortización o cancelación lo calcula el sistema.</small>
+              <small class="texto-ayuda">El monto de una amortización o cancelación lo calcula el sistema.</small>
             }
           </div>
 
@@ -1224,7 +1304,10 @@
           <div class="campo">
             <label>Comprobante de pago (JPG, PNG o PDF) *</label>
             @if (editarPagoForm.comprobante_url) {
-              <a [href]="urlCompleta(editarPagoForm.comprobante_url)" target="_blank" rel="noopener">Ver comprobante actual ↗</a>
+              <a class="enlace-comprobante" [href]="urlCompleta(editarPagoForm.comprobante_url)" target="_blank" rel="noopener">
+                Ver comprobante actual
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
+              </a>
             }
             <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoEdicionPago($event)" [disabled]="subiendoComprobanteEdicion()" />
             @if (subiendoComprobanteEdicion()) { <span class="archivo-seleccionado">Subiendo...</span> }
@@ -1252,7 +1335,9 @@
       <div class="modal modal-visor" role="dialog" aria-modal="true" aria-label="Comprobante de pago" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h2>Comprobante de pago</h2>
-          <button type="button" class="btn-cerrar" (click)="cerrarComprobante()" aria-label="Cerrar">✕</button>
+          <button type="button" class="btn-cerrar" (click)="cerrarComprobante()" aria-label="Cerrar">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
         </div>
         <div class="modal-body modal-body-visor">
           @if (comprobanteUrlActual() && esImagen(comprobanteUrlActual()!)) {

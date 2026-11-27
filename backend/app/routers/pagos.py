@@ -59,10 +59,52 @@ def _n_pago(p: m.Pago, numero: Optional[int]) -> Optional[int]:
     return total or numero
 
 
+def _es_contado_con_saldo(p: m.Pago) -> bool:
+    """Venta al contado que todavía tiene saldo por pagar (el cliente paga en partes)."""
+    c = p.contrato
+    return bool(c and c.forma_pago == m.FormaPagoEnum.contado and (c.saldo_financiado or 0) > 0)
+
+
+def _n_contado(p: m.Pago) -> int:
+    """Cuántos pagos 'contado' (los de la venta) tiene este contrato. Las cuotas siguen la numeración después de ellos."""
+    db = object_session(p)
+    if db is None:
+        return 0
+    return (
+        db.query(func.count(m.Pago.id))
+        .filter(m.Pago.id_contrato == p.id_contrato, m.Pago.tipo == "contado", m.Pago.estado != "anulado")
+        .scalar()
+    ) or 0
+
+
+def _orden_contado(p: m.Pago) -> int:
+    """Posición de este pago 'contado' entre los pagos 'contado' del contrato."""
+    db = object_session(p)
+    if db is None:
+        return 1
+    return (
+        db.query(func.count(m.Pago.id))
+        .filter(
+            m.Pago.id_contrato == p.id_contrato, m.Pago.tipo == "contado",
+            m.Pago.estado != "anulado", m.Pago.id <= p.id,
+        )
+        .scalar()
+    ) or 1
+
+
+def _etiqueta_cuotas(p: m.Pago, desde: int, hasta: int) -> str:
+    """'Cuota 3' / 'Cuotas 3 a 5'; en contado con saldo: 'Pago parcial 4' / 'Pagos parciales 4 a 6'."""
+    if _es_contado_con_saldo(p):
+        base = _n_contado(p)
+        d, h = desde + base, hasta + base
+        return f"Pagos parciales {d} a {h}" if h != d else f"Pago parcial {d}"
+    return f"Cuotas {desde} a {hasta}" if hasta != desde else f"Cuota {desde}"
+
+
 def _rango_cuotas(p: m.Pago) -> str:
     desde = _n_pago(p, p.cuota_desde)
     hasta = _n_pago(p, p.cuota_hasta or p.cuota_desde)
-    return f"Cuotas {desde} a {hasta}" if hasta != desde else f"Cuota {desde}"
+    return _etiqueta_cuotas(p, desde, hasta)
 
 
 def _concepto(p: m.Pago) -> str:
@@ -70,7 +112,8 @@ def _concepto(p: m.Pago) -> str:
     if p.tipo == "inicial":
         return "Inicial"
     if p.tipo == "contado":
-        return "Pago al contado"
+        # Contado que no cubre todo el precio: es un pago parcial, no "Pago al contado"
+        return f"Pago parcial {_orden_contado(p)}" if _es_contado_con_saldo(p) else "Pago al contado"
     if p.tipo == "amortizacion":
         base = (
             "Amortización a capital (baja la cuota)"
@@ -81,13 +124,13 @@ def _concepto(p: m.Pago) -> str:
 
     if p.tipo == "cancelacion":
         return f"{_rango_cuotas(p)} + Cancelación de crédito" if p.cuota_desde else "Cancelación de crédito"
-    
+
     if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
         return _rango_cuotas(p)
     if p.cuota:
-        return f"Cuota {_n_pago(p, p.cuota.numero_cuota)}"
+        n = _n_pago(p, p.cuota.numero_cuota)
+        return _etiqueta_cuotas(p, n, n)
     return "Pago a cuenta"
-
 
 def _comprador(cli, rol=None) -> s.PagoCompradorOut:
     """Nombre + documento + archivos DNI de un comprador (persona natural o jurídica)."""

@@ -469,30 +469,45 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     return fila?.numero_pago ?? numeroCuota;
   }
   conceptoPago(p: Pago): string {
+    const ct = this.contratoDrawer()!;
+    const idc = ct.id;
+    const lista = this.pagosPorContrato()[idc] ?? [];
+    // Contado con saldo: los pagos "contado" son Pago parcial 1..N y las cuotas siguen la numeración
+    const parcial = ct.forma_pago === 'contado' && this.toNum(ct.saldo_financiado) > 0;
+    const base = parcial ? lista.filter((x) => x.tipo === 'contado' && x.estado !== 'anulado').length : 0;
+    const etq = (d: number, h: number): string =>
+      parcial
+        ? h !== d ? `Pagos parciales ${d + base} a ${h + base}` : `Pago parcial ${d + base}`
+        : h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`;
+
     if (p.tipo === 'inicial') return 'Inicial';
-    if (p.tipo === 'contado') return 'Pago al contado';
+    if (p.tipo === 'contado') {
+      if (!parcial) return 'Pago al contado';
+      const orden = lista.filter((x) => x.tipo === 'contado' && x.estado !== 'anulado' && x.id <= p.id).length;
+      return `Pago parcial ${orden || 1}`;
+    }
     if (p.tipo === 'cancelacion') {
       if (!p.cuota_desde) return 'Cancelación de crédito';
-      const idc = this.contratoDrawer()!.id;
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + Cancelación de crédito`;
+      return `${etq(d, h)} + Cancelación de crédito`;
     }
     if (p.tipo === 'amortizacion') {
-      const base = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
-      if (!p.cuota_desde) return base;
-      const idc = this.contratoDrawer()!.id;
+      const baseTxt = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
+      if (!p.cuota_desde) return baseTxt;
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + ${base}`;
+      return `${etq(d, h)} + ${baseTxt}`;
     }
     if (p.cuota_desde) {
-      const idc = this.contratoDrawer()!.id;
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`;
+      return etq(d, h);
     }
-    if (p.id_cuota) return this.numeroCuota(this.contratoDrawer()!.id, p.id_cuota);
+    if (p.id_cuota) {
+      const n = Number(this.numeroCuota(idc, p.id_cuota));
+      return Number.isFinite(n) ? etq(n, n) : '—';
+    }
     return '—';
   }
 

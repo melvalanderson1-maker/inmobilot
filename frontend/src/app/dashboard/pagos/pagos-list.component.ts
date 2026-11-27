@@ -200,6 +200,8 @@ export class PagosListComponent implements OnInit, OnDestroy {
     if (p.concepto.includes('Amortización')) return 'Abono a capital: reescribe el cronograma';
     if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
     if (p.concepto === 'Pago al contado') return 'Venta al contado';
+    if (p.concepto.startsWith('Pago parcial')) return 'Abono parcial de venta al contado: queda saldo por pagar';
+    if (p.concepto.startsWith('Pagos parciales')) return 'Un solo depósito para varios pagos parciales';
     if (p.concepto.startsWith('Cuotas ')) return 'Un solo depósito para varias cuotas';
     return null;
   }
@@ -568,6 +570,8 @@ export class PagosListComponent implements OnInit, OnDestroy {
               ? 'Comprobante registrado. El cronograma se actualizó con la amortización.'
               : p.concepto === 'Inicial' || p.concepto === 'Pago al contado'
                 ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
+                : p.concepto.startsWith('Pago parcial') || p.concepto.startsWith('Pagos parciales')
+                  ? 'Comprobante registrado. El pago parcial quedó aplicado al contrato.'
                 : 'Comprobante registrado. El pago ya se aplicó a la cuota.'
         );
         this.cargar(true);

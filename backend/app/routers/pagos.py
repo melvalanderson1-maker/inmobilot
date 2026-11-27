@@ -590,3 +590,283 @@ async def subir_comprobante_pago(
     # Refresca los cronogramas abiertos en Contratos y Cobranza
     await notificar_pago_registrado(contrato.id, contrato.id_proyecto, contrato.id_empresa)
     return pago
+
+
+# ------------------------------------------------------------ correcciones --
+# Caja y Facturación corrigen lo que subieron. Siempre con motivo, auditado,
+# notificado (socket + push, mismo mecanismo que validar/rechazar) y refrescado en vivo.
+
+def _exigir_rol(usuario: m.Usuario, roles: tuple, area: str) -> None:
+    if usuario.rol.clave not in roles:
+        raise HTTPException(status_code=403, detail=f"Solo {area} puede hacer esta corrección")
+
+
+def _avisar_correccion(
+    db: Session, usuario: m.Usuario, id_empresa: int, id_proyecto: int,
+    roles: list, extra: list, tipo: str, titulo: str, mensaje: str, data: dict,
+):
+    destinatarios = sep_svc.unicos(
+        sep_svc.usuarios_por_roles(db, id_empresa, id_proyecto, roles) + [u for u in extra if u],
+        excluir_id=usuario.id,
+    )
+    return sep_svc.crear_notificaciones(db, id_empresa, destinatarios, tipo, titulo, mensaje, data)
+
+
+def _nuevos_comprobante(payload: s.CorreccionComprobanteIn, con_tipo: bool) -> dict:
+    nuevo: dict = {}
+    if con_tipo and payload.tipo is not None:
+        tipo = payload.tipo.strip().lower()
+        if tipo not in ("boleta", "factura", "recibo"):
+            raise HTTPException(status_code=422, detail="El tipo debe ser boleta, factura o recibo")
+        nuevo["tipo"] = tipo
+    if payload.numero is not None:
+        numero = payload.numero.strip()
+        if not numero:
+            raise HTTPException(status_code=422, detail="El número no puede quedar vacío")
+        nuevo["numero"] = numero
+    if payload.archivo_url:
+        nuevo["archivo_url"] = payload.archivo_url
+    return nuevo
+
+
+@router.post("/{id_pago}/corregir-comprobante", response_model=s.PagoOut)
+async def corregir_comprobante_pago(
+    id_pago: int,
+    payload: s.CorreccionComprobanteIn,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    _exigir_rol(usuario, ("admin", "facturacion"), "Facturación")
+    pago = _cargar_pago(db, id_pago, usuario)
+    if pago.estado != "validado" or not pago.factura_numero:
+        raise _conflicto("Solo se puede corregir un comprobante ya emitido")
+    nuevo = _nuevos_comprobante(payload, True)
+    actual = {"tipo": pago.factura_tipo, "numero": pago.factura_numero, "archivo_url": pago.factura_url}
+    cambios = aud.diferencias({k: actual[k] for k in nuevo}, nuevo)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No hay cambios que guardar")
+
+    contrato = pago.contrato
+    motivo = payload.motivo.strip()
+    aud.registrar(
+        db, usuario, "pago", pago.id, "corregir_comprobante",
+        {"id_contrato": contrato.id, "motivo": motivo, **cambios},
+    )
+    if "tipo" in nuevo:
+        pago.factura_tipo = nuevo["tipo"]
+    if "numero" in nuevo:
+        pago.factura_numero = nuevo["numero"]
+    if "archivo_url" in nuevo:
+        pago.factura_url = nuevo["archivo_url"]
+
+    notifs = _avisar_correccion(
+        db, usuario, contrato.id_empresa, contrato.id_proyecto,
+        ["cobranza", "caja", "admin"], [pago.registrador, contrato.registrador],
+        "pago_comprobante_corregido",
+        f"Comprobante corregido: {_concepto(pago)}",
+        f"{usuario.nombre} corrigió el comprobante del contrato {contrato.numero_contrato} "
+        f"({_concepto(pago)}, S/ {pago.monto:,.2f}). Motivo: {motivo}.",
+        {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": pago.estado},
+    )
+    db.commit()
+    await _emitir(pago, contrato, notifs)
+    return pago
+
+
+@router.post("/corregir-separacion/{id_separacion}/comprobante")
+async def corregir_comprobante_separacion(
+    id_separacion: int,
+    payload: s.CorreccionComprobanteIn,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    _exigir_rol(usuario, ("admin", "facturacion"), "Facturación")
+    sep = (
+        db.query(m.Separacion)
+        .options(selectinload(m.Separacion.comprobantes), joinedload(m.Separacion.ejecutivo), joinedload(m.Separacion.lote))
+        .filter(m.Separacion.id == id_separacion, m.Separacion.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not sep:
+        raise HTTPException(status_code=404, detail="Separación no encontrada")
+    venta_svc.validar_acceso_proyecto(db, usuario, sep.id_proyecto)
+    comp = sep.comprobantes[-1] if sep.comprobantes else None
+    if comp is None:
+        raise _conflicto("Esta separación aún no tiene comprobante que corregir")
+
+    nuevo = _nuevos_comprobante(payload, True)
+    actual = {"tipo": comp.tipo, "numero": comp.numero, "archivo_url": comp.archivo_url}
+    cambios = aud.diferencias({k: actual[k] for k in nuevo}, nuevo)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No hay cambios que guardar")
+
+    motivo = payload.motivo.strip()
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "corregir_comprobante",
+        {"id_comprobante": comp.id, "motivo": motivo, **cambios},
+    )
+    for k, v in nuevo.items():
+        setattr(comp, k, v)
+
+    est = sep.estado.value if hasattr(sep.estado, "value") else str(sep.estado)
+    notifs = _avisar_correccion(
+        db, usuario, sep.id_empresa, sep.id_proyecto,
+        ["caja", "admin"], [sep.ejecutivo],
+        "separacion_comprobante_corregido",
+        f"Comprobante de Separación #{sep.id} corregido",
+        f"{usuario.nombre} corrigió el comprobante de la separación #{sep.id} (lote {sep.lote.codigo if sep.lote else '—'}). Motivo: {motivo}.",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "estado": est},
+    )
+    db.commit()
+    await notificar_pago(
+        "separacion:actualizada", {"id": sep.id, "estado": est}, sep.id_proyecto,
+        sep_svc.notificaciones_a_dict(notifs), sep.id_empresa,
+    )
+    return {"ok": True}
+
+
+def _cargar_devolucion(db: Session, id_devolucion: int, usuario: m.Usuario) -> m.Devolucion:
+    d = (
+        db.query(m.Devolucion)
+        .join(m.Separacion, m.Separacion.id == m.Devolucion.id_separacion)
+        .options(joinedload(m.Devolucion.separacion).joinedload(m.Separacion.ejecutivo))
+        .filter(m.Devolucion.id == id_devolucion, m.Separacion.id_empresa == usuario.id_empresa)
+        .first()
+    )
+    if not d:
+        raise HTTPException(status_code=404, detail="Devolución no encontrada")
+    venta_svc.validar_acceso_proyecto(db, usuario, d.separacion.id_proyecto)
+    return d
+
+
+@router.post("/corregir-devolucion/{id_devolucion}/nota-credito")
+async def corregir_nota_credito(
+    id_devolucion: int,
+    payload: s.CorreccionComprobanteIn,
+    usuario: m.Usuario = Depends(require_permiso("facturar_pago")),
+    db: Session = Depends(get_db),
+):
+    _exigir_rol(usuario, ("admin", "facturacion"), "Facturación")
+    d = _cargar_devolucion(db, id_devolucion, usuario)
+    if not d.nota_credito_numero:
+        raise _conflicto("Esta devolución aún no tiene nota de crédito que corregir")
+    nuevo = _nuevos_comprobante(payload, False)
+    mapa = {"numero": "nota_credito_numero", "archivo_url": "nota_credito_url"}
+    cambios = aud.diferencias({mapa[k]: getattr(d, mapa[k]) for k in nuevo}, {mapa[k]: v for k, v in nuevo.items()})
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No hay cambios que guardar")
+
+    sep = d.separacion
+    motivo = payload.motivo.strip()
+    aud.registrar(db, usuario, "devolucion", d.id, "corregir_nota_credito", {"id_separacion": sep.id, "motivo": motivo, **cambios})
+    for k, v in nuevo.items():
+        setattr(d, mapa[k], v)
+
+    notifs = _avisar_correccion(
+        db, usuario, sep.id_empresa, sep.id_proyecto,
+        ["caja", "admin", "gerencia"], [sep.ejecutivo],
+        "devolucion_nota_credito_corregida",
+        f"Nota de crédito corregida (Separación #{sep.id})",
+        f"{usuario.nombre} corrigió la nota de crédito de la devolución de la separación #{sep.id}. Motivo: {motivo}.",
+        {"id_separacion": sep.id, "id_devolucion": d.id, "id_proyecto": sep.id_proyecto},
+    )
+    db.commit()
+    await notificar_pago(
+        "separacion:actualizada", {"id": sep.id}, sep.id_proyecto,
+        sep_svc.notificaciones_a_dict(notifs), sep.id_empresa,
+    )
+    return {"ok": True}
+
+
+@router.post("/corregir-devolucion/{id_devolucion}/voucher")
+async def corregir_voucher_devolucion(
+    id_devolucion: int,
+    payload: s.CorreccionVoucherDevolucionIn,
+    usuario: m.Usuario = Depends(require_permiso("validar_pago")),
+    db: Session = Depends(get_db),
+):
+    _exigir_rol(usuario, ("admin", "caja"), "Caja")
+    d = _cargar_devolucion(db, id_devolucion, usuario)
+    if not d.voucher_url:
+        raise _conflicto("Esta devolución aún no fue ejecutada por Caja")
+    nuevo: dict = {}
+    if payload.metodo_pago is not None and payload.metodo_pago.strip():
+        nuevo["metodo_pago"] = payload.metodo_pago.strip()
+    if payload.numero_operacion is not None:
+        if not payload.numero_operacion.strip():
+            raise HTTPException(status_code=422, detail="El N° de operación no puede quedar vacío")
+        nuevo["numero_operacion"] = payload.numero_operacion.strip()
+    if payload.voucher_url:
+        nuevo["voucher_url"] = payload.voucher_url
+    cambios = aud.diferencias({k: getattr(d, k) for k in nuevo}, nuevo)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No hay cambios que guardar")
+
+    sep = d.separacion
+    motivo = payload.motivo.strip()
+    aud.registrar(db, usuario, "devolucion", d.id, "corregir_voucher", {"id_separacion": sep.id, "motivo": motivo, **cambios})
+    for k, v in nuevo.items():
+        setattr(d, k, v)
+
+    notifs = _avisar_correccion(
+        db, usuario, sep.id_empresa, sep.id_proyecto,
+        ["facturacion", "admin", "gerencia"], [sep.ejecutivo],
+        "devolucion_voucher_corregido",
+        f"Voucher de devolución corregido (Separación #{sep.id})",
+        f"{usuario.nombre} corrigió el voucher/operación de la devolución de la separación #{sep.id}. Motivo: {motivo}.",
+        {"id_separacion": sep.id, "id_devolucion": d.id, "id_proyecto": sep.id_proyecto},
+    )
+    db.commit()
+    await notificar_pago(
+        "separacion:actualizada", {"id": sep.id}, sep.id_proyecto,
+        sep_svc.notificaciones_a_dict(notifs), sep.id_empresa,
+    )
+    return {"ok": True}
+
+
+
+@router.post("/{id_pago}/revertir-validacion", response_model=s.PagoOut)
+async def revertir_validacion_caja(
+    id_pago: int,
+    payload: s.ReversionValidacionIn,
+    usuario: m.Usuario = Depends(require_permiso("validar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Caja se equivocó al validar: el pago vuelve a su cola, solo si Facturación aún no emitió comprobante."""
+    _exigir_rol(usuario, ("admin", "caja"), "Caja")
+    pago = _cargar_pago(db, id_pago, usuario)
+    if pago.estado != "pendiente_facturacion" or pago.factura_numero:
+        raise _conflicto("Solo se puede revertir mientras Facturación no haya emitido el comprobante")
+
+    contrato = pago.contrato
+    motivo = payload.motivo.strip()
+    aud.registrar(
+        db, usuario, "pago", pago.id, "revertir_validacion_caja",
+        {
+            "id_contrato": contrato.id,
+            "motivo": motivo,
+            "monto": str(pago.monto),
+            "validado_por_previo": pago.validado_por,
+            "fecha_validacion_previa": str(pago.fecha_validacion) if pago.fecha_validacion else None,
+        },
+    )
+    pago.estado = "pendiente_caja"
+    pago.validado_por = None
+    pago.fecha_validacion = None
+    pago.motivo_rechazo = None
+
+    notifs = _avisar_correccion(
+        db, usuario, contrato.id_empresa, contrato.id_proyecto,
+        ["facturacion", "caja", "admin"], [pago.registrador],
+        "pago_validacion_revertida",
+        f"Validación revertida: {_concepto(pago)}",
+        f"{usuario.nombre} revirtió la validación de Caja del contrato {contrato.numero_contrato} "
+        f"({_concepto(pago)}, S/ {pago.monto:,.2f}). Motivo: {motivo}. Vuelve a Caja.",
+        {"id_pago": pago.id, "id_contrato": contrato.id, "id_proyecto": contrato.id_proyecto, "estado": "pendiente_caja"},
+    )
+    db.commit()
+    await _emitir(pago, contrato, notifs)
+    return pago
+
+
+

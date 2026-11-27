@@ -451,6 +451,72 @@ async def rechazar_voucher(
     return _detalle(db, id_separacion, usuario)
 
 
+@router.post("/{id_separacion}/revertir-validacion", response_model=s.SeparacionOut)
+async def revertir_validacion_separacion(
+    id_separacion: int,
+    payload: s.ReversionValidacionIn,
+    usuario: m.Usuario = Depends(require_permiso("validar_voucher")),
+    db: Session = Depends(get_db),
+):
+    """Caja se equivocó al validar: la separación vuelve a su cola, solo si Facturación aún no emitió comprobante."""
+    if usuario.rol.clave not in ("admin", "caja"):
+        raise HTTPException(status_code=403, detail="Solo Caja puede revertir su validación")
+    sep = svc.cargar_separacion(db, id_separacion, usuario)
+    if sep.estado != E.pendiente_facturacion or sep.comprobantes:
+        raise _conflicto("Solo se puede revertir mientras Facturación no haya emitido el comprobante")
+    motivo = payload.motivo.strip()
+
+    # Libera el lote solo si fue esta validación la que lo dejó 'separado'
+    # (en carga histórica el lote conserva su estado y no se toca)
+    cambio = False
+    if sep.lote.estado == LOTE.separado:
+        la_separo = (
+            db.query(m.LoteEstadoHistorial)
+            .filter(
+                m.LoteEstadoHistorial.id_lote == sep.id_lote,
+                m.LoteEstadoHistorial.estado_nuevo == LOTE.separado,
+                m.LoteEstadoHistorial.observacion == f"Separación #{sep.id} validada por Caja",
+            )
+            .first()
+        )
+        if la_separo:
+            cambio = svc.cambiar_estado_lote(
+                db, sep.lote, LOTE.libre, usuario, f"Separación #{sep.id}: validación de Caja revertida"
+            )
+
+    aud.registrar(
+        db, usuario, "separacion", sep.id, "revertir_validacion_caja",
+        {
+            "id_lote": sep.id_lote,
+            "importe": str(sep.importe),
+            "motivo": motivo,
+            "validado_por_previo": sep.validado_por,
+            "lote_liberado": cambio,
+        },
+    )
+    sep.estado = E.pendiente_caja
+    sep.validado_por = None
+    sep.fecha_validacion = None
+    sep.motivo_rechazo = None
+
+    destinatarios = svc.unicos(
+        svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["facturacion", "caja", "admin"])
+        + [sep.ejecutivo],
+        excluir_id=usuario.id,
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "separacion_validacion_revertida",
+        "Validación de separación revertida",
+        f"{usuario.nombre} revirtió la validación del lote {sep.lote.codigo}. Motivo: {motivo}. Vuelve a Caja.",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": "pendiente_caja"},
+    )
+    db.commit()
+
+    await _emitir(db, sep, usuario, notifs, cambio_lote=cambio)
+    return _detalle(db, id_separacion, usuario)
+
+
 # ------------------------------------------------------------ facturación --
 
 @router.post("/{id_separacion}/comprobante", response_model=s.SeparacionOut)
@@ -647,16 +713,28 @@ async def editar_comprobante(
         if not datos["numero"]:
             raise HTTPException(status_code=422, detail="El número de comprobante es obligatorio")
 
-
     cambios = aud.diferencias({c: getattr(comp, c) for c in datos}, datos)
-    if cambios:
-        aud.registrar(db, usuario, "comprobante", comp.id, "editar", {"id_separacion": sep.id, **cambios})   
+    if not cambios:
+        return _detalle(db, id_separacion, usuario)
 
+    aud.registrar(db, usuario, "separacion", sep.id, "editar_comprobante", {"id_comprobante": comp.id, **cambios})
     for campo, valor in datos.items():
         setattr(comp, campo, valor)
+
+    destinatarios = svc.unicos(
+        [sep.ejecutivo] + svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["caja", "admin"]),
+        excluir_id=usuario.id,
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "separacion_comprobante_corregido",
+        f"Comprobante de Separación #{sep.id} corregido",
+        f"{usuario.nombre} corrigió el comprobante del lote {sep.lote.codigo}.",
+        {"id_separacion": sep.id, "id_proyecto": sep.id_proyecto, "id_lote": sep.id_lote, "estado": sep.estado.value},
+    )
     db.commit()
 
-    await _emitir(db, sep, usuario, [])
+    await _emitir(db, sep, usuario, notifs)
     return _detalle(db, id_separacion, usuario)
 
 # ------------------------------------------------------------- conversión --
@@ -1015,3 +1093,57 @@ async def nota_credito_devolucion(
     db.commit()
     await _emitir(db, sep, usuario, notifs)
     return _detalle(db, sep.id, usuario)
+
+
+
+
+@router.post("/devoluciones/{id_devolucion}/revertir-ejecucion", response_model=s.SeparacionOut)
+async def revertir_ejecucion_devolucion(
+    id_devolucion: int,
+    payload: s.ReversionValidacionIn,
+    usuario: m.Usuario = Depends(require_permiso("validar_pago")),
+    db: Session = Depends(get_db),
+):
+    """Caja se equivocó al registrar la devolución: vuelve a Caja, solo si aún no hay nota de crédito."""
+    if usuario.rol.clave not in ("admin", "caja"):
+        raise HTTPException(status_code=403, detail="Solo Caja puede revertir su registro")
+    dev, sep = _cargar_devolucion(db, id_devolucion, usuario)
+    if dev.estado != "pendiente_facturacion" or dev.nota_credito_numero:
+        raise _conflicto("Solo se puede revertir mientras Facturación no haya emitido la nota de crédito")
+    motivo = payload.motivo.strip()
+
+    aud.registrar(
+        db, usuario, "devolucion", dev.id, "revertir_ejecucion",    
+        {
+            "id_separacion": sep.id,
+            "motivo": motivo,
+            "monto": str(dev.monto),
+            "numero_operacion_previo": dev.numero_operacion,
+            "voucher_url_previo": dev.voucher_url,
+            "metodo_pago_previo": dev.metodo_pago,
+        },
+    )
+    dev.estado = "pendiente_caja"
+    dev.numero_operacion = None
+    dev.voucher_url = None
+    dev.metodo_pago = None
+    dev.ejecutado_por = None
+    dev.fecha_ejecucion = None
+
+    destinatarios = svc.unicos(
+        svc.usuarios_por_roles(db, sep.id_empresa, sep.id_proyecto, ["facturacion", "caja", "admin"])
+        + [sep.ejecutivo],
+        excluir_id=usuario.id,
+    )
+    notifs = svc.crear_notificaciones(
+        db, sep.id_empresa, destinatarios,
+        "devolucion_ejecucion_revertida",
+        "Devolución revertida a Caja",
+        f"{usuario.nombre} revirtió el registro de la devolución del lote {sep.lote.codigo}. Motivo: {motivo}.",
+        {"id_separacion": sep.id, "id_devolucion": dev.id, "id_proyecto": sep.id_proyecto,
+         "id_lote": sep.id_lote, "estado": "pendiente_caja"},
+    )
+    db.commit()
+    await _emitir(db, sep, usuario, notifs)
+    return _detalle(db, sep.id, usuario)
+

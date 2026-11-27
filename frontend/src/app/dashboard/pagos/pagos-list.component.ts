@@ -43,6 +43,13 @@ export class PagosListComponent implements OnInit, OnDestroy {
   devolucionForm = { numero_operacion: '', metodo_pago: 'Transferencia bancaria', voucher_url: '' };
   subiendoVoucherDev = signal(false);
 
+  pagoCorreccion = signal<PagoCola | null>(null);
+  modoCorreccion: 'comprobante' | 'voucher' = 'comprobante';
+  correccionForm = { tipo: 'boleta', numero: '', archivo_url: '', metodo_pago: '', numero_operacion: '', motivo: '' };
+  subiendoCorreccion = signal(false);
+  pagoReversion = signal<PagoCola | null>(null);
+  motivoReversion = '';
+
   private sub?: Subscription;
 
   tabs: { valor: TabPago; etiqueta: string }[] = [
@@ -93,11 +100,13 @@ export class PagosListComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   cerrarModales(): void {
+    this.pagoReversion.set(null);
     if (this.procesando()) return;
     this.pagoValidar.set(null);
     this.pagoRechazo.set(null);
     this.pagoComprobante.set(null);
     this.pagoDevolucion.set(null);
+    this.pagoCorreccion.set(null);
   }
 
   ngOnInit(): void {
@@ -330,6 +339,161 @@ export class PagosListComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  // ---- Correcciones (Caja / Facturación) ----
+
+  puedeCorregirComprobante(p: PagoCola): boolean {
+    return this.puedeFacturar && p.estado === 'validado' && !!p.factura_numero;
+  }
+
+  puedeRevertirValidacion(p: PagoCola): boolean {
+    return (
+      this.puedeValidar &&
+      p.estado === 'pendiente_facturacion' &&
+      !(p as { convertida?: boolean }).convertida &&
+      !p.factura_numero
+    );
+  }
+
+  abrirReversion(p: PagoCola): void {
+    this.motivoReversion = '';
+    this.pagoReversion.set(p);
+  }
+
+  confirmarReversion(): void {
+    const p = this.pagoReversion();
+    if (!p) return;
+    const motivo = this.motivoReversion.trim();
+    if (motivo.length < 5) {
+      this.toastService.error('Indica el motivo (mínimo 5 caracteres)');
+      return;
+    }
+    this.procesando.set(true);
+    const url =
+      p.origen === 'separacion'
+        ? `/separaciones/${p.id}/revertir-validacion`
+        : p.origen === 'devolucion'
+          ? `/separaciones/devoluciones/${p.id}/revertir-ejecucion`
+          : `/pagos/${p.id}/revertir-validacion`;
+    this.api.post<unknown>(url, { motivo }).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.pagoReversion.set(null);
+        this.toastService.exito('Validación revertida. El pago volvió a Pendientes de Caja.');
+        this.cargar(true);
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo revertir la validación');
+      },
+    });
+  }
+
+  puedeCorregirVoucher(p: PagoCola): boolean {
+    return (
+      this.puedeValidar &&
+      p.origen === 'devolucion' &&
+      !!p.comprobante_url &&
+      ['pendiente_facturacion', 'validado'].includes(p.estado)
+    );
+  }
+
+  abrirCorreccion(p: PagoCola, modo: 'comprobante' | 'voucher'): void {
+    this.modoCorreccion = modo;
+    this.correccionForm = {
+      tipo: p.factura_tipo && p.factura_tipo !== 'nota_credito' ? p.factura_tipo : 'boleta',
+      numero: modo === 'comprobante' ? (p.factura_numero ?? '') : '',
+      archivo_url: '',
+      metodo_pago: modo === 'voucher' ? (p.metodo_pago ?? 'Transferencia bancaria') : '',
+      numero_operacion: modo === 'voucher' ? (p.numero_operacion ?? '') : '',
+      motivo: '',
+    };
+    this.pagoCorreccion.set(p);
+  }
+
+  async onArchivoCorreccion(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const archivo = input.files?.[0];
+    input.value = '';
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(archivo.type)) {
+      this.toastService.error('Formato no permitido (usa JPG, PNG o PDF)');
+      return;
+    }
+    if (archivo.size > 8 * 1024 * 1024) {
+      this.toastService.error('El archivo debe pesar menos de 8MB');
+      return;
+    }
+    this.subiendoCorreccion.set(true);
+    const formData = new FormData();
+    formData.append('archivo', await comprimirImagen(archivo));
+    this.pagoService.subirArchivo(formData).subscribe({
+      next: (res) => {
+        this.correccionForm.archivo_url = res.url;
+        this.subiendoCorreccion.set(false);
+      },
+      error: (err) => {
+        this.subiendoCorreccion.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo subir el archivo');
+      },
+    });
+  }
+
+  confirmarCorreccion(): void {
+    const p = this.pagoCorreccion();
+    if (!p) return;
+    const f = this.correccionForm;
+    const motivo = f.motivo.trim();
+    if (motivo.length < 5) {
+      this.toastService.error('Indica el motivo de la corrección (mínimo 5 caracteres)');
+      return;
+    }
+
+    let url: string;
+    let body: Record<string, unknown>;
+    if (this.modoCorreccion === 'voucher') {
+      if (!f.numero_operacion.trim()) {
+        this.toastService.error('El N° de operación no puede quedar vacío');
+        return;
+      }
+      url = `/pagos/corregir-devolucion/${p.id}/voucher`;
+      body = {
+        metodo_pago: f.metodo_pago,
+        numero_operacion: f.numero_operacion.trim(),
+        voucher_url: f.archivo_url || undefined,
+        motivo,
+      };
+    } else {
+      if (!f.numero.trim()) {
+        this.toastService.error('El número del comprobante no puede quedar vacío');
+        return;
+      }
+      body = { numero: f.numero.trim(), archivo_url: f.archivo_url || undefined, motivo };
+      if (p.origen === 'devolucion') {
+        url = `/pagos/corregir-devolucion/${p.id}/nota-credito`;
+      } else if (p.origen === 'separacion') {
+        url = `/pagos/corregir-separacion/${p.id}/comprobante`;
+        body['tipo'] = f.tipo;
+      } else {
+        url = `/pagos/${p.id}/corregir-comprobante`;
+        body['tipo'] = f.tipo;
+      }
+    }
+
+    this.procesando.set(true);
+    this.api.post<unknown>(url, body).subscribe({
+      next: () => {
+        this.procesando.set(false);
+        this.pagoCorreccion.set(null);
+        this.toastService.exito('Corrección guardada y auditada. Se avisó a las áreas involucradas.');
+        this.cargar(true);
+      },
+      error: (err) => {
+        this.procesando.set(false);
+        this.toastService.error(err?.error?.detail ?? 'No se pudo guardar la corrección');
+      },
+    });
+  }
 
   // ---- Facturación ----
 

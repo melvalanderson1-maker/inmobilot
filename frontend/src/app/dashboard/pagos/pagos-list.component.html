@@ -190,6 +190,17 @@
                 </td>
 
                 <td class="acciones">
+                  @if (puedeCorregirComprobante(p)) {
+                    <button class="btn-sec" (click)="abrirCorreccion(p, 'comprobante')" [disabled]="procesando()">
+                      {{ p.origen === 'devolucion' ? 'Corregir nota de crédito' : 'Corregir comprobante' }}
+                    </button>
+                  }
+                  @if (puedeRevertirValidacion(p)) {
+                    <button class="btn-no" (click)="abrirReversion(p)" [disabled]="procesando()">{{ p.origen === 'devolucion' ? 'Revertir devolución' : 'Revertir validación' }}</button>
+                  }
+                  @if (puedeCorregirVoucher(p)) {
+                    <button class="btn-sec" (click)="abrirCorreccion(p, 'voucher')" [disabled]="procesando()">Corregir voucher</button>
+                  }
                   @if (p.estado === 'pendiente_caja' && puedeValidar) {
                     @if (p.origen === 'devolucion') {
                       <button class="btn-ok" (click)="abrirDevolucion(p)" [disabled]="procesando()">Registrar devolución</button>
@@ -349,6 +360,89 @@
       <div class="pie">
         <button class="btn-sec" (click)="pagoDevolucion.set(null)">Cancelar</button>
         <button class="btn-ok" (click)="confirmarDevolucion()" [disabled]="procesando() || subiendoVoucherDev()">Guardar y pasar a Facturación</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+
+@if (pagoCorreccion()) {
+  <div class="modal-overlay" (click)="pagoCorreccion.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>{{ modoCorreccion === 'voucher' ? 'Corregir voucher de devolución' : (pagoCorreccion()!.origen === 'devolucion' ? 'Corregir nota de crédito' : 'Corregir comprobante') }}</h2>
+      <p class="sub">{{ pagoCorreccion()!.concepto }} · S/ {{ pagoCorreccion()!.monto | number:'1.2-2' }} · {{ pagoCorreccion()!.numero_contrato }}</p>
+      <p class="aviso">La corrección queda registrada en auditoría con el valor anterior, el nuevo y tu motivo, y se avisa a las áreas involucradas.</p>
+
+      @if (modoCorreccion === 'comprobante') {
+        @if (pagoCorreccion()!.origen !== 'devolucion') {
+          <div class="campo">
+            <label>Tipo</label>
+            <select [(ngModel)]="correccionForm.tipo">
+              <option value="boleta">Boleta</option>
+              <option value="factura">Factura</option>
+              <option value="recibo">Recibo</option>
+            </select>
+          </div>
+        }
+        <div class="campo">
+          <label>Número</label>
+          <input type="text" [(ngModel)]="correccionForm.numero" />
+        </div>
+      } @else {
+        <div class="campo">
+          <label>Medio</label>
+          <select [(ngModel)]="correccionForm.metodo_pago">
+            <option value="Transferencia bancaria">Transferencia bancaria</option>
+            <option value="Transferencia (Yape)">Transferencia (Yape)</option>
+            <option value="Transferencia (Plin)">Transferencia (Plin)</option>
+            <option value="Efectivo">Efectivo</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>N° de operación</label>
+          <input type="text" [(ngModel)]="correccionForm.numero_operacion" />
+        </div>
+      }
+
+      <div class="campo">
+        <label>Archivo (opcional: solo si te equivocaste de archivo)</label>
+        @if (correccionForm.archivo_url) {
+          <span class="ok">Archivo nuevo subido ✓</span>
+        } @else {
+          <input type="file" accept="image/jpeg,image/png,application/pdf" (change)="onArchivoCorreccion($event)" [disabled]="subiendoCorreccion()" />
+          @if (subiendoCorreccion()) { <span class="sub">Subiendo...</span> }
+        }
+      </div>
+
+      <div class="campo">
+        <label>Motivo de la corrección (obligatorio)</label>
+        <textarea rows="3" [(ngModel)]="correccionForm.motivo" placeholder="Ej: subí el archivo equivocado / N° de operación mal digitado"></textarea>
+      </div>
+
+      <div class="pie">
+        <button class="btn-sec" (click)="pagoCorreccion.set(null)">Cancelar</button>
+        <button class="btn-ok" (click)="confirmarCorreccion()" [disabled]="procesando() || subiendoCorreccion()">Guardar corrección</button>
+      </div>
+    </div>
+  </div>
+}
+
+
+
+@if (pagoReversion()) {
+  <div class="modal-overlay" (click)="pagoReversion.set(null)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h2>Revertir validación de Caja</h2>
+      <p class="sub">{{ pagoReversion()!.concepto }} · S/ {{ pagoReversion()!.monto | number:'1.2-2' }} · contrato {{ pagoReversion()!.numero_contrato }}</p>
+      <p class="aviso">El pago sale de Facturación y vuelve a Pendientes de Caja para que lo valides de nuevo o lo rechaces. Queda en auditoría con tu motivo y se avisa a Facturación y a Ventas.</p>
+      <div class="campo">
+        <label>Motivo (obligatorio)</label>
+        <textarea rows="3" [(ngModel)]="motivoReversion" placeholder="Ej: validé el voucher equivocado / el monto no coincide"></textarea>
+      </div>
+      <div class="pie">
+        <button class="btn-sec" (click)="pagoReversion.set(null)">Cancelar</button>
+        <button class="btn-no" (click)="confirmarReversion()" [disabled]="procesando()">Revertir validación</button>
       </div>
     </div>
   </div>

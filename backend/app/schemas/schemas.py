@@ -629,6 +629,24 @@ class PagoComprobanteIn(BaseModel):
     archivo_url: str
 
 
+class ReversionValidacionIn(BaseModel):
+    motivo: str = Field(min_length=5, max_length=300)
+
+
+class CorreccionComprobanteIn(BaseModel):
+    tipo: Optional[str] = None  # boleta | factura | recibo (no aplica a nota de crédito)
+    numero: Optional[str] = Field(default=None, max_length=60)
+    archivo_url: Optional[str] = None
+    motivo: str = Field(min_length=5, max_length=300)
+
+
+class CorreccionVoucherDevolucionIn(BaseModel):
+    metodo_pago: Optional[str] = Field(default=None, max_length=40)
+    numero_operacion: Optional[str] = Field(default=None, max_length=60)
+    voucher_url: Optional[str] = None
+    motivo: str = Field(min_length=5, max_length=300)
+
+
 class PagoCompradorOut(BaseModel):
     nombre: str
     documento: str = ""

@@ -282,6 +282,10 @@ export class VentaDetalleComponent implements OnInit, OnDestroy {
         const data = evento.data as { id?: number };
         if (data?.id === this.idVenta) this.cargar();
       }
+      if (evento.evento === 'pago:actualizado') {
+        const d = evento.data as { id_contrato?: number };
+        if (d?.id_contrato && d.id_contrato === this.venta()?.id_contrato) this.cargar();
+      }
     });
   }
 

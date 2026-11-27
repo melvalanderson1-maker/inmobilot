@@ -198,10 +198,10 @@ export class PagosListComponent implements OnInit, OnDestroy {
     if (p.origen === 'separacion') return 'Separación de lote: al validarse el lote queda separado';
     if (p.concepto.includes('Cancelación')) return 'Liquida todo el crédito y cierra el contrato';
     if (p.concepto.includes('Amortización')) return 'Abono a capital: reescribe el cronograma';
-    if (p.concepto === 'Inicial') return 'Inicial de venta a crédito';
+    if (p.concepto === 'Inicial')
+      return p.forma_pago === 'contado' ? 'Inicial de venta al contado: queda saldo por pagar' : 'Inicial de venta a crédito';
     if (p.concepto === 'Pago al contado') return 'Venta al contado';
-    if (p.concepto.startsWith('Pago parcial')) return 'Abono parcial de venta al contado: queda saldo por pagar';
-    if (p.concepto.startsWith('Pagos parciales')) return 'Un solo depósito para varios pagos parciales';
+    if (/^\d+° pago$/.test(p.concepto)) return 'Pago a cuenta del saldo de la venta al contado';
     if (p.concepto.startsWith('Cuotas ')) return 'Un solo depósito para varias cuotas';
     return null;
   }
@@ -570,8 +570,8 @@ export class PagosListComponent implements OnInit, OnDestroy {
               ? 'Comprobante registrado. El cronograma se actualizó con la amortización.'
               : p.concepto === 'Inicial' || p.concepto === 'Pago al contado'
                 ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
-                : p.concepto.startsWith('Pago parcial') || p.concepto.startsWith('Pagos parciales')
-                  ? 'Comprobante registrado. El pago parcial quedó aplicado al contrato.'
+                : /^\d+° pago$/.test(p.concepto)
+                  ? 'Comprobante registrado. El pago quedó aplicado al contrato.'
                 : 'Comprobante registrado. El pago ya se aplicó a la cuota.'
         );
         this.cargar(true);

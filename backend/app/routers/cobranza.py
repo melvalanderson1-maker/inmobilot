@@ -78,6 +78,7 @@ def resumen_cobranza(
         db.query(m.Contrato)
         .options(
             joinedload(m.Contrato.lote),
+            joinedload(m.Contrato.registrador),
             selectinload(m.Contrato.clientes_rel).joinedload(m.ContratoCliente.cliente),
             selectinload(m.Contrato.cronograma),
         )
@@ -93,6 +94,7 @@ def resumen_cobranza(
     pagado: dict = {}
     ventas: dict = {}
     amortizado: dict = {}
+    iniciales: dict = {}
     if ids:
         pagado = dict(
             db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
@@ -108,6 +110,16 @@ def resumen_cobranza(
         amortizado = dict(
             db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
             .filter(m.Pago.id_contrato.in_(ids), m.Pago.estado == "validado", m.Pago.tipo == "amortizacion")
+            .group_by(m.Pago.id_contrato)
+            .all()
+        )
+        iniciales = dict(
+            db.query(m.Pago.id_contrato, func.sum(m.Pago.monto))
+            .filter(
+                m.Pago.id_contrato.in_(ids),
+                m.Pago.estado == "validado",
+                m.Pago.tipo.in_(["inicial", "contado"]),
+            )
             .group_by(m.Pago.id_contrato)
             .all()
         )
@@ -140,6 +152,8 @@ def resumen_cobranza(
             precio_total=c.precio_total,
             inicial_abonado=c.inicial_abonado or CERO,
             total_pagado=total_pagado,
+            inicial_pagado=Decimal(str(iniciales.get(c.id, 0))),
+            ejecutivo_nombre=c.registrador.nombre if c.registrador else None,
             saldo_pendiente=max(sum((q.monto_cuota for q in cuotas), CERO) + Decimal(str(amortizado.get(c.id, 0))) - total_pagado, CERO),
             monto_vencido=monto_vencido,
             cuotas_total=len(cuotas),

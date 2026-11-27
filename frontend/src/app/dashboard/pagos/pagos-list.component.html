@@ -186,7 +186,8 @@
                 <td data-label="Estado">
                   <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
                   @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
-                  @if (p.validado_por_nombre) { <small>Validó: {{ p.validado_por_nombre }}</small> }
+                  @if (p.validado_por_nombre && p.estado !== 'rechazado') { <small>Caja validó: {{ p.validado_por_nombre }}</small> }
+                  @if (p.facturado_por_nombre) { <small>Facturó: {{ p.facturado_por_nombre }}</small> }
                 </td>
 
                 <td class="acciones">

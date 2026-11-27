@@ -177,7 +177,24 @@ def listar_contratos(
         .order_by(m.Contrato.fecha_contrato.desc())
         .all()
     )
-    return [s.ContratoOut.desde_contrato(c) for c in contratos]
+    ids_sep = {c.venta.id_separacion for c in contratos if c.venta and c.venta.id_separacion}
+    ejec_sep: dict = {}
+    if ids_sep:
+        ejec_sep = {
+            sp.id: sp.ejecutivo.nombre
+            for sp in db.query(m.Separacion)
+            .options(joinedload(m.Separacion.ejecutivo))
+            .filter(m.Separacion.id.in_(ids_sep))
+            .all()
+            if sp.ejecutivo
+        }
+    salida = []
+    for c in contratos:
+        out = s.ContratoOut.desde_contrato(c)
+        if c.venta and c.venta.id_separacion:
+            out.separacion_ejecutivo_nombre = ejec_sep.get(c.venta.id_separacion)
+        salida.append(out)
+    return salida
 
 
 @router.get("/{id_contrato}", response_model=s.ContratoOut)

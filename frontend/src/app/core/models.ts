@@ -386,6 +386,7 @@ export interface Contrato {
   tramite_actual?: string | null;    // pendiente | en_proceso | concretado
   id_ejecutivo?: number | null;      // usuario que registró el contrato
   ejecutivo_nombre?: string | null;
+  separacion_ejecutivo_nombre?: string | null;
 }
 
 
@@ -805,6 +806,8 @@ export interface CobranzaFila {
   proxima_monto?: number;
   dias_atraso: number;
   estado: string;
+  inicial_pagado?: number | string;
+  ejecutivo_nombre?: string | null;
 }
 
 export interface PagoComprador {
@@ -835,6 +838,7 @@ export interface PagoCola {
   factura_numero?: string;
   factura_url?: string;
   registrado_por_nombre?: string;
+  facturado_por_nombre?: string | null;
   created_at: string;
   concepto: string;
   detalle?: string | null;

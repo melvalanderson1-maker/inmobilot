@@ -510,6 +510,7 @@ class ContratoOut(ORMBase):
     tramite_actual: Optional[str] = None
     id_ejecutivo: Optional[int] = None
     ejecutivo_nombre: Optional[str] = None
+    separacion_ejecutivo_nombre: Optional[str] = None
 
 
 
@@ -675,6 +676,7 @@ class PagoColaOut(BaseModel):
     factura_numero: Optional[str] = None
     factura_url: Optional[str] = None
     registrado_por_nombre: Optional[str] = None
+    facturado_por_nombre: Optional[str] = None
     concepto: str = "Pago"  # Inicial | Cuota N | Pago a cuenta
     detalle: Optional[str] = None  # ej. "Inicial de la venta #16"
     forma_pago: Optional[str] = None  # contado | credito
@@ -1242,6 +1244,8 @@ class CobranzaFilaOut(BaseModel):
     precio_total: Decimal
     inicial_abonado: Decimal
     total_pagado: Decimal
+    inicial_pagado: Decimal = Decimal("0")
+    ejecutivo_nombre: Optional[str] = None
     saldo_pendiente: Decimal
     monto_vencido: Decimal
     cuotas_total: int

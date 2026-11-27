@@ -50,6 +50,7 @@
           <tr>
             <th>Contrato / Lote</th>
             <th>Cliente</th>
+            <th>Ejecutivo</th>
             <th>Valor del terreno</th>
             <th>Pagado</th>
             <th>Saldo</th>
@@ -78,8 +79,13 @@
                   </small>
                 }
               </td>
+
+              <td>{{ f.ejecutivo_nombre || '—' }}</td>
               <td>S/ {{ f.precio_total | number:'1.2-2' }}</td>
-              <td>S/ {{ f.total_pagado | number:'1.2-2' }}</td>
+              <td>
+                S/ {{ pagadoTotal(f) | number:'1.2-2' }}
+                <small>Inicial S/ {{ f.inicial_pagado | number:'1.2-2' }} · Cuotas S/ {{ f.total_pagado | number:'1.2-2' }}</small>
+              </td>
               <td><strong>S/ {{ f.saldo_pendiente | number:'1.2-2' }}</strong></td>
               <td>
                 @if (f.proxima_fecha) {

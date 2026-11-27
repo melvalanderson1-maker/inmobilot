@@ -65,55 +65,36 @@ def _es_contado_con_saldo(p: m.Pago) -> bool:
     return bool(c and c.forma_pago == m.FormaPagoEnum.contado and (c.saldo_financiado or 0) > 0)
 
 
-def _n_contado(p: m.Pago) -> int:
-    """Cuántos pagos 'contado' (los de la venta) tiene este contrato. Las cuotas siguen la numeración después de ellos."""
-    db = object_session(p)
-    if db is None:
-        return 0
-    return (
-        db.query(func.count(m.Pago.id))
-        .filter(m.Pago.id_contrato == p.id_contrato, m.Pago.tipo == "contado", m.Pago.estado != "anulado")
-        .scalar()
-    ) or 0
-
-
-def _orden_contado(p: m.Pago) -> int:
-    """Posición de este pago 'contado' entre los pagos 'contado' del contrato."""
+def _orden_pago_contado(p: m.Pago) -> int:
+    """Posición cronológica de este pago entre los pagos del contrato (sin contar anulados)."""
     db = object_session(p)
     if db is None:
         return 1
     return (
         db.query(func.count(m.Pago.id))
-        .filter(
-            m.Pago.id_contrato == p.id_contrato, m.Pago.tipo == "contado",
-            m.Pago.estado != "anulado", m.Pago.id <= p.id,
-        )
+        .filter(m.Pago.id_contrato == p.id_contrato, m.Pago.estado != "anulado", m.Pago.id <= p.id)
         .scalar()
     ) or 1
-
-
-def _etiqueta_cuotas(p: m.Pago, desde: int, hasta: int) -> str:
-    """'Cuota 3' / 'Cuotas 3 a 5'; en contado con saldo: 'Pago parcial 4' / 'Pagos parciales 4 a 6'."""
-    if _es_contado_con_saldo(p):
-        base = _n_contado(p)
-        d, h = desde + base, hasta + base
-        return f"Pagos parciales {d} a {h}" if h != d else f"Pago parcial {d}"
-    return f"Cuotas {desde} a {hasta}" if hasta != desde else f"Cuota {desde}"
 
 
 def _rango_cuotas(p: m.Pago) -> str:
     desde = _n_pago(p, p.cuota_desde)
     hasta = _n_pago(p, p.cuota_hasta or p.cuota_desde)
-    return _etiqueta_cuotas(p, desde, hasta)
+    return f"Cuotas {desde} a {hasta}" if hasta != desde else f"Cuota {desde}"
 
 
 def _concepto(p: m.Pago) -> str:
     """Qué es este pago, en palabras que el usuario entienda."""
     if p.tipo == "inicial":
         return "Inicial"
+
+    # Contado con saldo: el primer pago es la Inicial y los demás son 1° pago, 2° pago...
+    if _es_contado_con_saldo(p) and p.tipo in ("contado", "cuota", "cuotas"):
+        orden = _orden_pago_contado(p)
+        return "Inicial" if (p.tipo == "contado" and orden == 1) else f"{max(orden - 1, 1)}° pago"
+
     if p.tipo == "contado":
-        # Contado que no cubre todo el precio: es un pago parcial, no "Pago al contado"
-        return f"Pago parcial {_orden_contado(p)}" if _es_contado_con_saldo(p) else "Pago al contado"
+        return "Pago al contado"
     if p.tipo == "amortizacion":
         base = (
             "Amortización a capital (baja la cuota)"
@@ -128,8 +109,7 @@ def _concepto(p: m.Pago) -> str:
     if p.tipo in ("cuota", "cuotas") and p.cuota_desde:
         return _rango_cuotas(p)
     if p.cuota:
-        n = _n_pago(p, p.cuota.numero_cuota)
-        return _etiqueta_cuotas(p, n, n)
+        return f"Cuota {_n_pago(p, p.cuota.numero_cuota)}"
     return "Pago a cuenta"
 
 def _comprador(cli, rol=None) -> s.PagoCompradorOut:
@@ -152,7 +132,7 @@ def _comprador(cli, rol=None) -> s.PagoCompradorOut:
     )
 
 
-def _a_fila(p: m.Pago) -> s.PagoColaOut:
+def _a_fila(p: m.Pago, facturadores: Optional[dict] = None) -> s.PagoColaOut:
     c = p.contrato
     titular = next((vc.cliente for vc in c.clientes_rel if vc.rol == m.RolClienteContratoEnum.titular), None)
     if titular is None and c.clientes_rel:
@@ -172,6 +152,7 @@ def _a_fila(p: m.Pago) -> s.PagoColaOut:
         factura_tipo=p.factura_tipo, factura_numero=p.factura_numero, factura_url=p.factura_url,
         registrado_por_nombre=p.registrador.nombre if p.registrador else None,
         validado_por_nombre=p.validador.nombre if p.validador else None,
+        facturado_por_nombre=(facturadores or {}).get(p.facturado_por),
         concepto=_concepto(p),
         detalle=p.observacion,
         lote_partida=c.lote.partida_registral if c.lote else None,
@@ -341,7 +322,13 @@ def listar_pagos(
     )
     if estado:
         query = query.filter(m.Pago.estado == estado)
-    filas = [_a_fila(p) for p in query.order_by(m.Pago.created_at.desc()).limit(300).all()]
+    pagos = query.order_by(m.Pago.created_at.desc()).limit(300).all()
+    ids_fact = {p.facturado_por for p in pagos if p.facturado_por}
+    facturadores = (
+        dict(db.query(m.Usuario.id, m.Usuario.nombre).filter(m.Usuario.id.in_(ids_fact)).all())
+        if ids_fact else {}
+    )
+    filas = [_a_fila(p, facturadores) for p in pagos]
     filas += _filas_separaciones(db, usuario, id_proyecto, estado)
     filas += _filas_devoluciones(db, usuario, id_proyecto, estado)
     

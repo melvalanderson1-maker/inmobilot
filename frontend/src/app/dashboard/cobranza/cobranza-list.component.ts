@@ -40,7 +40,7 @@ export class CobranzaListComponent implements OnInit, OnDestroy {
       if (filtro === 'al_dia' && (f.cuotas_vencidas > 0 || f.estado === 'cancelado')) return false;
       if (filtro === 'cancelados' && f.estado !== 'cancelado') return false;
       if (texto) {
-        const base = `${f.numero_contrato} ${f.lote_codigo ?? ''} ${f.cliente_nombre} ${f.cliente_documento} ${f.cliente_telefono ?? ''}`.toLowerCase();
+        const base = `${f.numero_contrato} ${f.lote_codigo ?? ''} ${f.cliente_nombre} ${f.cliente_documento} ${f.cliente_telefono ?? ''} ${f.ejecutivo_nombre ?? ''}`.toLowerCase();
         if (!base.includes(texto)) return false;
       }
       return true;
@@ -92,6 +92,10 @@ export class CobranzaListComponent implements OnInit, OnDestroy {
       },
       error: () => this.cargando.set(false),
     });
+  }
+
+  pagadoTotal(f: CobranzaFila): number {
+    return Number(f.inicial_pagado ?? 0) + Number(f.total_pagado ?? 0);
   }
 
   abrirContrato(f: CobranzaFila): void {

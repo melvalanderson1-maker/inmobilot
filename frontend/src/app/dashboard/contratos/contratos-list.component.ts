@@ -147,6 +147,7 @@ export class ContratosListComponent implements OnInit, OnDestroy {
           c.lote?.codigo,
           ...(c.clientes ?? []).flatMap((cl) => [cl.nombres, cl.apellidos, cl.numero_documento]),
           c.ejecutivo_nombre,
+          c.separacion_ejecutivo_nombre,
           c.forma_pago === 'contado' ? 'contado minuta' : 'credito preparatorio',
           c.estado,
           this.etiquetaFase(c.fase_documental),
@@ -472,42 +473,35 @@ export class ContratosListComponent implements OnInit, OnDestroy {
     const ct = this.contratoDrawer()!;
     const idc = ct.id;
     const lista = this.pagosPorContrato()[idc] ?? [];
-    // Contado con saldo: los pagos "contado" son Pago parcial 1..N y las cuotas siguen la numeración
-    const parcial = ct.forma_pago === 'contado' && this.toNum(ct.saldo_financiado) > 0;
-    const base = parcial ? lista.filter((x) => x.tipo === 'contado' && x.estado !== 'anulado').length : 0;
-    const etq = (d: number, h: number): string =>
-      parcial
-        ? h !== d ? `Pagos parciales ${d + base} a ${h + base}` : `Pago parcial ${d + base}`
-        : h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`;
+
+    // Contado con saldo: la primera es Inicial y las demás 1° pago, 2° pago...
+    const contadoConSaldo = ct.forma_pago === 'contado' && this.toNum(ct.saldo_financiado) > 0;
+    if (contadoConSaldo && ['contado', 'cuota', 'cuotas'].includes(p.tipo ?? '')) {
+      const orden = lista.filter((x) => x.estado !== 'anulado' && x.id <= p.id).length || 1;
+      return p.tipo === 'contado' && orden === 1 ? 'Inicial' : `${Math.max(orden - 1, 1)}° pago`;
+    }
 
     if (p.tipo === 'inicial') return 'Inicial';
-    if (p.tipo === 'contado') {
-      if (!parcial) return 'Pago al contado';
-      const orden = lista.filter((x) => x.tipo === 'contado' && x.estado !== 'anulado' && x.id <= p.id).length;
-      return `Pago parcial ${orden || 1}`;
-    }
+    if (p.tipo === 'contado') return 'Pago al contado';
     if (p.tipo === 'cancelacion') {
       if (!p.cuota_desde) return 'Cancelación de crédito';
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return `${etq(d, h)} + Cancelación de crédito`;
+      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + Cancelación de crédito`;
     }
     if (p.tipo === 'amortizacion') {
-      const baseTxt = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
-      if (!p.cuota_desde) return baseTxt;
+      const base = p.modalidad === 'amortizar_plazo' ? 'Amortización · reduce plazo' : 'Amortización · baja cuota';
+      if (!p.cuota_desde) return base;
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return `${etq(d, h)} + ${baseTxt}`;
+      return `${h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`} + ${base}`;
     }
     if (p.cuota_desde) {
       const d = this.numeroPago(idc, p.cuota_desde);
       const h = this.numeroPago(idc, p.cuota_hasta ?? p.cuota_desde);
-      return etq(d, h);
+      return h !== d ? `Cuotas ${d} a ${h}` : `Cuota ${d}`;
     }
-    if (p.id_cuota) {
-      const n = Number(this.numeroCuota(idc, p.id_cuota));
-      return Number.isFinite(n) ? etq(n, n) : '—';
-    }
+    if (p.id_cuota) return this.numeroCuota(idc, p.id_cuota);
     return '—';
   }
 

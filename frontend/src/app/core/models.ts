@@ -839,6 +839,10 @@ export interface PagoCola {
   factura_url?: string;
   registrado_por_nombre?: string;
   facturado_por_nombre?: string | null;
+  corregido_por_nombre?: string | null;
+  voucher_corregido_por_nombre?: string | null;
+  editado_por_nombre?: string | null;
+  voucher_editado_por_nombre?: string | null;
   created_at: string;
   concepto: string;
   detalle?: string | null;

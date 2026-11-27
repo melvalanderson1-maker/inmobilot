@@ -677,6 +677,10 @@ class PagoColaOut(BaseModel):
     factura_url: Optional[str] = None
     registrado_por_nombre: Optional[str] = None
     facturado_por_nombre: Optional[str] = None
+    corregido_por_nombre: Optional[str] = None
+    voucher_corregido_por_nombre: Optional[str] = None
+    editado_por_nombre: Optional[str] = None
+    voucher_editado_por_nombre: Optional[str] = None
     concepto: str = "Pago"  # Inicial | Cuota N | Pago a cuenta
     detalle: Optional[str] = None  # ej. "Inicial de la venta #16"
     forma_pago: Optional[str] = None  # contado | credito

@@ -12,6 +12,8 @@ from app.services import venta_service as venta_svc
 from app.services.separacion_service import hoy_peru
 from app.sockets import notificar_pago_registrado, notificar_venta
 
+from app.services import auditoria as aud
+
 router = APIRouter(prefix="/cobranza", tags=["cobranza"])
 
 Q2 = Decimal("0.01")
@@ -208,6 +210,8 @@ async def recalcular_cuotas(
         q.monto_cuota = ya_pagado + parte
         q.capital = restante
         q.estado = m.EstadoCuotaEnum.parcial if ya_pagado > 0 else m.EstadoCuotaEnum.pendiente
+        aud.registrar(db, usuario, "contrato", contrato.id, "recalcular_cuotas",
+            {"saldo": str(saldo), "cuotas": n, "numero_contrato": contrato.numero_contrato})
     db.commit()
 
     await notificar_pago_registrado(contrato.id, contrato.id_proyecto, usuario.id_empresa)
@@ -247,6 +251,8 @@ async def cancelar_contrato(
             q.fecha_pago_real = hoy
             q.observacion = "Cerrada por cancelación del contrato"
     contrato.estado = m.EstadoContratoEnum.cancelado
+    aud.registrar(db, usuario, "contrato", contrato.id, "cancelar_contrato",
+                  {"numero_contrato": contrato.numero_contrato})
     db.commit()
 
     await notificar_pago_registrado(contrato.id, contrato.id_proyecto, usuario.id_empresa)
@@ -287,6 +293,8 @@ async def finalizar_venta(
         raise _conflicto("Falta subir el depósito (voucher) al sistema")
 
     venta.estado = m.EstadoVentaEnum.finalizada
+    aud.registrar(db, usuario, "venta", venta.id, "finalizar_venta",
+                  {"id_contrato": venta.id_contrato})
     db.commit()
 
     await notificar_venta(

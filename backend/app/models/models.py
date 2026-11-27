@@ -930,7 +930,7 @@ class Auditoria(Base):
     id_usuario = Column(Integer, ForeignKey("usuarios.id"))
     entidad = Column(String(30), nullable=False)   # cliente | separacion | comprobante
     id_entidad = Column(Integer, nullable=False)
-    accion = Column(String(20), nullable=False)    # editar | eliminar
+    accion = Column(String(60), nullable=False)    # editar | validar_caja | revertir_validacion_caja | ...
     cambios = Column(JSONB)
     created_at = Column(DateTime, server_default=func.now())
 

@@ -186,8 +186,24 @@
                 <td data-label="Estado">
                   <span class="chip" [ngClass]="'chip-' + p.estado">{{ etiqueta(p.estado) }}</span>
                   @if (p.estado === 'rechazado' && p.motivo_rechazo) { <small>{{ p.motivo_rechazo }}</small> }
-                  @if (p.validado_por_nombre && p.estado !== 'rechazado') { <small>Caja validó: {{ p.validado_por_nombre }}</small> }
-                  @if (p.facturado_por_nombre) { <small>Facturó: {{ p.facturado_por_nombre }}</small> }
+                  @if (p.validado_por_nombre && p.estado !== 'rechazado') {
+                    <small>{{ p.origen === 'devolucion' ? 'Caja devolvió' : 'Caja validó' }}: {{ p.validado_por_nombre }}</small>
+                  }
+                  @if (p.facturado_por_nombre) {
+                    <small>{{ p.origen === 'devolucion' ? 'Nota de crédito' : 'Facturó' }}: {{ p.facturado_por_nombre }}</small>
+                  }
+                  @if (p.corregido_por_nombre) {
+                    <small>{{ p.origen === 'devolucion' ? 'Corrigió nota de crédito' : 'Corrigió comprobante' }}: {{ p.corregido_por_nombre }}</small>
+                  }
+                  @if (p.voucher_corregido_por_nombre) {
+                    <small>Caja corrigió voucher: {{ p.voucher_corregido_por_nombre }}</small>
+                  }
+                  @if (p.voucher_editado_por_nombre) {
+                    <small>Cambió voucher: {{ p.voucher_editado_por_nombre }}</small>
+                  }
+                  @if (p.editado_por_nombre) {
+                    <small>Editó datos (monto, fecha u operación): {{ p.editado_por_nombre }}</small>
+                  }
                 </td>
 
                 <td class="acciones">

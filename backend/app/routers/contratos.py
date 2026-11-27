@@ -11,6 +11,7 @@ from app.services import amortizacion_service as amort_svc
 from app.models import models as m
 from app.schemas import schemas as s
 from app.sockets import notificar_cambio_estado_lote, notificar_nuevo_contrato, notificar_pago_registrado, notificar_pago
+from app.services import auditoria as aud
 
 router = APIRouter(prefix="/contratos", tags=["contratos"])
 
@@ -712,6 +713,15 @@ async def registrar_pago(
     )
     db.add(pago)
     db.flush()
+
+    aud.registrar(
+        db, usuario, "pago", pago.id, "registrar_pago",
+        {
+            "id_contrato": contrato.id, "concepto": concepto, "tipo": tipo,
+            "monto": str(payload.monto), "fecha_pago": payload.fecha_pago.isoformat(),
+            "metodo_pago": payload.metodo_pago, "numero_operacion": payload.numero_operacion,
+        },
+    )
 
     destinatarios = sep_svc.usuarios_por_roles(
         db, usuario.id_empresa, contrato.id_proyecto, ["caja", "admin"], excluir_id=usuario.id

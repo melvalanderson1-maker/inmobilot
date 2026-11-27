@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from decimal import Decimal
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload, object_session, selectinload
 
 from app.core.database import get_db
@@ -132,7 +132,8 @@ def _comprador(cli, rol=None) -> s.PagoCompradorOut:
     )
 
 
-def _a_fila(p: m.Pago, facturadores: Optional[dict] = None) -> s.PagoColaOut:
+def _a_fila(p: m.Pago, facturadores: Optional[dict] = None, correctores: Optional[dict] = None,
+            editores: Optional[dict] = None, editores_voucher: Optional[dict] = None) -> s.PagoColaOut:
     c = p.contrato
     titular = next((vc.cliente for vc in c.clientes_rel if vc.rol == m.RolClienteContratoEnum.titular), None)
     if titular is None and c.clientes_rel:
@@ -153,6 +154,9 @@ def _a_fila(p: m.Pago, facturadores: Optional[dict] = None) -> s.PagoColaOut:
         registrado_por_nombre=p.registrador.nombre if p.registrador else None,
         validado_por_nombre=p.validador.nombre if p.validador else None,
         facturado_por_nombre=(facturadores or {}).get(p.facturado_por),
+        corregido_por_nombre=(correctores or {}).get(p.id),
+        editado_por_nombre=(editores or {}).get(p.id),
+        voucher_editado_por_nombre=(editores_voucher or {}).get(p.id),
         concepto=_concepto(p),
         detalle=p.observacion,
         lote_partida=c.lote.partida_registral if c.lote else None,
@@ -185,6 +189,35 @@ async def _emitir(pago: m.Pago, contrato: m.Contrato, notifs: list):
 
 # ---------------------------------------------------------------- lectura --
 
+
+def _nombres_usuarios(db: Session, ids) -> dict:
+    """id de usuario -> nombre, en una sola consulta."""
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    return dict(db.query(m.Usuario.id, m.Usuario.nombre).filter(m.Usuario.id.in_(ids)).all())
+
+
+def _ultima_correccion(db: Session, entidad: str, ids, acciones: tuple, campos: Optional[tuple] = None) -> dict:
+    """id de la entidad -> nombre del último usuario que la corrigió (según auditoría).
+    Si se indican `campos`, solo cuentan las ediciones que tocaron alguno de esos campos."""
+    ids = {i for i in ids if i}
+    if not ids:
+        return {}
+    q = (
+        db.query(m.Auditoria.id_entidad, m.Usuario.nombre)
+        .join(m.Usuario, m.Usuario.id == m.Auditoria.id_usuario)
+        .filter(
+            m.Auditoria.entidad == entidad,
+            m.Auditoria.id_entidad.in_(ids),
+            m.Auditoria.accion.in_(acciones),
+        )
+    )
+    if campos:
+        q = q.filter(or_(*[m.Auditoria.cambios.has_key(c) for c in campos]))
+    filas = q.order_by(m.Auditoria.created_at.asc(), m.Auditoria.id.asc()).all()
+    return {i: n for i, n in filas}  # en orden ascendente, queda el último
+
 def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estado: Optional[str]) -> list[s.PagoColaOut]:
     """Las separaciones también pasan por Caja y Facturación: se muestran en la misma cola."""
     mapa = {
@@ -205,7 +238,19 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
     if usuario.rol.clave == "ejecutivo_ventas":
         q = q.filter(m.Separacion.id_ejecutivo == usuario.id)
     filas = []
-    for x in q.order_by(m.Separacion.created_at.desc()).limit(300).all():
+    sepes = q.order_by(m.Separacion.created_at.desc()).limit(300).all()
+    nombres = _nombres_usuarios(db, [x.comprobantes[-1].emitido_por for x in sepes if x.comprobantes])
+    correcciones = _ultima_correccion(
+        db, "separacion", [x.id for x in sepes], ("corregir_comprobante", "editar_comprobante")
+    )
+    ediciones = _ultima_correccion(
+        db, "separacion", [x.id for x in sepes], ("editar", "corregir_rechazo"),
+        ("importe", "fecha_inicio", "medio_pago", "voucher_numero", "id_cliente", "id_lote"),
+    )
+    ediciones_voucher = _ultima_correccion(
+        db, "separacion", [x.id for x in sepes], ("editar", "corregir_rechazo"), ("voucher_url",)
+    )
+    for x in sepes:
         est = x.estado.value if hasattr(x.estado, "value") else str(x.estado)
         est_cola = mapa.get(est, "validado")
         # Convertida sin comprobante: vuelve a la cola de Facturación para que lo suba
@@ -233,6 +278,10 @@ def _filas_separaciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             factura_url=comp.archivo_url if comp else None,
             registrado_por_nombre=x.ejecutivo.nombre if x.ejecutivo else None,
             validado_por_nombre=x.validador.nombre if x.validador else None,
+            facturado_por_nombre=nombres.get(comp.emitido_por) if comp else None,
+            corregido_por_nombre=correcciones.get(x.id) if comp else None,
+            editado_por_nombre=ediciones.get(x.id),
+            voucher_editado_por_nombre=ediciones_voucher.get(x.id),
             concepto="Separación de lote", detalle=x.notas, forma_pago=None,
             lote_partida=x.lote.partida_registral if x.lote else None,
             compradores=[_comprador(c)] if c else [],
@@ -265,7 +314,11 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
     if usuario.rol.clave == "ejecutivo_ventas":
         q = q.filter(m.Separacion.id_ejecutivo == usuario.id)
     filas = []
-    for d in q.order_by(m.Devolucion.created_at.desc()).limit(300).all():
+    devs = q.order_by(m.Devolucion.created_at.desc()).limit(300).all()
+    nombres = _nombres_usuarios(db, [d.ejecutado_por for d in devs] + [d.nota_credito_por for d in devs])
+    corr_nota = _ultima_correccion(db, "devolucion", [d.id for d in devs], ("corregir_nota_credito",))
+    corr_voucher = _ultima_correccion(db, "devolucion", [d.id for d in devs], ("corregir_voucher",))
+    for d in devs:
         est_cola = mapa[d.estado]
         if estado and est_cola != estado:
             continue
@@ -288,6 +341,10 @@ def _filas_devoluciones(db: Session, usuario: m.Usuario, id_proyecto: int, estad
             factura_tipo="nota_credito" if d.nota_credito_numero else None,
             factura_numero=d.nota_credito_numero, factura_url=d.nota_credito_url,
             registrado_por_nombre=sep.ejecutivo.nombre if sep.ejecutivo else None,
+            validado_por_nombre=nombres.get(d.ejecutado_por),
+            facturado_por_nombre=nombres.get(d.nota_credito_por),
+            corregido_por_nombre=corr_nota.get(d.id),
+            voucher_corregido_por_nombre=corr_voucher.get(d.id),
             concepto="Devolución de separación", detalle=d.sustento, forma_pago=None,
             lote_partida=sep.lote.partida_registral if sep.lote else None,
             compradores=[_comprador(c)] if c else [],
@@ -328,7 +385,16 @@ def listar_pagos(
         dict(db.query(m.Usuario.id, m.Usuario.nombre).filter(m.Usuario.id.in_(ids_fact)).all())
         if ids_fact else {}
     )
-    filas = [_a_fila(p, facturadores) for p in pagos]
+    correctores = _ultima_correccion(db, "pago", [p.id for p in pagos], ("corregir_comprobante",))
+    ids_pagos = [p.id for p in pagos]
+    editores = _ultima_correccion(
+        db, "pago", ids_pagos, ("editar", "corregir_rechazo"),
+        ("monto", "fecha_pago", "metodo_pago", "numero_operacion", "observacion"),
+    )
+    editores_voucher = _ultima_correccion(
+        db, "pago", ids_pagos, ("editar", "corregir_rechazo"), ("comprobante_url",)
+    )
+    filas = [_a_fila(p, facturadores, correctores, editores, editores_voucher) for p in pagos]
     filas += _filas_separaciones(db, usuario, id_proyecto, estado)
     filas += _filas_devoluciones(db, usuario, id_proyecto, estado)
     

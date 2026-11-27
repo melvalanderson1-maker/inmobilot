@@ -1,0 +1,22 @@
+.aud-page { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.aud-head h1 { margin: 0; font-size: 1.5rem; }
+.aud-head p { margin: 4px 0 0; opacity: .7; }
+.aud-filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.aud-filtros label { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; }
+.aud-filtros input, .aud-filtros select { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; }
+.aud-botones { display: flex; gap: 8px; }
+.aud-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(128,128,128,.4); background: transparent; color: inherit; cursor: pointer; }
+.aud-btn:disabled { opacity: .4; cursor: default; }
+.aud-btn-ok { background: #15803d; border-color: #15803d; color: #fff; }
+.aud-estado { padding: 32px; text-align: center; opacity: .7; }
+.aud-tabla-wrap { overflow-x: auto; }
+.aud-tabla { width: 100%; border-collapse: collapse; }
+.aud-tabla th { text-align: left; font-size: .75rem; text-transform: uppercase; opacity: .7; padding: 10px; }
+.aud-tabla td { padding: 10px; border-top: 1px solid rgba(128,128,128,.25); vertical-align: top; }
+.aud-detalle td { background: rgba(128,128,128,.08); }
+.aud-linea { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.aud-campo { min-width: 170px; font-weight: 600; }
+.aud-antes { color: #b91c1c; word-break: break-all; }
+.aud-despues { color: #15803d; word-break: break-all; }
+.aud-pie { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.aud-pie div { display: flex; align-items: center; gap: 10px; }

@@ -96,6 +96,12 @@ export const routes: Routes = [
           import('./dashboard/pagos/pagos-list.component').then((c) => c.PagosListComponent),
       },
       {
+        path: 'auditoria',
+        canActivate: [moduloGuard('auditoria')],
+        loadComponent: () =>
+          import('./dashboard/auditoria/auditoria-list.component').then((c) => c.AuditoriaListComponent),
+      },
+      {
         path: 'separaciones',
         canActivate: [moduloGuard('separaciones')],
         loadComponent: () =>

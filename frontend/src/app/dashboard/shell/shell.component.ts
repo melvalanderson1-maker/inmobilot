@@ -221,6 +221,7 @@ export class ShellComponent implements OnInit, OnDestroy {
     if (n.includes('reporte') || n.includes('kpi') || n.includes('meta')) return 'reportes';
     if (n.includes('lead') || n.includes('seguimiento')) return 'leads';
     if (n.includes('separacion')) return 'separaciones';
+    if (n.includes('auditor')) return 'reportes';
 
     return 'default';
   }

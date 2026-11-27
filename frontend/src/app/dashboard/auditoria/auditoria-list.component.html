@@ -1,0 +1,94 @@
+<div class="aud-page">
+  <header class="aud-head">
+    <h1>Auditoría</h1>
+    <p>Quién hizo qué, cuándo y qué valores cambiaron.</p>
+  </header>
+
+  <section class="aud-filtros">
+    <label>Desde <input type="date" [(ngModel)]="filtros.desde" /></label>
+    <label>Hasta <input type="date" [(ngModel)]="filtros.hasta" /></label>
+    <label>Usuario
+      <select [(ngModel)]="filtros.id_usuario">
+        <option value="">Todos</option>
+        @for (u of opciones().usuarios; track u.id) { <option [value]="u.id">{{ u.nombre }}</option> }
+      </select>
+    </label>
+    <label>Registro
+      <select [(ngModel)]="filtros.entidad">
+        <option value="">Todos</option>
+        @for (e of opciones().entidades; track e.valor) { <option [value]="e.valor">{{ e.etiqueta }}</option> }
+      </select>
+    </label>
+    <label>Acción
+      <select [(ngModel)]="filtros.accion">
+        <option value="">Todas</option>
+        @for (a of opciones().acciones; track a.valor) { <option [value]="a.valor">{{ a.etiqueta }}</option> }
+      </select>
+    </label>
+    <label>N° de registro <input type="number" [(ngModel)]="filtros.id_entidad" placeholder="ej. 50" /></label>
+    <div class="aud-botones">
+      <button type="button" class="aud-btn aud-btn-ok" (click)="buscar()">Buscar</button>
+      <button type="button" class="aud-btn" (click)="limpiar()">Limpiar</button>
+    </div>
+  </section>
+
+  @if (cargando()) {
+    <div class="aud-estado">Cargando auditoría...</div>
+  } @else if (registros().length === 0) {
+    <div class="aud-estado">No hay registros para estos filtros.</div>
+  } @else {
+    <div class="aud-tabla-wrap">
+      <table class="aud-tabla">
+        <thead>
+          <tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Registro</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (r of registros(); track r.id) {
+            <tr>
+              <td>{{ fmtFecha(r.fecha) }}</td>
+              <td>{{ r.usuario || '—' }}</td>
+              <td><strong>{{ r.accion_texto }}</strong></td>
+              <td>{{ r.referencia }}</td>
+              <td><button type="button" class="aud-btn" (click)="alternar(r.id)">{{ abierto() === r.id ? 'Ocultar' : 'Detalle' }}</button></td>
+            </tr>
+            @if (abierto() === r.id) {
+              <tr class="aud-detalle">
+                <td colspan="5">
+                  @for (d of detalle(r.cambios); track d.campo) {
+                    <div class="aud-linea">
+                      <span class="aud-campo">{{ d.campo }}</span>
+                      @if (d.cambio) {
+                        <span class="aud-antes">
+                          @if (esUrl(d.antes)) { <a [href]="d.antes" target="_blank" rel="noopener">ver anterior ↗</a> } @else { {{ d.antes }} }
+                        </span>
+                        <span class="aud-flecha">→</span>
+                        <span class="aud-despues">
+                          @if (esUrl(d.despues)) { <a [href]="d.despues" target="_blank" rel="noopener">ver nuevo ↗</a> } @else { {{ d.despues }} }
+                        </span>
+                      } @else {
+                        <span class="aud-despues">
+                          @if (esUrl(d.despues)) { <a [href]="d.despues" target="_blank" rel="noopener">abrir ↗</a> } @else { {{ d.despues }} }
+                        </span>
+                      }
+                    </div>
+                  } @empty {
+                    <span class="aud-campo">Sin detalle adicional.</span>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="aud-pie">
+      <span>{{ total() }} registros</span>
+      <div>
+        <button type="button" class="aud-btn" [disabled]="pagina() <= 1" (click)="buscar(pagina() - 1)">Anterior</button>
+        <span>Página {{ pagina() }} de {{ totalPaginas() }}</span>
+        <button type="button" class="aud-btn" [disabled]="pagina() >= totalPaginas()" (click)="buscar(pagina() + 1)">Siguiente</button>
+      </div>
+    </footer>
+  }
+</div>
